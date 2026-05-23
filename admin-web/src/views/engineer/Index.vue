@@ -13,7 +13,7 @@ const tab = ref<Tab>('assignments')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">派单工时管理</span>
+        <span style="font-weight: 600">派单和工时管理</span>
       </div>
     </template>
     <el-tabs v-model="tab">

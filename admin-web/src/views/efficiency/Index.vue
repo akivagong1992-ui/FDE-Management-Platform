@@ -103,7 +103,7 @@ const dueTagType = (p: InProgressProject) => {
   <el-card v-loading="loading">
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">项目进度看板</span>
+        <span style="font-weight: 600">项目效率管理</span>
         <span style="color: #909399; font-size: 12px">
           数据日期 {{ stats?.today || '—' }}
         </span>

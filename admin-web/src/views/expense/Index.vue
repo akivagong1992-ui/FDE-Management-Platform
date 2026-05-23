@@ -13,7 +13,7 @@ const tab = ref<Tab>('vendor_fees')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">外部支出管理</span>
+        <span style="font-weight: 600">成本和支出管理</span>
       </div>
     </template>
     <el-tabs v-model="tab">
