@@ -8,12 +8,12 @@ const route = useRoute()
 const logoSrc = '/china-telecom-logo.png'
 
 const tabs = [
-  { n: 1, path: '/overview', title: '总览' },
-  { n: 2, path: '/profit-compare', title: '利润对比 ⭐' },
+  { n: 1, path: '/overview', title: '总览视图' },
+  { n: 2, path: '/profit-compare', title: '降本视图' },
   { n: 3, path: '/engineer', title: '工程师视图' },
   { n: 4, path: '/efficiency', title: '项目进度视图' },
-  { n: 5, path: '/knowledge', title: '技术沉淀 ⭐' },
-  { n: 6, path: '/capability', title: '团队能力 ⭐' },
+  { n: 5, path: '/knowledge', title: '技术沉淀视图' },
+  { n: 6, path: '/capability', title: '团队能力视图' },
 ]
 
 const activePath = computed(() => route.path)
