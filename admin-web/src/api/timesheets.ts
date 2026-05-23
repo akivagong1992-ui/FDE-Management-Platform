@@ -5,6 +5,14 @@ export const SLOT_LABEL: Record<SlotCode, string> = {
   morning: '上午', afternoon: '下午', evening: '晚上',
 }
 
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
+export const APPROVAL_LABEL: Record<ApprovalStatus, string> = {
+  pending: '待审', approved: '已审', rejected: '已拒',
+}
+export const APPROVAL_TAG_TYPE: Record<ApprovalStatus, 'warning' | 'success' | 'danger'> = {
+  pending: 'warning', approved: 'success', rejected: 'danger',
+}
+
 export interface Timesheet {
   id: number
   engineer_id: number
@@ -20,7 +28,11 @@ export interface Timesheet {
   natural_days: number | string
   weighted_days: number | string
   description?: string | null
-  is_approved: boolean
+  approval_status: ApprovalStatus
+  reject_reason?: string | null
+  reviewed_at?: string | null
+  submitted_by_user_id?: number | null
+  is_approved: boolean  // legacy mirror of approval_status === 'approved'
   created_at: string
 }
 
@@ -79,6 +91,12 @@ export const deleteTimesheet = (id: number) => http.delete(`/timesheets/${id}`)
 
 export const approveTimesheet = (id: number) =>
   http.patch<Timesheet>(`/timesheets/${id}/approve`).then((r) => r.data)
+
+export const rejectTimesheet = (id: number, reason: string) =>
+  http.patch<Timesheet>(`/timesheets/${id}/reject`, { reason }).then((r) => r.data)
+
+export const listTimesheetsByApproval = (status: ApprovalStatus) =>
+  http.get<Timesheet[]>('/timesheets', { params: { approval_filter: status } }).then((r) => r.data)
 
 export async function downloadTemplate(): Promise<void> {
   const resp = await http.get('/timesheets/template', { responseType: 'blob' })

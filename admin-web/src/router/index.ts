@@ -15,6 +15,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/my-assignments/MyAssignments.vue'),
         meta: { title: '我的派单', engineerOnly: true },
       },
+      {
+        path: 'my-timesheets',
+        component: () => import('@/views/my-timesheets/MyTimesheets.vue'),
+        meta: { title: '我的工时', engineerOnly: true },
+      },
       // 管理者侧（pm / lead / admin / finance）
       { path: 'project', component: () => import('@/views/project/Index.vue'), meta: { title: '项目管理', pmSide: true } },
       { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '员工派单', pmSide: true } },

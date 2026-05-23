@@ -2,10 +2,11 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  computePreview,
+  APPROVAL_LABEL, APPROVAL_TAG_TYPE,
+  approveTimesheet, computePreview,
   createTimesheetRange, deleteTimesheet, downloadTemplate, importExcel, listTimesheets,
-  SLOT_LABEL,
-  type ImportResult, type SlotCode, type Timesheet, type TimesheetRangePayload,
+  rejectTimesheet,
+  type ApprovalStatus, type ImportResult, type SlotCode, type Timesheet, type TimesheetRangePayload,
 } from '@/api/timesheets'
 import { listEngineers, type Engineer } from '@/api/engineers'
 import { listProjects, type Project } from '@/api/projects'
@@ -14,7 +15,11 @@ const rows = ref<Timesheet[]>([])
 const engineers = ref<Engineer[]>([])
 const projects = ref<Project[]>([])
 const loading = ref(false)
-const filter = reactive<{ engineer_id?: number; project_id?: number; date_from?: string; date_to?: string }>({})
+const filter = reactive<{
+  engineer_id?: number; project_id?: number
+  date_from?: string; date_to?: string
+  approval_filter?: ApprovalStatus
+}>({})
 
 const dialog = ref(false)
 const today = () => new Date().toISOString().slice(0, 10)
@@ -89,6 +94,34 @@ async function onDelete(t: Timesheet) {
   await load()
 }
 
+async function onApprove(t: Timesheet) {
+  await approveTimesheet(t.id)
+  ElMessage.success(`已批准 #${t.id}`)
+  await load()
+}
+
+// 拒绝弹框
+const rejectVisible = ref(false)
+const rejectTarget = ref<Timesheet | null>(null)
+const rejectReason = ref('')
+
+function openReject(t: Timesheet) {
+  rejectTarget.value = t
+  rejectReason.value = ''
+  rejectVisible.value = true
+}
+
+async function onSubmitReject() {
+  if (!rejectTarget.value || !rejectReason.value.trim()) {
+    ElMessage.warning('拒绝理由必填')
+    return
+  }
+  await rejectTimesheet(rejectTarget.value.id, rejectReason.value.trim())
+  ElMessage.success('已拒绝，工程师将看到理由')
+  rejectVisible.value = false
+  await load()
+}
+
 async function onDownloadTemplate() {
   await downloadTemplate()
   ElMessage.success('模板已下载（新版含上午/下午/晚上 3 列）')
@@ -143,6 +176,11 @@ onMounted(load)
         v-model="filter.date_to" type="date" placeholder="截止日" value-format="YYYY-MM-DD"
         style="width: 140px" @change="load"
       />
+      <el-select v-model="filter.approval_filter" placeholder="审批状态" clearable style="width: 130px" @change="load">
+        <el-option label="待审" value="pending" />
+        <el-option label="已审" value="approved" />
+        <el-option label="已拒" value="rejected" />
+      </el-select>
       <div style="flex: 1" />
       <el-button @click="onDownloadTemplate">下载 Excel 模板</el-button>
       <el-button type="warning" @click="openImport">Excel 批量导入</el-button>
@@ -179,15 +217,25 @@ onMounted(load)
         </template>
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="160" />
-      <el-table-column label="审核" width="80">
+      <el-table-column label="状态" width="170">
         <template #default="{ row }">
-          <el-tag :type="row.is_approved ? 'success' : 'info'" size="small">
-            {{ row.is_approved ? '已审' : '未审' }}
+          <el-tag :type="APPROVAL_TAG_TYPE[row.approval_status as ApprovalStatus]" size="small">
+            {{ APPROVAL_LABEL[row.approval_status as ApprovalStatus] }}
           </el-tag>
+          <el-tooltip v-if="row.approval_status === 'rejected' && row.reject_reason"
+                      :content="row.reject_reason" placement="top">
+            <span style="margin-left: 4px; color: #f56c6c; cursor: help; font-size: 12px">⚠</span>
+          </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="80" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
+          <el-button v-if="row.approval_status === 'pending'"
+                     link type="success" size="small" @click="onApprove(row)">批准</el-button>
+          <el-button v-if="row.approval_status === 'pending'"
+                     link type="warning" size="small" @click="openReject(row)">拒绝</el-button>
+          <el-button v-if="row.approval_status === 'rejected'"
+                     link type="success" size="small" @click="onApprove(row)">改批准</el-button>
           <el-button link type="danger" size="small" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -286,6 +334,24 @@ onMounted(load)
 
       <template #footer>
         <el-button @click="importDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 拒绝工时弹框 -->
+    <el-dialog v-model="rejectVisible" title="拒绝工时" width="460px">
+      <div v-if="rejectTarget" style="margin-bottom: 12px; color: #606266; font-size: 13px">
+        <strong>{{ rejectTarget.engineer_name }}</strong>
+        {{ rejectTarget.work_date }} · {{ rejectTarget.project_name }}
+      </div>
+      <el-input
+        v-model="rejectReason" type="textarea" :rows="3"
+        placeholder="拒绝理由（工程师将看到此内容）— 例如：项目不在该时段排期 / 描述过简 / 已超出本月预算 …"
+      />
+      <template #footer>
+        <el-button @click="rejectVisible = false">取消</el-button>
+        <el-button type="danger" :disabled="!rejectReason.trim()" @click="onSubmitReject">
+          确认拒绝
+        </el-button>
       </template>
     </el-dialog>
   </div>

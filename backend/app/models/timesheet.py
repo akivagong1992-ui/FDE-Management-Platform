@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -76,9 +76,14 @@ class Timesheet(Base):
     weighted_days: Mapped[float] = mapped_column(Numeric(4, 2), default=0)
     description: Mapped[str | None] = mapped_column(Text)
 
+    # 审批流：pending = 待审，approved = 已审，rejected = 已拒（有理由）
+    approval_status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    reject_reason: Mapped[str | None] = mapped_column(Text)
+    submitted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 兼容旧字段（is_approved = approval_status == 'approved'）
     is_approved: Mapped[bool] = mapped_column(default=False)
-    approved_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
-    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

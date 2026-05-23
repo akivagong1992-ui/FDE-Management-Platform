@@ -34,10 +34,15 @@ from app.schemas.timesheet import (
     TimesheetOut,
     TimesheetRangeCreate,
     TimesheetRangeResult,
+    TimesheetReject,
     TimesheetUpdate,
 )
 
 router = APIRouter(prefix="/timesheets", tags=["timesheets"])
+
+# 管理者角色（能审批 / 看全部）
+PM_ROLES = {"admin", "lead", "pm", "finance"}
+ENGINEER_ROLE = "engineer"
 
 
 def _to_out(t: Timesheet) -> TimesheetOut:
@@ -56,6 +61,10 @@ def _to_out(t: Timesheet) -> TimesheetOut:
         natural_days=t.natural_days,
         weighted_days=t.weighted_days,
         description=t.description,
+        approval_status=t.approval_status,
+        reject_reason=t.reject_reason,
+        reviewed_at=t.reviewed_at,
+        submitted_by_user_id=t.submitted_by_user_id,
         is_approved=t.is_approved,
         created_at=t.created_at,
     )
@@ -67,14 +76,27 @@ async def list_timesheets(
     project_id: int | None = None,
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
+    approval_filter: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ) -> list[TimesheetOut]:
     stmt = select(Timesheet).order_by(Timesheet.work_date.desc(), Timesheet.id.desc())
+
+    # engineer 角色：强制只看自己的工时记录
+    if user.get("role") == ENGINEER_ROLE:
+        eng_id = user.get("engineer_id")
+        if not eng_id:
+            return []
+        stmt = stmt.where(Timesheet.engineer_id == eng_id)
+    elif user.get("role") not in PM_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
     if engineer_id is not None:
         stmt = stmt.where(Timesheet.engineer_id == engineer_id)
     if project_id is not None:
         stmt = stmt.where(Timesheet.project_id == project_id)
+    if approval_filter:
+        stmt = stmt.where(Timesheet.approval_status == approval_filter)
     if date_from:
         stmt = stmt.where(Timesheet.work_date >= date_cls.fromisoformat(date_from))
     if date_to:
@@ -84,7 +106,8 @@ async def list_timesheets(
 
 
 async def _build_and_save_one(
-    db: AsyncSession, payload: TimesheetCreate, *, commit: bool = True,
+    db: AsyncSession, payload: TimesheetCreate,
+    *, commit: bool = True, submitted_by: int | None = None,
 ) -> Timesheet:
     if not await db.get(Engineer, payload.engineer_id):
         raise HTTPException(status_code=400, detail=f"工程师 #{payload.engineer_id} 不存在")
@@ -102,6 +125,8 @@ async def _build_and_save_one(
         has_evening=payload.has_evening, is_workday=is_wd,
         natural_days=natural, weighted_days=weighted,
         description=payload.description,
+        approval_status="pending",
+        submitted_by_user_id=submitted_by,
     )
     db.add(t)
     try:
@@ -117,13 +142,25 @@ async def _build_and_save_one(
     return t
 
 
+def _force_engineer_id_if_engineer(payload, user: dict) -> None:
+    """engineer 角色不能替别人提交工时，强制改为自己的 engineer_id。"""
+    if user.get("role") == ENGINEER_ROLE:
+        own = user.get("engineer_id")
+        if not own:
+            raise HTTPException(status_code=403, detail="当前账号未绑定工程师记录")
+        payload.engineer_id = own
+
+
 @router.post("", response_model=TimesheetOut, status_code=status.HTTP_201_CREATED)
 async def create_timesheet(
     payload: TimesheetCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> TimesheetOut:
-    t = await _build_and_save_one(db, payload)
+    if user.get("role") not in PM_ROLES and user.get("role") != ENGINEER_ROLE:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    _force_engineer_id_if_engineer(payload, user)
+    t = await _build_and_save_one(db, payload, submitted_by=user.get("user_id"))
     return _to_out(t)
 
 
@@ -131,8 +168,11 @@ async def create_timesheet(
 async def create_timesheet_range(
     payload: TimesheetRangeCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> TimesheetRangeResult:
+    if user.get("role") not in PM_ROLES and user.get("role") != ENGINEER_ROLE:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    _force_engineer_id_if_engineer(payload, user)
     """起止日期 + 时段集合 → 逐日展开，每天一条记录。失败的日期记入 skipped。"""
     has_morning = SLOT_MORNING in payload.slots
     has_afternoon = SLOT_AFTERNOON in payload.slots
@@ -154,7 +194,7 @@ async def create_timesheet_range(
             description=payload.description,
         )
         try:
-            t = await _build_and_save_one(db, single)
+            t = await _build_and_save_one(db, single, submitted_by=user.get("user_id"))
             out = _to_out(t)
             created.append(out)
             total_natural += out.natural_days
@@ -174,14 +214,26 @@ async def update_timesheet(
     ts_id: int,
     payload: TimesheetUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> TimesheetOut:
     t = await db.get(Timesheet, ts_id)
     if not t:
         raise HTTPException(status_code=404, detail="工时记录不存在")
+    # engineer 只能改自己的、且非已审；改完状态回 pending（重审）
+    if user.get("role") == ENGINEER_ROLE:
+        if t.engineer_id != user.get("engineer_id"):
+            raise HTTPException(status_code=403, detail="无权编辑他人的工时")
+        if t.approval_status == "approved":
+            raise HTTPException(status_code=400, detail="已审通过的工时不能改；如需修改请联系管理者")
+        t.approval_status = "pending"
+        t.reject_reason = None
+        t.reviewed_at = None
+        t.is_approved = False
+    elif user.get("role") not in PM_ROLES:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(t, k, v)
-    # 任何 slot 或 is_workday 变化都要重算
     t.recompute()
     await db.commit()
     await db.refresh(t)
@@ -192,11 +244,19 @@ async def update_timesheet(
 async def delete_timesheet(
     ts_id: int,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> None:
     t = await db.get(Timesheet, ts_id)
     if not t:
         raise HTTPException(status_code=404, detail="工时记录不存在")
+    # engineer 只能删自己的、且非已审通过
+    if user.get("role") == ENGINEER_ROLE:
+        if t.engineer_id != user.get("engineer_id"):
+            raise HTTPException(status_code=403, detail="无权删除他人的工时")
+        if t.approval_status == "approved":
+            raise HTTPException(status_code=400, detail="已审通过的工时不能删；如需撤回请联系管理者")
+    elif user.get("role") not in PM_ROLES:
+        raise HTTPException(status_code=403, detail="Forbidden")
     await db.delete(t)
     await db.commit()
 
@@ -205,13 +265,36 @@ async def delete_timesheet(
 async def approve_timesheet(
     ts_id: int,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "finance")),
+    user: dict = Depends(require_role("admin", "lead", "finance", "pm")),
 ) -> TimesheetOut:
     t = await db.get(Timesheet, ts_id)
     if not t:
         raise HTTPException(status_code=404, detail="工时记录不存在")
+    t.approval_status = "approved"
     t.is_approved = True
-    t.approved_at = datetime.utcnow()
+    t.reject_reason = None
+    t.reviewed_at = datetime.utcnow()
+    t.reviewed_by_user_id = user.get("user_id")
+    await db.commit()
+    await db.refresh(t)
+    return _to_out(t)
+
+
+@router.patch("/{ts_id}/reject", response_model=TimesheetOut)
+async def reject_timesheet(
+    ts_id: int,
+    payload: TimesheetReject,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(require_role("admin", "lead", "finance", "pm")),
+) -> TimesheetOut:
+    t = await db.get(Timesheet, ts_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="工时记录不存在")
+    t.approval_status = "rejected"
+    t.is_approved = False
+    t.reject_reason = payload.reason.strip()
+    t.reviewed_at = datetime.utcnow()
+    t.reviewed_by_user_id = user.get("user_id")
     await db.commit()
     await db.refresh(t)
     return _to_out(t)

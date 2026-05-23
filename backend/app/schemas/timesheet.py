@@ -84,8 +84,16 @@ class TimesheetOut(BaseModel):
     natural_days: Decimal
     weighted_days: Decimal
     description: str | None = None
-    is_approved: bool
+    approval_status: str  # pending / approved / rejected
+    reject_reason: str | None = None
+    reviewed_at: datetime | None = None
+    submitted_by_user_id: int | None = None
+    is_approved: bool  # 旧字段兼容
     created_at: datetime
+
+
+class TimesheetReject(BaseModel):
+    reason: str = Field(min_length=1)
 
 
 class TimesheetBulkCreate(BaseModel):

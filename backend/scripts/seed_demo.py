@@ -607,12 +607,26 @@ async def main() -> None:
                     else:
                         has_m, has_a, has_e = False, False, True  # 周末晚上加班
                     natural, weighted = compute_weighted_days(wd, has_m, has_a, has_e, is_workday=is_wd)
+                    # 60% 已审，20% 待审，20% 已拒（含示例理由）
+                    roll = random.random()
+                    if roll < 0.6:
+                        appr, reason = "approved", None
+                    elif roll < 0.8:
+                        appr, reason = "pending", None
+                    else:
+                        appr, reason = "rejected", random.choice([
+                            "项目不在该时段排期内，请核对项目编号",
+                            "已超出本月预算上限，下月再提",
+                            "描述过于简略，请补充具体工作内容",
+                        ])
                     db.add(Timesheet(
                         engineer_id=e.id, project_id=p.id, work_date=wd,
                         has_morning=has_m, has_afternoon=has_a, has_evening=has_e,
                         is_workday=is_wd,
                         natural_days=natural, weighted_days=weighted,
-                        is_approved=random.random() < 0.6,
+                        approval_status=appr, reject_reason=reason,
+                        is_approved=(appr == "approved"),
+                        submitted_by_user_id=engineer_user_accounts[0].id if engineer_user_accounts else None,
                     ))
                     ts_count += 1
         await db.flush()
