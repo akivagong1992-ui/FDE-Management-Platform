@@ -502,15 +502,19 @@ Manpower-management-platform/
 - [x] **项目成本归集接口** `/projects/{id}/cost-breakdown`：Vendor 服务费 + 外部支出按类型分组 + 总成本 + 外包对标
 - [x] 传统外包模式对标 (`outsource_benchmark_amount`，Phase 1b 已在 Project 上铺字段，2a 已可用于对比)
 
-**2b — 利润口径 + 知识资产**（待办）
+**2b-i — 利润核心**（已完成 ✅）
+- [x] ProjectRevenue model + CRUD（强制只允许 revenue 类项目登记收入）
+- [x] **三种利润口径** API：
+  - [x] 口径 A · `/api/admin/profit/overall`（lead/finance/admin）
+  - [x] 口径 B · `/api/admin/profit/by-sales-person` + `/by-need-party`（含可展开的项目明细）
+  - [x] 口径 C · `/api/cockpit/savings-and-value`（cockpit 守卫）
+- [x] **R14 驾驶舱隔离 pytest** — 断言 `/api/cockpit/*` 任何字段名/字符串都不含 team_margin / total_revenue / vendor_fees / real_cost 等 A/B 关键字
+- [x] 驾驶舱 Tab 1 总览接入真实 C 口径（"为公司创造的价值"大卡 + 节省/创造价值拆解）
+- [x] `/profit` 模块 4 个 Tab：A 团队总览 / B 按销售 / B 按客户 / 项目收入登记
+
+**2b-ii — 工时成本 + 知识资产**（待办）
 - [ ] 项目预算编制（ProjectBudget 表）
-- [ ] 项目收入登记 ProjectRevenue（仅 revenue 类项目）
-- [ ] **三种利润口径** API（详见 §4.3）：
-  - 口径 A · 团队整体利润（lead/finance 可见）
-  - 口径 B · 按销售人员 / 按客户 汇总按钮（lead/finance 可见）
-  - 口径 C · 节省 + 创造价值（**驾驶舱专用预聚合接口**）
-- [ ] 工时 × 工程师单价 接入成本计算
-- [ ] **驾驶舱接口隔离测试**（R14）：断言 `/api/cockpit/*` 不返回 A/B 口径数字
+- [ ] 工时 × 工程师单价 接入成本（与 VendorServiceFee 二选一或补充，待方案讨论）
 - [ ] **知识资产库基础**（4.7 铺底）：分类字典、上传/检索、保密分级
 
 **交付**：每个项目赚不赚钱、销售/客户层面是否欠款、节省/创造价值可算出来
@@ -596,3 +600,4 @@ Manpower-management-platform/
 - **v0.3.3** (Phase 1c 完成后)：Assignment + Timesheet 落地，含 Excel 模板下载 + 批量导入（openpyxl）。`/engineer` 模块现有 5 个 Tab：派单（默认）/ 工时记录 / 工程师档案 / Vendor / 技能字典。工时审核 API 就绪但 UI 在 1d。
 - **v0.3.4** (Phase 2a 完成后)：Supplier + ExpenseRequest（4 状态审批流）+ VendorServiceFee 三个模型落地；5 类支出字典自动 seed；项目 `/cost-breakdown` 接口归集 Vendor 服务费 + 外部支出。`/expense` 三个 Tab：外部支出 / Vendor 服务费 / 供应商。利润 A/B/C 三口径 API + 驾驶舱隔离测试留给 2b。
 - **v0.3.5**：支出分类追加第 6 类 `other`（其他 — 不在前 5 类的开销），覆盖 ExpenseType 字典 seed 列表。
+- **v0.3.6** (Phase 2b-i 完成后)：ProjectRevenue + 三口径 API（A/B/C）落地；pytest 强制断言驾驶舱接口不漏 A/B 字段（R14 闭环）；驾驶舱 Tab 1 接入真实 C 口径数据。`/profit` 模块 4 个 Tab。下一步 2b-ii（工时×单价 + 知识资产）。
