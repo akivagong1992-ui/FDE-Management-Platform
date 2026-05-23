@@ -286,26 +286,26 @@ onMounted(load)
         </template>
 
         <el-row :gutter="12">
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="状态">
               <el-select v-model="form.status" style="width: 100%">
                 <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="地区">
               <el-select v-model="form.district" clearable placeholder="未指定" style="width: 100%">
                 <el-option v-for="(label, code) in DISTRICT_LABELS" :key="code" :label="label" :value="code" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="计划开始">
               <el-date-picker v-model="form.planned_start_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="计划完成">
               <el-date-picker v-model="form.planned_end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
