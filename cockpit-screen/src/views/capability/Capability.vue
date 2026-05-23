@@ -32,22 +32,23 @@ function lineFrom(values: number[], maxY: number) {
 }
 
 const skillSeries = computed(() => trend.value?.series.map((p) => p.avg_skill_count) || [])
-const levelSeries = computed(() => trend.value?.series.map((p) => p.avg_skill_level) || [])
 const skillPath = computed(() => lineFrom(skillSeries.value, Math.max(1, ...skillSeries.value)))
-const levelPath = computed(() => lineFrom(levelSeries.value, 5))
+// 「人均技能等级」线已撤掉（个人评级 = 主观打分，已废弃）
 
-// Heatmap: rows = unique categories, cols = level 1-5, cells = engineer count
+// Heatmap: rows = unique cert_category, cols = L1/L2/L3, cells = distinct engineer count
+type CertLevel = 'L1' | 'L2' | 'L3'
+const HEAT_LEVELS: CertLevel[] = ['L1', 'L2', 'L3']
 const heatmap = computed(() => {
-  const cats = Array.from(new Set((data.value?.skill_heatmap || []).map((h) => h.category)))
-  const grid: Record<string, Record<number, number>> = {}
-  for (const c of cats) grid[c] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-  for (const h of data.value?.skill_heatmap || []) {
+  const cats = Array.from(new Set((data.value?.cert_heatmap || []).map((h) => h.category)))
+  const grid: Record<string, Record<CertLevel, number>> = {}
+  for (const c of cats) grid[c] = { L1: 0, L2: 0, L3: 0 }
+  for (const h of data.value?.cert_heatmap || []) {
     grid[h.category][h.level] = h.count
   }
   return { cats, grid }
 })
 
-const heatmapMax = computed(() => Math.max(1, ...(data.value?.skill_heatmap || []).map((h) => h.count)))
+const heatmapMax = computed(() => Math.max(1, ...(data.value?.cert_heatmap || []).map((h) => h.count)))
 const maxIssuer = computed(() => Math.max(1, ...(data.value?.by_issuer || []).map((i) => i.count)))
 
 function heatCellColor(count: number): string {
@@ -68,7 +69,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">技能分类数</div>
+        <div class="kpi-label">认证覆盖类别数</div>
         <div class="kpi-value glow-text"><CountNumber :value="heatmap.cats.length || 0" /></div>
       </div>
       <div class="panel kpi-card brag-growth">
@@ -94,16 +95,16 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
     <div class="lower">
       <div class="panel">
-        <div class="panel-title">技能矩阵热力图（类别 × L1-L5）</div>
-        <div v-if="heatmap.cats.length === 0" class="empty">暂无技能登记</div>
+        <div class="panel-title">能力矩阵热力图（类别 × 厂商认证等级）</div>
+        <div v-if="heatmap.cats.length === 0" class="empty">暂无认证登记</div>
         <div v-else class="heatmap">
           <div class="hm-header">
             <div class="hm-corner"></div>
-            <div v-for="lvl in 5" :key="lvl" class="hm-col-hdr">L{{ lvl }}</div>
+            <div v-for="lvl in HEAT_LEVELS" :key="lvl" class="hm-col-hdr">{{ lvl }}</div>
           </div>
           <div v-for="cat in heatmap.cats" :key="cat" class="hm-row">
             <div class="hm-row-hdr">{{ cat }}</div>
-            <div v-for="lvl in 5" :key="lvl" class="hm-cell"
+            <div v-for="lvl in HEAT_LEVELS" :key="lvl" class="hm-cell"
                  :style="{ background: heatCellColor(heatmap.grid[cat][lvl]) }">
               {{ heatmap.grid[cat][lvl] || '' }}
             </div>
@@ -119,7 +120,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <line :x1="TPAD.left" :y1="TH - TPAD.bottom" :x2="TW - TPAD.right" :y2="TH - TPAD.bottom"
                   stroke="rgba(0,229,255,.2)" stroke-width="1" />
             <path :d="skillPath" fill="none" stroke="#00e5ff" stroke-width="2" />
-            <path :d="levelPath" fill="none" stroke="#ffe082" stroke-width="2" />
             <text v-for="(p, i) in trend.series" :key="i"
                   :x="TPAD.left + (tW / Math.max(1, trend.series.length - 1)) * i" :y="TH - 8"
                   text-anchor="middle" font-size="9" fill="#6b7d97">
@@ -128,12 +128,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </svg>
           <div class="legend">
             <span><i style="background:#00e5ff"></i>人均技能数</span>
-            <span><i style="background:#ffe082"></i>人均等级 (L1-5)</span>
           </div>
           <div class="growth-summary">
             最近 {{ trend.snapshots_count }} 个季度：
             技能 <strong class="hi">+{{ trend.growth_delta.avg_skill_count.toFixed(1) }}</strong>，
-            等级 <strong class="hi">+{{ trend.growth_delta.avg_skill_level.toFixed(2) }}</strong>，
             证书 <strong class="hi">+{{ trend.growth_delta.avg_cert_count.toFixed(1) }}</strong>
           </div>
 
@@ -181,7 +179,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .empty { display: flex; align-items: center; justify-content: center; height: calc(100% - 30px); color: var(--cockpit-text-dim); }
 
 .heatmap { margin-top: 12px; }
-.hm-header, .hm-row { display: grid; grid-template-columns: 130px repeat(5, 1fr); gap: 4px; margin-bottom: 4px; }
+.hm-header, .hm-row { display: grid; grid-template-columns: 130px repeat(3, 1fr); gap: 6px; margin-bottom: 4px; }
 .hm-corner { }
 .hm-col-hdr { text-align: center; color: var(--cockpit-accent); font-weight: 600; font-family: 'Courier New', monospace; padding: 4px; }
 .hm-row-hdr { color: var(--cockpit-text); font-size: 13px; padding: 8px 0; }

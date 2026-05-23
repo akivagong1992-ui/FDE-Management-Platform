@@ -13,6 +13,8 @@ class CertificateIn(BaseModel):
     issue_date: date | None = None
     expiry_date: date | None = None
     file_path: str | None = None
+    cert_level: str | None = Field(default=None, pattern="^(L1|L2|L3)?$")
+    cert_category: str | None = None
 
 
 class CertificateOut(CertificateIn):
@@ -33,7 +35,6 @@ class EngineerBase(BaseModel):
     email: EmailStr | None = None
 
     id_doc_type: str | None = Field(default=None, pattern="^(HKID|passport|mainland_id)?$")
-    level: int | None = Field(default=3, ge=1, le=5)
     status: str = "reserved"
     entry_date: date | None = None
     exit_date: date | None = None
@@ -58,7 +59,6 @@ class EngineerUpdate(BaseModel):
     email: EmailStr | None = None
     id_doc_type: str | None = None
     id_doc_number: str | None = None
-    level: int | None = Field(default=None, ge=1, le=5)
     status: str | None = None
     entry_date: date | None = None
     exit_date: date | None = None

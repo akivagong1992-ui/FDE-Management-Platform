@@ -9,6 +9,13 @@ export interface EngineerSkillRow {
   notes?: string | null
 }
 
+export type CertLevel = 'L1' | 'L2' | 'L3'  // 初级 / 中级 / 高级
+export const CERT_LEVEL_LABEL: Record<CertLevel, string> = {
+  L1: 'L1 初级', L2: 'L2 中级', L3: 'L3 高级',
+}
+export const CERT_CATEGORIES = ['编程语言', '网络', '通信', '安全', '云', '数据', '其他'] as const
+export type CertCategory = typeof CERT_CATEGORIES[number]
+
 export interface Certificate {
   id: number
   name: string
@@ -17,6 +24,8 @@ export interface Certificate {
   issue_date?: string | null
   expiry_date?: string | null
   file_path?: string | null
+  cert_level?: CertLevel | null
+  cert_category?: CertCategory | string | null
 }
 
 export interface Engineer {
@@ -33,7 +42,6 @@ export interface Engineer {
   email?: string | null
   id_doc_type?: 'HKID' | 'passport' | 'mainland_id' | null
   id_doc_number_masked: string
-  level?: number | null
   status: string
   entry_date?: string | null
   exit_date?: string | null
@@ -57,7 +65,6 @@ export interface EngineerPayload {
   email?: string | null
   id_doc_type?: string | null
   id_doc_number?: string | null
-  level?: number | null
   status?: string
   entry_date?: string | null
   exit_date?: string | null
@@ -76,7 +83,7 @@ export const updateEngineer = (id: number, p: Partial<EngineerPayload>) =>
 export const deleteEngineer = (id: number) => http.delete(`/engineers/${id}`)
 export const revealEngineerId = (id: number) =>
   http.get<{ id: number; id_doc_type: string; id_doc_number: string }>(`/engineers/${id}/sensitive`).then((r) => r.data)
-export const attachSkill = (engineerId: number, payload: { skill_id: number; level: number; notes?: string }) =>
+export const attachSkill = (engineerId: number, payload: { skill_id: number; notes?: string }) =>
   http.post<EngineerSkillRow>(`/engineers/${engineerId}/skills`, payload).then((r) => r.data)
 export const detachSkill = (engineerId: number, esId: number) =>
   http.delete(`/engineers/${engineerId}/skills/${esId}`)

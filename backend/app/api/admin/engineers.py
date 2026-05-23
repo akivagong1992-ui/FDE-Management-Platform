@@ -55,7 +55,6 @@ def _to_out(e: Engineer, *, include_cost: bool) -> EngineerOut:
         email=e.email,
         id_doc_type=e.id_doc_type,
         id_doc_number_masked=mask_id_number(decrypt_field(e.id_doc_number_enc)),
-        level=e.level,
         status=e.status,
         entry_date=e.entry_date,
         exit_date=e.exit_date,

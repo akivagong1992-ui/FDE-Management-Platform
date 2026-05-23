@@ -73,6 +73,16 @@ class Engineer(Base):
     )
 
 
+# Cert level — 厂商认证等级（替代主观个人评级）：L1=初级 / L2=中级 / L3=高级
+CERT_LEVEL_L1 = "L1"
+CERT_LEVEL_L2 = "L2"
+CERT_LEVEL_L3 = "L3"
+CERT_LEVELS = (CERT_LEVEL_L1, CERT_LEVEL_L2, CERT_LEVEL_L3)
+
+# Cert category — 与 Skill.category 同枚举，决定能力矩阵热力图纵轴
+CERT_CATEGORIES = ("编程语言", "网络", "通信", "安全", "云", "数据", "其他")
+
+
 class Certificate(Base):
     """工程师外部认证（CCIE / CISSP / PMP 等）。"""
 
@@ -86,3 +96,5 @@ class Certificate(Base):
     issue_date: Mapped[date | None] = mapped_column(Date)
     expiry_date: Mapped[date | None] = mapped_column(Date)
     file_path: Mapped[str | None] = mapped_column(String(255))  # uploads/... 相对路径
+    cert_level: Mapped[str | None] = mapped_column(String(4))    # L1 / L2 / L3
+    cert_category: Mapped[str | None] = mapped_column(String(16))

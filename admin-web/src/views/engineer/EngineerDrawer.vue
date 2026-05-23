@@ -4,7 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   addCertificate, attachSkill, deleteCertificate, detachSkill, getEngineer, revealEngineerId,
-  type Engineer,
+  CERT_CATEGORIES, CERT_LEVEL_LABEL,
+  type Engineer, type CertLevel,
 } from '@/api/engineers'
 import { listSkills, type Skill } from '@/api/skills'
 
@@ -20,9 +21,24 @@ const revealOpen = ref(false)
 const revealedId = ref('')
 
 const allSkills = ref<Skill[]>([])
-const newSkill = ref<{ skill_id: number | null; level: number }>({ skill_id: null, level: 3 })
+const newSkill = ref<{ skill_id: number | null }>({ skill_id: null })
 
-const newCert = ref({ name: '', issuer: '', cert_number: '', issue_date: '', expiry_date: '' })
+interface NewCertForm {
+  name: string; issuer: string; cert_number: string
+  issue_date: string; expiry_date: string
+  cert_level: CertLevel | ''
+  cert_category: string
+}
+const blankCert = (): NewCertForm => ({
+  name: '', issuer: '', cert_number: '',
+  issue_date: '', expiry_date: '',
+  cert_level: '', cert_category: '',
+})
+const newCert = ref<NewCertForm>(blankCert())
+
+const CERT_LEVEL_TAG: Record<CertLevel, 'info' | 'warning' | 'danger'> = {
+  L1: 'info', L2: 'warning', L3: 'danger',
+}
 
 async function refresh() {
   if (!props.engineerId) return
@@ -56,8 +72,8 @@ async function onAttachSkill() {
     ElMessage.warning('选择技能')
     return
   }
-  await attachSkill(props.engineerId, { skill_id: newSkill.value.skill_id, level: newSkill.value.level })
-  newSkill.value = { skill_id: null, level: 3 }
+  await attachSkill(props.engineerId, { skill_id: newSkill.value.skill_id })
+  newSkill.value = { skill_id: null }
   await refresh()
 }
 
@@ -72,12 +88,15 @@ async function onAddCert() {
     ElMessage.warning('证书名必填')
     return
   }
-  const payload = { ...newCert.value }
-  // strip empty date strings so backend gets null
-  if (!payload.issue_date) (payload as any).issue_date = null
-  if (!payload.expiry_date) (payload as any).expiry_date = null
+  if (!newCert.value.cert_level || !newCert.value.cert_category) {
+    ElMessage.warning('级别 + 类别必填（决定能力矩阵热力图位置）')
+    return
+  }
+  const payload: Record<string, unknown> = { ...newCert.value }
+  if (!payload.issue_date) payload.issue_date = null
+  if (!payload.expiry_date) payload.expiry_date = null
   await addCertificate(props.engineerId, payload as any)
-  newCert.value = { name: '', issuer: '', cert_number: '', issue_date: '', expiry_date: '' }
+  newCert.value = blankCert()
   await refresh()
 }
 
@@ -92,7 +111,7 @@ async function onDeleteCert(id: number) {
   <el-drawer
     :model-value="modelValue"
     @update:model-value="emit('update:modelValue', $event)"
-    direction="rtl" size="640px"
+    direction="rtl" size="720px"
     :title="engineer ? `${engineer.full_name} · 详情` : '加载中…'"
   >
     <div v-loading="loading" v-if="engineer">
@@ -122,7 +141,6 @@ async function onDeleteCert(id: number) {
             @click="revealOpen = false"
           >隐藏</el-button>
         </el-descriptions-item>
-        <el-descriptions-item label="级别">L{{ engineer.level }}</el-descriptions-item>
         <el-descriptions-item label="状态"><el-tag>{{ engineer.status }}</el-tag></el-descriptions-item>
         <el-descriptions-item label="入场">{{ engineer.entry_date || '—' }}</el-descriptions-item>
         <el-descriptions-item label="离场">{{ engineer.exit_date || '—' }}</el-descriptions-item>
@@ -138,13 +156,15 @@ async function onDeleteCert(id: number) {
       </el-descriptions>
 
       <div style="margin-top: 24px">
-        <div style="font-weight: 600; margin-bottom: 8px">技能矩阵</div>
+        <div style="font-weight: 600; margin-bottom: 8px">
+          技能清单
+          <span style="color: #909399; font-size: 12px; font-weight: normal; margin-left: 8px">
+            仅记录会/不会，水平由下方厂商认证体现
+          </span>
+        </div>
         <el-table :data="engineer.skills" size="small">
-          <el-table-column prop="skill_category" label="分类" width="100" />
+          <el-table-column prop="skill_category" label="分类" width="110" />
           <el-table-column prop="skill_name" label="技能" />
-          <el-table-column label="等级" width="100">
-            <template #default="{ row }">L{{ row.level }}</template>
-          </el-table-column>
           <el-table-column label="操作" width="80">
             <template #default="{ row }">
               <el-button link type="danger" size="small" @click="onDetachSkill(row.id)">移除</el-button>
@@ -155,28 +175,57 @@ async function onDeleteCert(id: number) {
           <el-select v-model="newSkill.skill_id" placeholder="选择技能" filterable style="flex: 1">
             <el-option v-for="s in allSkills" :key="s.id" :label="`[${s.category}] ${s.name}`" :value="s.id" />
           </el-select>
-          <el-input-number v-model="newSkill.level" :min="1" :max="5" controls-position="right" style="width: 110px" />
           <el-button type="primary" @click="onAttachSkill">添加</el-button>
         </div>
       </div>
 
       <div style="margin-top: 24px">
-        <div style="font-weight: 600; margin-bottom: 8px">外部证书 / 认证</div>
+        <div style="font-weight: 600; margin-bottom: 8px">
+          厂商认证（决定工程师水平）
+          <span style="color: #909399; font-size: 12px; font-weight: normal; margin-left: 8px">
+            初级 = L1，中级 = L2，高级 = L3
+          </span>
+        </div>
         <el-table :data="engineer.certificates" size="small">
-          <el-table-column prop="name" label="证书" />
-          <el-table-column prop="issuer" label="颁发机构" />
-          <el-table-column prop="expiry_date" label="到期" width="120" />
-          <el-table-column label="操作" width="80">
+          <el-table-column prop="name" label="证书" min-width="180" />
+          <el-table-column prop="issuer" label="颁发机构" width="120" />
+          <el-table-column prop="cert_category" label="类别" width="100">
+            <template #default="{ row }">
+              <span v-if="row.cert_category">{{ row.cert_category }}</span>
+              <span v-else style="color: #c0c4cc">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="级别" width="100">
+            <template #default="{ row }">
+              <el-tag v-if="row.cert_level" :type="CERT_LEVEL_TAG[row.cert_level as CertLevel]" size="small">
+                {{ CERT_LEVEL_LABEL[row.cert_level as CertLevel] }}
+              </el-tag>
+              <span v-else style="color: #c0c4cc">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="expiry_date" label="到期" width="110" />
+          <el-table-column label="操作" width="70">
             <template #default="{ row }">
               <el-button link type="danger" size="small" @click="onDeleteCert(row.id)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px">
-          <el-input v-model="newCert.name" placeholder="证书名（CCIE / CISSP / PMP 等）" />
-          <el-input v-model="newCert.issuer" placeholder="颁发机构（Cisco / ISC2 / PMI 等）" />
-          <el-input v-model="newCert.cert_number" placeholder="证书编号" />
-          <el-date-picker v-model="newCert.expiry_date" type="date" placeholder="到期日" value-format="YYYY-MM-DD" style="width: 100%" />
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px">
+          <el-input v-model="newCert.name" placeholder="证书名（CCIE / CISSP / 华为 HCIA 等）" />
+          <el-input v-model="newCert.issuer" placeholder="颁发机构" />
+          <el-select v-model="newCert.cert_category" placeholder="类别 (必选)">
+            <el-option v-for="c in CERT_CATEGORIES" :key="c" :label="c" :value="c" />
+          </el-select>
+          <el-select v-model="newCert.cert_level" placeholder="级别 (必选)">
+            <el-option label="L1 初级" value="L1" />
+            <el-option label="L2 中级" value="L2" />
+            <el-option label="L3 高级" value="L3" />
+          </el-select>
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; margin-top: 8px">
+          <el-input v-model="newCert.cert_number" placeholder="证书编号 (可选)" />
+          <el-date-picker v-model="newCert.issue_date" type="date" placeholder="颁发日 (可选)" value-format="YYYY-MM-DD" style="width: 100%" />
+          <el-date-picker v-model="newCert.expiry_date" type="date" placeholder="到期日 (可选)" value-format="YYYY-MM-DD" style="width: 100%" />
         </div>
         <div style="text-align: right; margin-top: 8px">
           <el-button type="primary" @click="onAddCert">添加证书</el-button>

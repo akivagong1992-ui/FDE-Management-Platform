@@ -25,10 +25,10 @@ class SkillOut(SkillBase):
 
 
 class EngineerSkillItem(BaseModel):
-    """Used to attach a skill+level to an engineer."""
+    """Used to attach a skill to an engineer（level 字段已停用，仅为兼容老前端）。"""
 
     skill_id: int
-    level: int = Field(ge=1, le=5)
+    level: int = Field(default=0, ge=0, le=5)
     notes: str | None = None
 
 
@@ -38,5 +38,5 @@ class EngineerSkillOut(BaseModel):
     skill_id: int
     skill_name: str
     skill_category: str
-    level: int
+    level: int  # 始终返回 0，前端不展示
     notes: str | None = None

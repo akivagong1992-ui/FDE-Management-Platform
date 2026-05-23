@@ -86,7 +86,7 @@ export const getProfitCompare = () => http.get<ProfitCompare>('/profit-compare')
 export interface EngineerStats {
   total: number; active: number
   by_vendor: { vendor_id: number; name: string; count: number }[]
-  by_level: { level: number; count: number }[]
+  total_certificates: number  // 替代旧 by_level（按 engineer.level L1-L5 聚合）
   top_allocated: { engineer_id: number; name: string; alloc_pct: number }[]
 }
 export const getEngineerStats = () => http.get<EngineerStats>('/engineer-stats').then((r) => r.data)
@@ -124,7 +124,8 @@ export const getEfficiencyStats = () => http.get<EfficiencyStats>('/efficiency-s
 export interface CapabilityStats {
   total_certificates: number
   by_issuer: { issuer: string; count: number }[]
-  skill_heatmap: { category: string; level: number; count: number }[]
+  // 新口径: cert_level (L1/L2/L3) × cert_category → distinct engineer count
+  cert_heatmap: { category: string; level: 'L1' | 'L2' | 'L3'; count: number }[]
   top_certified_engineers: { engineer_id: number; name: string; cert_count: number }[]
 }
 export const getCapabilityStats = () => http.get<CapabilityStats>('/capability-stats').then((r) => r.data)

@@ -30,7 +30,6 @@ const form = reactive<EngineerPayload>({
   email: '',
   id_doc_type: 'HKID',
   id_doc_number: '',
-  level: 3,
   status: 'reserved',
   monthly_cost_to_telecom: undefined,
   monthly_real_cost: undefined,
@@ -56,7 +55,7 @@ function openCreate() {
     employment_form: 'vendor_via_labor',
     labor_company: '', full_name: '', english_name: '', gender: '', mobile: '', email: '',
     id_doc_type: 'HKID', id_doc_number: '',
-    level: 3, status: 'reserved',
+    status: 'reserved',
     monthly_cost_to_telecom: undefined, monthly_real_cost: undefined,
   })
   dialog.value = true
@@ -75,7 +74,6 @@ function openEdit(e: Engineer) {
     email: e.email || '',
     id_doc_type: e.id_doc_type || 'HKID',
     id_doc_number: '',  // never preload; user types if they want to update
-    level: e.level || 3,
     status: e.status,
     entry_date: e.entry_date || undefined,
     exit_date: e.exit_date || undefined,
@@ -144,9 +142,6 @@ onMounted(load)
       </el-table-column>
       <el-table-column prop="vendor_name" label="Vendor" min-width="150" />
       <el-table-column prop="labor_company" label="劳务公司" min-width="150" />
-      <el-table-column label="级别" width="70">
-        <template #default="{ row }">L{{ row.level }}</template>
-      </el-table-column>
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
           <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
@@ -221,23 +216,14 @@ onMounted(load)
           </el-col>
         </el-row>
 
-        <el-row :gutter="12">
-          <el-col :span="8">
-            <el-form-item label="级别">
-              <el-input-number v-model="form.level" :min="1" :max="5" controls-position="right" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="状态">
-              <el-select v-model="form.status" style="width: 100%">
-                <el-option label="储备" value="reserved" />
-                <el-option label="待入场" value="pending" />
-                <el-option label="在场" value="active" />
-                <el-option label="离场" value="departed" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="状态">
+          <el-select v-model="form.status" style="width: 220px">
+            <el-option label="储备" value="reserved" />
+            <el-option label="待入场" value="pending" />
+            <el-option label="在场" value="active" />
+            <el-option label="离场" value="departed" />
+          </el-select>
+        </el-form-item>
 
         <el-row v-if="isLead" :gutter="12">
           <el-col :span="12">

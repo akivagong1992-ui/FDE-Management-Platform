@@ -203,14 +203,10 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
     ]
     vendor_dist.sort(key=lambda x: -x["count"])
 
-    # By level
-    by_level: dict[int, int] = defaultdict(int)
-    for e in engineers:
-        by_level[e.level or 0] += 1
-    level_dist = sorted(
-        [{"level": lvl, "count": c} for lvl, c in by_level.items()],
-        key=lambda x: x["level"],
-    )
+    # 认证总量（替代旧「个人等级 L1-L5 分布」）
+    total_certificates = (await db.execute(
+        select(func.count(Certificate.id))
+    )).scalar_one() or 0
 
     # Top allocation — sum allocation_ratio of in-progress assignments
     alloc_rows = (await db.execute(
@@ -229,7 +225,7 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "total": total,
         "active": active,
         "by_vendor": vendor_dist,
-        "by_level": level_dist,
+        "total_certificates": int(total_certificates),
         "top_allocated": top_allocated,
     }
 
@@ -363,18 +359,16 @@ async def capability_stats(db: AsyncSession = Depends(get_db)) -> dict:
         [{"issuer": k, "count": v} for k, v in by_issuer.items()], key=lambda x: -x["count"]
     )[:8]
 
-    # Skill heatmap: skill_category × count of engineers
-    skills = {s.id: s for s in (await db.execute(select(Skill))).scalars().all()}
-    eng_skills = (await db.execute(select(EngineerSkill))).scalars().all()
-    by_cat_level: dict[tuple[str, int], int] = defaultdict(int)
-    for es in eng_skills:
-        s = skills.get(es.skill_id)
-        if not s:
+    # Cert heatmap: cert_category × cert_level（L1/L2/L3）→ distinct engineer 数
+    # 替代旧 skill_heatmap（基于 EngineerSkill.level 的主观打分）
+    cat_lvl_engs: dict[tuple[str, str], set[int]] = defaultdict(set)
+    for c in certs:
+        if not c.cert_category or not c.cert_level:
             continue
-        by_cat_level[(s.category, es.level)] += 1
-    heatmap = [
-        {"category": cat, "level": lvl, "count": cnt}
-        for (cat, lvl), cnt in sorted(by_cat_level.items())
+        cat_lvl_engs[(c.cert_category, c.cert_level)].add(c.engineer_id)
+    cert_heatmap = [
+        {"category": cat, "level": lvl, "count": len(engs)}
+        for (cat, lvl), engs in sorted(cat_lvl_engs.items())
     ]
 
     # Top engineers by cert count
@@ -391,7 +385,7 @@ async def capability_stats(db: AsyncSession = Depends(get_db)) -> dict:
     return {
         "total_certificates": len(certs),
         "by_issuer": issuer_list,
-        "skill_heatmap": heatmap,
+        "cert_heatmap": cert_heatmap,
         "top_certified_engineers": top_certified,
     }
 

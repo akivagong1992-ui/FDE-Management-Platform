@@ -31,13 +31,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="data?.by_vendor.length ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">技能等级分布</div>
-        <div class="level-strip">
-          <div v-for="l in data?.by_level || []" :key="l.level" class="level-cell">
-            <span class="level-tag">L{{ l.level }}</span>
-            <span class="level-num">{{ l.count }}</span>
-          </div>
-        </div>
+        <div class="kpi-label">认证总量</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
+        <div class="kpi-sub">厂商认证 L1/L2/L3 累计</div>
       </div>
     </div>
 
@@ -79,6 +75,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 12px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
 .kpi-card.brag .kpi-value { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
+.kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .level-strip { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
 .level-cell {
   display: flex; flex-direction: column; align-items: center;

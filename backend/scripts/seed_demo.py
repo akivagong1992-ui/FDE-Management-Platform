@@ -90,10 +90,29 @@ SKILLS = [
     ("PMP 项目管理", "其他"),
 ]
 
+# 厂商认证：(name, issuer, cert_category, cert_level)
+# cert_level: L1 初级 / L2 中级 / L3 高级
 CERTS = [
-    ("CCIE 路由交换", "Cisco"), ("CISSP", "ISC2"), ("PMP", "PMI"),
-    ("AWS Solutions Architect", "AWS"), ("CKA", "CNCF"),
-    ("CCNP 安全", "Cisco"), ("CISA", "ISACA"), ("华为 HCIE", "华为"),
+    # L3 高级
+    ("CCIE 路由交换", "Cisco", "网络", "L3"),
+    ("CISSP", "ISC2", "安全", "L3"),
+    ("华为 HCIE", "华为", "网络", "L3"),
+    ("CISA", "ISACA", "安全", "L3"),
+    ("AWS Solutions Architect Professional", "AWS", "云", "L3"),
+    # L2 中级
+    ("PMP", "PMI", "其他", "L2"),
+    ("AWS Solutions Architect Associate", "AWS", "云", "L2"),
+    ("CKA", "CNCF", "云", "L2"),
+    ("CCNP 安全", "Cisco", "安全", "L2"),
+    ("OCP Java", "Oracle", "编程语言", "L2"),
+    ("Python PCAP", "Python Institute", "编程语言", "L2"),
+    ("华为 HCIP-数通", "华为", "通信", "L2"),
+    # L1 初级
+    ("CCNA", "Cisco", "网络", "L1"),
+    ("华为 HCIA-Cloud", "华为", "云", "L1"),
+    ("华为 HCIA-大数据", "华为", "数据", "L1"),
+    ("AWS Cloud Practitioner", "AWS", "云", "L1"),
+    ("CompTIA Security+", "CompTIA", "安全", "L1"),
 ]
 
 PROJECT_TEMPLATES_REVENUE = [
@@ -221,10 +240,10 @@ async def main() -> None:
         print(f"  ✓ skills x{len(skill_objs)}")
 
         # ── Engineers ─────────────────────────────────────────────────
+        # 个人评级（engineers.level）已废除，仅靠厂商认证体现工程师水平
         eng_objs = []
         for name in ENGINEER_NAMES:
             vendor = random.choice(vendor_objs)
-            level = random.choices([1, 2, 3, 4, 5], weights=[5, 15, 35, 30, 15])[0]
             monthly_cost = Decimal(random.randint(18, 65)) * 1000  # 18K-65K
             real_cost = monthly_cost * Decimal("0.65")  # Vendor takes ~35% margin
             e = Engineer(
@@ -236,7 +255,7 @@ async def main() -> None:
                 mobile=f"+852 9{random.randint(100,999)} {random.randint(1000,9999)}",
                 id_doc_type="HKID",
                 id_doc_number_enc=encrypt_field(f"A{random.randint(1000000, 9999999)}({random.randint(1, 9)})"),
-                level=level,
+                level=None,
                 status=random.choices(["active", "active", "active", "reserved", "departed"],
                                        weights=[60, 20, 10, 5, 5])[0],
                 entry_date=random_date_within(540, 30),
@@ -248,25 +267,27 @@ async def main() -> None:
         print(f"  ✓ engineers x{len(eng_objs)}")
 
         # ── Skills × Engineers ────────────────────────────────────────
+        # EngineerSkill.level 已停用，仅保留「会/不会」标记（level=0 当占位）
         for e in eng_objs:
-            # Each engineer gets 2-5 skills
             for s in random.sample(skill_objs, k=random.randint(2, 5)):
-                db.add(EngineerSkill(engineer_id=e.id, skill_id=s.id, level=random.randint(1, 5)))
+                db.add(EngineerSkill(engineer_id=e.id, skill_id=s.id, level=0))
         await db.flush()
 
         # ── Certificates ──────────────────────────────────────────────
+        # 厂商认证带 cert_level (L1/L2/L3) + cert_category，是工程师水平的唯一客观依据
         cert_count = 0
         for e in eng_objs:
-            if random.random() < 0.5:  # 50% have at least 1
-                for cert_name, issuer in random.sample(CERTS, k=random.randint(1, 2)):
+            if random.random() < 0.7:  # 70% 工程师至少有一张
+                for cert_name, issuer, category, level in random.sample(CERTS, k=random.randint(1, 3)):
                     db.add(Certificate(
                         engineer_id=e.id, name=cert_name, issuer=issuer,
+                        cert_category=category, cert_level=level,
                         issue_date=random_date_within(900, 200),
                         expiry_date=random_date_within(-180, -720) if random.random() < 0.7 else None,
                     ))
                     cert_count += 1
         await db.flush()
-        print(f"  ✓ engineer skills + {cert_count} certificates")
+        print(f"  ✓ engineer skills + {cert_count} certificates (含 cert_level/category)")
 
         # ── Projects ──────────────────────────────────────────────────
         proj_objs = []
