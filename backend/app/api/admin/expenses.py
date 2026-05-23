@@ -26,6 +26,9 @@ from app.schemas.expense import (
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
+PM_ROLES = {"admin", "lead", "pm", "finance"}
+ENGINEER_ROLE = "engineer"
+
 
 async def _label_for_type(db: AsyncSession, code: str) -> str | None:
     row = (
@@ -75,9 +78,19 @@ async def list_expenses(
     expense_type: str | None = None,
     status_filter: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user),
 ) -> list[ExpenseRequestOut]:
     stmt = select(ExpenseRequest).order_by(ExpenseRequest.id.desc())
+
+    # engineer 角色：只看自己提交的支出申请
+    if user.get("role") == ENGINEER_ROLE:
+        uid = user.get("user_id")
+        if not uid:
+            return []
+        stmt = stmt.where(ExpenseRequest.requested_by_user_id == uid)
+    elif user.get("role") not in PM_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
     if project_id is not None:
         stmt = stmt.where(ExpenseRequest.project_id == project_id)
     if expense_type:
@@ -92,8 +105,10 @@ async def list_expenses(
 async def create_expense(
     payload: ExpenseRequestCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRequestOut:
+    if user.get("role") not in PM_ROLES and user.get("role") != ENGINEER_ROLE:
+        raise HTTPException(status_code=403, detail="Forbidden")
     if not await db.get(Project, payload.project_id):
         raise HTTPException(status_code=400, detail="项目不存在")
     if payload.supplier_id is not None and not await db.get(Supplier, payload.supplier_id):

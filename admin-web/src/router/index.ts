@@ -20,6 +20,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/my-timesheets/MyTimesheets.vue'),
         meta: { title: '我的工时', engineerOnly: true },
       },
+      {
+        path: 'my-expenses',
+        component: () => import('@/views/my-expenses/MyExpenses.vue'),
+        meta: { title: '我的支出申请', engineerOnly: true },
+      },
       // 管理者侧（pm / lead / admin / finance）
       { path: 'project', component: () => import('@/views/project/Index.vue'), meta: { title: '项目管理', pmSide: true } },
       { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '员工派单', pmSide: true } },

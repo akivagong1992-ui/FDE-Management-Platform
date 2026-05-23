@@ -3,8 +3,9 @@ import { ref } from 'vue'
 import ExpenseList from './ExpenseList.vue'
 import VendorFeeList from './VendorFeeList.vue'
 import SupplierList from './SupplierList.vue'
+import VendorList from '../engineer/VendorList.vue'
 
-type Tab = 'expenses' | 'vendor_fees' | 'suppliers'
+type Tab = 'expenses' | 'vendor_fees' | 'suppliers' | 'vendors'
 const tab = ref<Tab>('expenses')
 </script>
 
@@ -12,13 +13,14 @@ const tab = ref<Tab>('expenses')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">④ 外部支出管理 + Vendor 服务费</span>
+        <span style="font-weight: 600">④ 外部支出管理</span>
       </div>
     </template>
     <el-tabs v-model="tab">
-      <el-tab-pane label="外部支出（6 类）" name="expenses"><ExpenseList v-if="tab === 'expenses'" /></el-tab-pane>
+      <el-tab-pane label="支出管理" name="expenses"><ExpenseList v-if="tab === 'expenses'" /></el-tab-pane>
       <el-tab-pane label="Vendor 服务费" name="vendor_fees"><VendorFeeList v-if="tab === 'vendor_fees'" /></el-tab-pane>
-      <el-tab-pane label="供应商档案" name="suppliers"><SupplierList v-if="tab === 'suppliers'" /></el-tab-pane>
+      <el-tab-pane label="供应商管理" name="suppliers"><SupplierList v-if="tab === 'suppliers'" /></el-tab-pane>
+      <el-tab-pane label="Vendor 管理" name="vendors"><VendorList v-if="tab === 'vendors'" /></el-tab-pane>
     </el-tabs>
   </el-card>
 </template>

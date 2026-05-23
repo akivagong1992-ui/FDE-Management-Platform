@@ -32,10 +32,11 @@ function handleLogout() {
       >
         <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
 
-        <!-- 工程师视角：只看自己的派单 + 工时 -->
+        <!-- 工程师视角：只看自己的派单 / 工时 / 支出 -->
         <template v-if="isEngineer">
           <el-menu-item index="/my-assignments"><span>📥 我的派单</span></el-menu-item>
           <el-menu-item index="/my-timesheets"><span>⏱ 我的工时</span></el-menu-item>
+          <el-menu-item index="/my-expenses"><span>💰 我的支出申请</span></el-menu-item>
         </template>
 
         <!-- 管理者视角（pm / lead / admin / finance）-->
