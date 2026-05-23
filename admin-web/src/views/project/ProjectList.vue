@@ -160,7 +160,7 @@ onMounted(load)
       <el-select v-model="filter.status_filter" placeholder="状态" clearable style="width: 130px" @change="load">
         <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
-      <el-select v-model="filter.need_party_id" placeholder="按需求方" clearable filterable style="width: 200px" @change="load">
+      <el-select v-model="filter.need_party_id" placeholder="按客户名称" clearable filterable style="width: 200px" @change="load">
         <el-option v-for="np in needParties" :key="np.id" :label="np.name" :value="np.id" />
       </el-select>
       <el-select v-model="filter.sales_person_id" placeholder="按销售人员" clearable filterable style="width: 180px" @change="load">
@@ -184,7 +184,7 @@ onMounted(load)
       <el-table-column label="状态" width="90">
         <template #default="{ row }"><el-tag>{{ STATUS_LABEL[row.status] }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="need_party_name" label="需求方" min-width="150" />
+      <el-table-column prop="need_party_name" label="客户名称" min-width="150" />
       <el-table-column label="销售" width="120">
         <template #default="{ row }">
           {{ row.sales_person_name }}
