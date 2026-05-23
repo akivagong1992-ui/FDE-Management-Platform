@@ -21,7 +21,7 @@ onMounted(load)
   <div v-loading="loading">
     <div v-if="data">
       <el-row :gutter="16">
-        <el-col :span="6">
+        <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
             <div style="color: #909399; font-size: 13px">总收入</div>
             <div style="font-size: 26px; font-weight: 600; color: #67c23a; margin-top: 8px">
@@ -29,7 +29,7 @@ onMounted(load)
             </div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
             <div style="color: #909399; font-size: 13px">Vendor 服务费</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
@@ -37,7 +37,7 @@ onMounted(load)
             </div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
             <div style="color: #909399; font-size: 13px">外部支出</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
@@ -45,7 +45,7 @@ onMounted(load)
             </div>
           </el-card>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
             <div style="color: #909399; font-size: 13px">团队毛利</div>
             <div :style="{
