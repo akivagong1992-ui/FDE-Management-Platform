@@ -24,5 +24,11 @@ async def login(
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账号已停用")
-    token = create_access_token(subject=user.username, role=user.role)
-    return TokenOut(access_token=token, role=user.role, username=user.username)
+    token = create_access_token(
+        subject=user.username, role=user.role,
+        extra={"user_id": user.id, "engineer_id": user.engineer_id},
+    )
+    return TokenOut(
+        access_token=token, role=user.role, username=user.username,
+        user_id=user.id, engineer_id=user.engineer_id,
+    )

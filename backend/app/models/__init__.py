@@ -1,5 +1,5 @@
 from app.models.asset_reference import AssetReference
-from app.models.assignment import Assignment
+from app.models.assignment import Assignment, AssignmentMessage
 from app.models.data_dict import DataDict
 from app.models.engineer import Certificate, Engineer
 from app.models.expense import ExpenseRequest
@@ -34,6 +34,7 @@ __all__ = [
     "Project",
     "SalesTransferLog",
     "Assignment",
+    "AssignmentMessage",
     "Timesheet",
     "Supplier",
     "ExpenseRequest",

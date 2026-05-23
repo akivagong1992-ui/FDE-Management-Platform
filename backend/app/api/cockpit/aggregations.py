@@ -200,16 +200,16 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
         select(func.count(Certificate.id))
     )).scalar_one() or 0
 
-    # Top allocation — sum allocation_ratio of in-progress assignments
-    alloc_rows = (await db.execute(
-        select(Assignment.engineer_id, func.coalesce(func.sum(Assignment.allocation_ratio), 0))
+    # Top busy — 当前 in-progress 派单条数（allocation_ratio 已废弃）
+    busy_rows = (await db.execute(
+        select(Assignment.engineer_id, func.count(Assignment.id))
         .where(Assignment.status != ASSIGNMENT_STATUS_ENDED)
         .group_by(Assignment.engineer_id)
     )).all()
     eng_name = {e.id: e.full_name for e in engineers}
     top_allocated = sorted(
-        [{"engineer_id": eid, "name": eng_name.get(eid, f"#{eid}"), "alloc_pct": int(total)}
-         for eid, total in alloc_rows],
+        [{"engineer_id": eid, "name": eng_name.get(eid, f"#{eid}"), "alloc_pct": int(cnt)}
+         for eid, cnt in busy_rows],
         key=lambda x: -x["alloc_pct"],
     )[:5]
 

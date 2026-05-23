@@ -206,11 +206,12 @@ async def main() -> None:
                        hashed_password=hash_password("fin123"))
         pm = User(username="pm1", full_name="项目经理", role="pm",
                   hashed_password=hash_password("pm123"))
+        # 通用 engineer 测试账号（未关联具体 engineer_id，仅用于早期联调）
         engineer_user = User(username="eng1", full_name="基层工程师", role="engineer",
                              hashed_password=hash_password("eng123"))
         db.add_all([admin, finance, pm, engineer_user])
         await db.flush()
-        print(f"  ✓ users x{4}")
+        print(f"  ✓ users x{4} (engineer 个人账号见下方派单环节后追加)")
 
         # ── Dictionaries ──────────────────────────────────────────────
         for idx, (code, label) in enumerate(EXPENSE_TYPE_DEFAULTS):
@@ -408,9 +409,24 @@ async def main() -> None:
         await db.flush()
         print(f"  ✓ suppliers x{len(sup_objs)}")
 
+        # ── Engineer login accounts ───────────────────────────────────
+        # 前 5 个 active 工程师拥有个人登录账号（用户名 = e1..e5，默认密码 demo123）
+        # 用于演示派单接 / 拒 / 留言双向流转
+        active_engineers = [e for e in eng_objs if e.status == "active"]
+        engineer_user_accounts = []
+        for idx, eng in enumerate(active_engineers[:5], start=1):
+            u = User(
+                username=f"e{idx}", full_name=eng.full_name,
+                role="engineer", engineer_id=eng.id,
+                hashed_password=hash_password("demo123"),
+            )
+            db.add(u); engineer_user_accounts.append(u)
+        await db.flush()
+        print(f"  ✓ engineer 登录账号 x{len(engineer_user_accounts)} "
+              f"(e1..e{len(engineer_user_accounts)} / demo123)")
+
         # ── Vendor Service Fees ───────────────────────────────────────
         # Each in-progress engineer ~ 4-6 months of fees on a random project
-        active_engineers = [e for e in eng_objs if e.status == "active"]
         vsf_count = 0
         for e in active_engineers:
             project = random.choice(revenue_projects + proj_objs[-5:])  # mix
@@ -483,26 +499,83 @@ async def main() -> None:
         await db.flush()
         print(f"  ✓ project revenues x{rev_count}")
 
-        # ── Assignments ───────────────────────────────────────────────
+        # ── Assignments + 对话消息 ────────────────────────────────────
+        # 历史派单默认 accepted（已经在跑），少量给出 pending / rejected 演示流转
+        from app.models.assignment import AssignmentMessage as _AM  # noqa: PLC0415
+        pending_eng_ids = {u.engineer_id for u in engineer_user_accounts}
+        REJECT_REASONS = [
+            "本周已在进行 5G 扩容现场，时间排满，建议下周再派",
+            "当前技能栈和该项目要求差距较大，建议派给云组同事",
+            "家中临时有事，下周才能恢复全力",
+            "已和另一项目 PM 口头确认承担更多，避免分散精力",
+        ]
         assn_count = 0
+        new_assignments: list[tuple[Assignment, str, str]] = []  # (a, status, project_name)
+
+        non_archived_projects = [p for p in proj_objs if p.status != "archived"]
+
+        # 1) 给 5 位测试工程师每人强制塞 1 条 pending 派单（保证登录后能看到接 / 拒 UI）
+        for u in engineer_user_accounts:
+            eng = next(e for e in active_engineers if e.id == u.engineer_id)
+            p = random.choice(non_archived_projects)
+            start = p.planned_start_date or random_date_within(120, 30)
+            end = p.planned_end_date or (start + timedelta(days=random.randint(30, 120)))
+            a = Assignment(
+                engineer_id=eng.id, project_id=p.id,
+                role=random.choice(["现场工程师", "技术负责人", "架构师"]),
+                planned_start_date=start, planned_end_date=end,
+                status=random.choice(["planned", "in_progress"]),
+                approval_status="pending",
+                created_by_user_id=pm.id,
+            )
+            db.add(a)
+            new_assignments.append((a, "pending", p.name))
+            assn_count += 1
+
+        # 2) 正常随机派单（默认 accepted，少量 rejected）
         for p in proj_objs:
             for e in random.sample(active_engineers, k=random.randint(1, 4)):
                 start = p.planned_start_date or random_date_within(120, 30)
                 end = p.planned_end_date or (start + timedelta(days=random.randint(30, 120)))
                 a_status = "ended" if p.status == "archived" else random.choice(
                     ["in_progress", "planned", "in_progress"])
-                db.add(Assignment(
+                roll = random.random()
+                appr = "rejected" if roll < 0.07 else "accepted"
+                a = Assignment(
                     engineer_id=e.id, project_id=p.id,
                     role=random.choice(["现场工程师", "技术负责人", "测试", "PM", "架构师"]),
-                    allocation_ratio=random.choice([20, 40, 50, 60, 80, 100]),
                     planned_start_date=start, planned_end_date=end,
-                    actual_start_date=start,
+                    actual_start_date=start if appr == "accepted" else None,
                     actual_end_date=end if a_status == "ended" else None,
                     status=a_status,
-                ))
+                    approval_status=appr,
+                    created_by_user_id=pm.id,
+                )
+                db.add(a)
+                new_assignments.append((a, appr, p.name))
                 assn_count += 1
         await db.flush()
-        print(f"  ✓ assignments x{assn_count}")
+
+        msg_count = 0
+        for a, appr, proj_name in new_assignments:
+            # 系统消息：每条派单都有
+            db.add(_AM(
+                assignment_id=a.id, sender_user_id=pm.id, sender_kind="system",
+                body=f"项目经理向你派单：{proj_name} · 角色 {a.role}。请确认接单或拒单。",
+            ))
+            msg_count += 1
+            if appr == "accepted":
+                db.add(_AM(
+                    assignment_id=a.id, sender_user_id=None, sender_kind="engineer",
+                    body="✓ 接单：已收到，按时进场",
+                )); msg_count += 1
+            elif appr == "rejected":
+                db.add(_AM(
+                    assignment_id=a.id, sender_user_id=None, sender_kind="engineer",
+                    body=f"✗ 拒单理由：{random.choice(REJECT_REASONS)}",
+                )); msg_count += 1
+        await db.flush()
+        print(f"  ✓ assignments x{assn_count} + 对话消息 x{msg_count}")
 
         # ── Timesheets ────────────────────────────────────────────────
         ts_count = 0

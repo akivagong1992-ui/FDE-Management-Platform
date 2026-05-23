@@ -9,6 +9,7 @@ const auth = useAuthStore()
 
 const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => (route.meta?.title as string) || '人力管理平台')
+const isEngineer = computed(() => auth.role === 'engineer')
 
 function handleLogout() {
   auth.logout()
@@ -30,15 +31,24 @@ function handleLogout() {
         router
       >
         <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
-        <el-menu-item index="/project"><span>① 项目管理</span></el-menu-item>
-        <el-menu-item index="/engineer"><span>② 员工派单</span></el-menu-item>
-        <el-menu-item index="/profit"><span>③ 利润管理</span></el-menu-item>
-        <el-menu-item index="/expense"><span>④ 外部支出</span></el-menu-item>
-        <el-menu-item index="/efficiency"><span>⑤ 项目效率</span></el-menu-item>
-        <el-menu-item index="/knowledge"><span>⑥ 技术沉淀 ⭐</span></el-menu-item>
-        <el-menu-item index="/capability"><span>⑦ 能力建设 ⭐</span></el-menu-item>
-        <el-menu-item index="/relationship"><span>⑧ 需求方关系 ⭐</span></el-menu-item>
-        <el-menu-item index="/users"><span>系统设置 · 用户</span></el-menu-item>
+
+        <!-- 工程师视角：只看自己的派单 -->
+        <template v-if="isEngineer">
+          <el-menu-item index="/my-assignments"><span>📥 我的派单</span></el-menu-item>
+        </template>
+
+        <!-- 管理者视角（pm / lead / admin / finance）-->
+        <template v-else>
+          <el-menu-item index="/project"><span>① 项目管理</span></el-menu-item>
+          <el-menu-item index="/engineer"><span>② 员工派单</span></el-menu-item>
+          <el-menu-item index="/profit"><span>③ 利润管理</span></el-menu-item>
+          <el-menu-item index="/expense"><span>④ 外部支出</span></el-menu-item>
+          <el-menu-item index="/efficiency"><span>⑤ 项目效率</span></el-menu-item>
+          <el-menu-item index="/knowledge"><span>⑥ 技术沉淀 ⭐</span></el-menu-item>
+          <el-menu-item index="/capability"><span>⑦ 能力建设 ⭐</span></el-menu-item>
+          <el-menu-item index="/relationship"><span>⑧ 需求方关系 ⭐</span></el-menu-item>
+          <el-menu-item index="/users"><span>系统设置 · 用户</span></el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
 

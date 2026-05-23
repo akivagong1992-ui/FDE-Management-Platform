@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -15,6 +15,8 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(128), unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(32), default="admin")  # admin/pm/finance/engineer/lead
+    # role=engineer 的用户挂到一条 Engineer 记录，决定他能看哪些派单
+    engineer_id: Mapped[int | None] = mapped_column(ForeignKey("engineers.id"), index=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     # Feishu (Lark) integration — empty until Phase 4 actually wires SSO
     feishu_open_id: Mapped[str | None] = mapped_column(String(64), index=True)
