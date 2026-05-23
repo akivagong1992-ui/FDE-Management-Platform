@@ -1,0 +1,58 @@
+:root {
+  --cockpit-bg: #061327;
+  --cockpit-bg-2: #0a1929;
+  --cockpit-text: #cfe3ff;
+  --cockpit-text-dim: #6b7d97;
+  --cockpit-accent: #00e5ff;
+  --cockpit-accent-2: #7c4dff;
+  --cockpit-accent-3: #ff4081;
+  --cockpit-border: rgba(0, 229, 255, 0.25);
+}
+
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--cockpit-bg);
+  color: var(--cockpit-text);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+.glow-text {
+  text-shadow: 0 0 8px var(--cockpit-accent), 0 0 16px rgba(0, 229, 255, 0.5);
+}
+
+.kpi-value {
+  font-size: clamp(28px, 3.2vw, 56px);
+  font-weight: 700;
+  color: var(--cockpit-accent);
+}
+
+.kpi-label {
+  font-size: 14px;
+  color: var(--cockpit-text-dim);
+  letter-spacing: 2px;
+}
+
+.panel {
+  background: linear-gradient(180deg, rgba(10, 25, 41, 0.95), rgba(6, 19, 39, 0.85));
+  border: 1px solid var(--cockpit-border);
+  border-radius: 4px;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.panel-title {
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: var(--cockpit-text-dim);
+  margin-bottom: 12px;
+  border-left: 3px solid var(--cockpit-accent);
+  padding-left: 8px;
+}

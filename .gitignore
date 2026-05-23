@@ -1,0 +1,47 @@
+# ─── Env / secrets ─────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.local
+
+# ─── Python / backend ──────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+backend/uploads/
+
+# ─── Node / frontends ──────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+.pnpm-store/
+auto-imports.d.ts
+components.d.ts
+
+# ─── IDE / OS ──────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.log
+
+# ─── Local tool state ──────────────────────────────────────
+.claude/settings.local.json
+.sixth/
+
+# ─── Build artifacts ───────────────────────────────────────
+*.egg-info/
+.build/
+
+# ─── Docker volumes (when bind-mounted) ────────────────────
+data/
+volumes/
