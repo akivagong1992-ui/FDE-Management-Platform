@@ -8,14 +8,34 @@ let timer: number | undefined
 
 async function load() { try { data.value = await getEfficiencyStats() } catch { /* keep */ } }
 
+// 状态漏斗顺序：立项 → 进行中 → 验收 → 收尾 → 归档
+const FUNNEL_ORDER = ['drafting', 'in_progress', 'accepting', 'closing', 'archived']
 const STATUS_LABEL: Record<string, string> = {
   drafting: '立项', in_progress: '进行中', accepting: '验收', closing: '收尾', archived: '归档',
 }
 
-const onTimePct = computed(() => {
-  const r = data.value?.on_time_rate ?? 0
-  return Math.round(r * 100)
+const funnel = computed(() => {
+  const map = new Map((data.value?.by_status || []).map((s) => [s.label, s.count]))
+  return FUNNEL_ORDER.map((s) => ({ status: s, label: STATUS_LABEL[s] || s, count: map.get(s) || 0 }))
 })
+const funnelMax = computed(() => Math.max(1, ...funnel.value.map((f) => f.count)))
+
+// 在管项目进度条：今天 - 计划起 / 计划总天数
+function progressPct(p: { planned_start: string | null; planned_end: string | null }): number {
+  if (!p.planned_start || !p.planned_end || !data.value) return 0
+  const start = new Date(p.planned_start).getTime()
+  const end = new Date(p.planned_end).getTime()
+  const today = new Date(data.value.today).getTime()
+  if (end <= start) return 100
+  const ratio = (today - start) / (end - start)
+  return Math.max(0, Math.min(100, Math.round(ratio * 100)))
+}
+
+function daysToDueLabel(n: number): string {
+  if (n < 0) return `逾期 ${-n} 天`
+  if (n === 0) return '今天到期'
+  return `还有 ${n} 天`
+}
 
 onMounted(async () => { await load(); timer = window.setInterval(load, 60000) })
 onUnmounted(() => { if (timer) clearInterval(timer) })
@@ -23,62 +43,71 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <template>
   <div class="grid">
+    <!-- KPI 行：全部纯计数，不含率 -->
     <div class="kpi-row">
+      <div class="panel kpi-card">
+        <div class="kpi-label">在管项目</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.active_count ?? 0" /></div>
+        <div class="kpi-sub">含立项 / 进行中 / 验收</div>
+      </div>
+      <div class="panel kpi-card">
+        <div class="kpi-label">本月完成</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.completed_this_month ?? 0" /></div>
+        <div class="kpi-sub">actual_end 落在本月</div>
+      </div>
       <div class="panel kpi-card brag">
-        <div class="kpi-label">按时交付率</div>
-        <div class="gauge">
-          <svg viewBox="0 0 120 120" style="width: 110px; height: 110px">
-            <circle cx="60" cy="60" r="50" stroke="rgba(0,229,255,.15)" stroke-width="10" fill="none" />
-            <circle cx="60" cy="60" r="50" stroke="#ff4081" stroke-width="10" fill="none"
-                    :stroke-dasharray="`${onTimePct * 3.14} ${314 - onTimePct * 3.14}`"
-                    stroke-dashoffset="-78.5" stroke-linecap="round" />
-            <text x="60" y="68" text-anchor="middle" fill="#ff4081"
-                  font-size="28" font-weight="700" font-family="Courier New">
-              {{ onTimePct }}%
-            </text>
-          </svg>
-        </div>
+        <div class="kpi-label">14 天内到期</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.due_soon_count ?? 0" /></div>
+        <div class="kpi-sub">含已逾期</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">零失误交付（无返工 ≤1变更）</div>
-        <div class="kpi-value glow-text"><CountNumber :value="data?.clean_delivery_count ?? 0" /></div>
-        <div class="kpi-sub">已归档项目中</div>
-      </div>
-      <div class="panel kpi-card">
-        <div class="kpi-label">返工率</div>
-        <div class="big-pct"><CountNumber :value="(data?.rework_rate ?? 0) * 100" />%</div>
-        <div class="kpi-sub">累计返工 <CountNumber :value="data?.total_rework_count ?? 0" /> 次</div>
-      </div>
-      <div class="panel kpi-card">
-        <div class="kpi-label">人均变更次数</div>
-        <div class="big-pct"><CountNumber :value="data?.avg_changes_per_project ?? 0" :decimals="2" /></div>
-        <div class="kpi-sub">累计 <CountNumber :value="data?.total_change_count ?? 0" /> 次变更</div>
+        <div class="kpi-label">累计已交付</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.delivered_total ?? 0" /></div>
+        <div class="kpi-sub">收尾 + 归档</div>
       </div>
     </div>
 
     <div class="lower">
+      <!-- 状态漏斗 -->
       <div class="panel">
-        <div class="panel-title">项目状态分布</div>
-        <div class="status-grid">
-          <div v-for="s in data?.by_status || []" :key="s.label" class="status-pill">
-            <div class="status-label">{{ STATUS_LABEL[s.label] || s.label }}</div>
-            <div class="status-count">{{ s.count }}</div>
+        <div class="panel-title">项目状态漏斗</div>
+        <div class="funnel">
+          <div v-for="f in funnel" :key="f.status" class="funnel-row">
+            <div class="funnel-name">{{ f.label }}</div>
+            <div class="funnel-bar">
+              <div class="funnel-fill" :style="{ width: `${(f.count / funnelMax) * 100}%` }" />
+            </div>
+            <div class="funnel-num"><CountNumber :value="f.count" /></div>
+          </div>
+        </div>
+
+        <div class="panel-title" style="margin-top: 24px">14 天内到期</div>
+        <div v-if="!data?.due_soon.length" class="empty-mini">无即将到期项目</div>
+        <div v-else class="due-list">
+          <div v-for="p in data.due_soon.slice(0, 6)" :key="p.project_id" class="due-row">
+            <span class="due-name">{{ p.name }}</span>
+            <span :class="['due-tag', p.overdue ? 'late' : 'on']">{{ daysToDueLabel(p.days_to_due) }}</span>
           </div>
         </div>
       </div>
 
+      <!-- 在管项目进度表 -->
       <div class="panel">
-        <div class="panel-title">最近完成项目</div>
-        <div v-if="!data?.recent_completions.length" class="empty">尚无完成项目</div>
-        <div v-else class="recent-list">
-          <div v-for="p in data.recent_completions" :key="p.project_id" class="recent-row">
-            <div class="recent-name">{{ p.name }}</div>
-            <div class="recent-meta">
-              <span class="recent-date">完成：{{ p.actual_end }}</span>
-              <span class="recent-date">计划：{{ p.planned_end || '—' }}</span>
-              <span :class="['recent-tag', p.on_time ? 'on' : 'late']">
-                {{ p.on_time ? '✓ 按时' : '✗ 延期' }}
-              </span>
+        <div class="panel-title">在管项目进度（{{ data?.in_progress_projects.length ?? 0 }}）</div>
+        <div v-if="!data?.in_progress_projects.length" class="empty">暂无在管项目</div>
+        <div v-else class="progress-list">
+          <div v-for="p in data.in_progress_projects" :key="p.project_id" class="progress-row">
+            <div class="prog-name-row">
+              <span class="prog-name">{{ p.name }}</span>
+              <span class="prog-status">{{ STATUS_LABEL[p.status] || p.status }}</span>
+              <span v-if="p.overdue" class="prog-overdue">⚠ 已逾期</span>
+            </div>
+            <div class="prog-bar">
+              <div class="prog-fill" :class="{ over: p.overdue }" :style="{ width: `${progressPct(p)}%` }" />
+            </div>
+            <div class="prog-meta">
+              <span>计划 {{ p.planned_start || '—' }} → {{ p.planned_end || '—' }}</span>
+              <span class="prog-pct">{{ progressPct(p) }}%</span>
             </div>
           </div>
         </div>
@@ -90,34 +119,75 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 <style scoped>
 .grid { display: flex; flex-direction: column; height: 100%; gap: 16px; }
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px; }
-.kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
-.big-pct {
-  font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700;
-  color: var(--cockpit-accent); text-shadow: 0 0 8px var(--cockpit-accent);
-}
+.kpi-card.brag .kpi-value { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
 .kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
-.gauge { margin-top: 4px; }
+
 .lower { flex: 1; display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; min-height: 0; }
 .empty { display: flex; align-items: center; justify-content: center; height: calc(100% - 30px); color: var(--cockpit-text-dim); }
+.empty-mini { color: var(--cockpit-text-dim); font-size: 12px; margin-top: 8px; }
 
-.status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
-.status-pill {
-  padding: 16px; border: 1px solid var(--cockpit-border); border-radius: 10px;
-  background: rgba(10, 25, 41, 0.6); text-align: center;
+/* 状态漏斗 */
+.funnel { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.funnel-row { display: grid; grid-template-columns: 70px 1fr 50px; gap: 12px; align-items: center; }
+.funnel-name { color: var(--cockpit-text); font-size: 13px; }
+.funnel-bar {
+  height: 16px; background: rgba(0,229,255,.08);
+  border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
 }
-.status-label { color: var(--cockpit-text-dim); font-size: 12px; letter-spacing: 2px; }
-.status-count { font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: var(--cockpit-accent); margin-top: 6px; }
+.funnel-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
+  box-shadow: 0 0 8px var(--cockpit-accent);
+  transition: width 0.6s ease;
+}
+.funnel-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; }
 
-.recent-list { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
-.recent-row {
-  padding: 10px; border-left: 3px solid var(--cockpit-accent);
-  background: rgba(10, 25, 41, 0.5);
+/* 到期列表 */
+.due-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.due-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; }
+.due-name { color: var(--cockpit-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.due-tag { font-family: 'Courier New', monospace; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+.due-tag.on { background: rgba(0,229,255,.15); color: var(--cockpit-accent); }
+.due-tag.late { background: rgba(255,64,129,.2); color: var(--cockpit-accent-3); }
+
+/* 在管项目进度表 */
+.progress-list {
+  display: flex; flex-direction: column; gap: 14px; margin-top: 12px;
+  overflow-y: auto; max-height: 100%; padding-right: 4px;
 }
-.recent-name { color: var(--cockpit-text); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-.recent-meta { display: flex; gap: 12px; align-items: center; }
-.recent-date { color: var(--cockpit-text-dim); font-size: 11px; font-family: 'Courier New', monospace; }
-.recent-tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
-.recent-tag.on { background: rgba(0,229,255,.2); color: var(--cockpit-accent); }
-.recent-tag.late { background: rgba(255,64,129,.2); color: var(--cockpit-accent-3); }
+.progress-row {
+  background: rgba(10, 25, 41, 0.4);
+  border: 1px solid var(--cockpit-border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.prog-name-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.prog-name { color: var(--cockpit-text); font-size: 13px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog-status {
+  font-family: 'Courier New', monospace; font-size: 11px;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(0,229,255,.12); color: var(--cockpit-accent);
+}
+.prog-overdue { font-size: 11px; color: var(--cockpit-accent-3); font-weight: 600; }
+.prog-bar {
+  height: 8px; background: rgba(0,229,255,.08);
+  border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
+}
+.prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
+  box-shadow: 0 0 6px var(--cockpit-accent);
+  transition: width 0.6s ease;
+}
+.prog-fill.over {
+  background: linear-gradient(90deg, var(--cockpit-accent-3), #ff8e00);
+  box-shadow: 0 0 6px var(--cockpit-accent-3);
+}
+.prog-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 6px; font-size: 11px; color: var(--cockpit-text-dim);
+  font-family: 'Courier New', monospace;
+}
+.prog-pct { color: var(--cockpit-accent); font-weight: 600; }
 </style>

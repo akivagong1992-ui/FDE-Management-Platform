@@ -14,7 +14,6 @@ const tab = ref<Tab>('overall')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">③ 利润管理 · 三种口径（A 团队总览 · B 销售/客户 · C 驾驶舱）</span>
-        <el-tag type="success">Phase 2b-i — 三口径 API + 收入登记落地（驾驶舱接入见同 commit）</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

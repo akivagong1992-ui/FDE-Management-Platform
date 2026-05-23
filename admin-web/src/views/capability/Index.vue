@@ -13,7 +13,6 @@ const tab = ref<Tab>('growth')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">⑦ 工程师能力建设 ⭐</span>
-        <el-tag type="success">Phase 3-next-ii — 成长曲线 + 培训记录 + IDP</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

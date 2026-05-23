@@ -20,8 +20,10 @@ from app.models.need_party import NeedParty
 from app.models.project import (
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
+    PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
     PROJECT_STATUS_CLOSING,
+    PROJECT_STATUS_IN_PROGRESS,
     Project,
 )
 from app.models.renewal_attempt import (
@@ -278,6 +280,53 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         and (p.rework_count or 0) == 0 and (p.change_count or 0) <= 1
     )
 
+    # ── 进度看板字段（不带判断的纯计数 / 时间线） ────────────────────
+    today = date_cls.today()
+    month_start = today.replace(day=1)
+    completed_this_month = sum(
+        1 for p in projects
+        if p.actual_end_date and p.actual_end_date >= month_start
+    )
+    delivered_total = sum(
+        1 for p in projects if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}
+    )
+
+    # 在管池 = drafting/in_progress/accepting 的项目（已 closing/archived 不再"在管"）
+    active_pool = [
+        p for p in projects
+        if p.status not in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}
+    ]
+    due_soon_threshold = today + timedelta(days=14)
+    due_soon_list = sorted(
+        [
+            {
+                "project_id": p.id, "name": p.name,
+                "status": p.status,
+                "planned_end": str(p.planned_end_date),
+                "days_to_due": (p.planned_end_date - today).days,
+                "overdue": p.planned_end_date < today,
+            }
+            for p in active_pool
+            if p.planned_end_date and p.planned_end_date <= due_soon_threshold
+        ],
+        key=lambda x: x["days_to_due"],
+    )
+
+    in_progress_list = sorted(
+        [
+            {
+                "project_id": p.id, "name": p.name,
+                "status": p.status,
+                "planned_start": str(p.planned_start_date) if p.planned_start_date else None,
+                "planned_end": str(p.planned_end_date) if p.planned_end_date else None,
+                "overdue": bool(p.planned_end_date and p.planned_end_date < today
+                                and p.status != PROJECT_STATUS_ARCHIVED),
+            }
+            for p in active_pool
+        ],
+        key=lambda x: (x["planned_end"] or "9999-12-31"),
+    )
+
     return {
         "total_projects": total,
         "finished_with_dates": len(finished_with_dates),
@@ -290,6 +339,14 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "rework_rate": round(rework_rate, 4),
         "avg_changes_per_project": round(avg_change_per_project, 2),
         "clean_delivery_count": clean_delivery_count,
+        # 进度看板字段
+        "active_count": len(active_pool),
+        "completed_this_month": completed_this_month,
+        "delivered_total": delivered_total,
+        "due_soon_count": len(due_soon_list),
+        "due_soon": due_soon_list,
+        "in_progress_projects": in_progress_list,
+        "today": str(today),
     }
 
 

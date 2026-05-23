@@ -1,5 +1,6 @@
 """驾驶舱 Tab 1 总览 — 真实数据聚合（Phase 3-next-iii Round 4 替代 Phase 0 placeholder）。"""
 
+from datetime import date as date_cls
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
@@ -71,10 +72,20 @@ async def overview_kpi(db: AsyncSession = Depends(get_db)) -> dict:
     )).all()
     by_status = [{"label": s, "count": int(c)} for s, c in by_status_rows]
 
+    # 本月完成数：actual_end_date 落在本月（驾驶舱总览以"纯计数"展示进度）
+    month_start = date_cls.today().replace(day=1)
+    completed_this_month = (await db.execute(
+        select(func.count(Project.id)).where(
+            Project.actual_end_date.is_not(None),
+            Project.actual_end_date >= month_start,
+        )
+    )).scalar_one() or 0
+
     return {
         "active_projects": int(active_projects),
         "team_size": int(team_size),
-        "on_time_delivery_rate": round(on_time_rate, 4),
+        "on_time_delivery_rate": round(on_time_rate, 4),  # 保留供后端审计；前端不再展示
+        "completed_this_month": int(completed_this_month),
         "delivered_clients": list(delivered_clients_rows),
         "capability_by_category": capability_by_category,
         "by_status": by_status,

@@ -20,7 +20,7 @@ async function load() {
 const cTotal = computed(() => (sav.value?.total_c_view ?? 0) / 10000)
 const activeProjects = computed(() => overview.value?.active_projects ?? 0)
 const teamSize = computed(() => overview.value?.team_size ?? 0)
-const onTimePct = computed(() => Math.round((overview.value?.on_time_delivery_rate ?? 0) * 100))
+const completedThisMonth = computed(() => overview.value?.completed_this_month ?? 0)
 const deliveredClients = computed(() => overview.value?.delivered_clients ?? [])
 const capabilities = computed(() => overview.value?.capability_by_category ?? [])
 const maxCap = computed(() => Math.max(1, ...capabilities.value.map((c) => c.engineer_count)))
@@ -50,9 +50,9 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
         <div class="kpi-value glow-text"><CountNumber :value="teamSize" /></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">按时交付率</div>
+        <div class="kpi-label">本月完成</div>
         <div class="kpi-value glow-text">
-          <CountNumber :value="onTimePct" /><span class="unit">%</span>
+          <CountNumber :value="completedThisMonth" /><span class="unit">个</span>
         </div>
       </div>
     </div>

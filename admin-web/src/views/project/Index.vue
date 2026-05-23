@@ -12,7 +12,6 @@ const tab = ref<'projects' | 'need_parties' | 'sales_persons'>('projects')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">① 项目管理</span>
-        <el-tag type="info">Phase 1b — 立项 + 销售/客户档案 + 项目类型 + 转移销售（里程碑/风险见 1b-ii）</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

@@ -12,7 +12,6 @@ const tab = ref<Tab>('retros')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">⑧ 需求方关系 / 项目复盘 ⭐</span>
-        <el-tag type="success">Phase 3-next-iii — 复盘 + 续单跟踪</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

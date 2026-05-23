@@ -13,7 +13,6 @@ const tab = ref<Tab>('expenses')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">④ 外部支出管理 + Vendor 服务费</span>
-        <el-tag type="success">Phase 2a — 数据录入 + 审批流；利润计算（口径 A/B/C）见 Phase 2b</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

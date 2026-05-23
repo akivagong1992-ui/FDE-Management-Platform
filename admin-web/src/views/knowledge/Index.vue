@@ -130,7 +130,6 @@ onMounted(load)
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">⑥ 技术沉淀 / 知识资产 ⭐</span>
-        <el-tag type="success">Phase 2b-ii — 资产库 + 保密分级落地</el-tag>
       </div>
     </template>
 

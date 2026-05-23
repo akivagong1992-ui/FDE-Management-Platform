@@ -15,7 +15,6 @@ const tab = ref<Tab>('assignments')
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
         <span style="font-weight: 600">② 员工派单</span>
-        <el-tag type="success">Phase 1c — 派单 + 工时（含 Excel 导入）已落地</el-tag>
       </div>
     </template>
     <el-tabs v-model="tab">

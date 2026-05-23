@@ -12,7 +12,8 @@ export interface SavingsAndValue {
 export interface OverviewKpi {
   active_projects: number
   team_size: number
-  on_time_delivery_rate: number
+  on_time_delivery_rate: number  // 后端保留供审计；前端不再展示，改用 completed_this_month
+  completed_this_month: number
   delivered_clients: string[]
   capability_by_category: { category: string; engineer_count: number }[]
   by_status: { label: string; count: number }[]
@@ -90,7 +91,16 @@ export interface EngineerStats {
 }
 export const getEngineerStats = () => http.get<EngineerStats>('/engineer-stats').then((r) => r.data)
 
+export interface DueSoonProject {
+  project_id: number; name: string; status: string
+  planned_end: string; days_to_due: number; overdue: boolean
+}
+export interface InProgressProject {
+  project_id: number; name: string; status: string
+  planned_start: string | null; planned_end: string | null; overdue: boolean
+}
 export interface EfficiencyStats {
+  // Legacy 率类字段：后端保留，前端不再展示
   total_rework_count?: number
   total_change_count?: number
   rework_rate?: number
@@ -100,6 +110,14 @@ export interface EfficiencyStats {
   on_time_count: number; on_time_rate: number
   by_status: { label: string; count: number }[]
   recent_completions: { project_id: number; name: string; planned_end: string | null; actual_end: string; on_time: boolean }[]
+  // 进度看板字段
+  active_count: number
+  completed_this_month: number
+  delivered_total: number
+  due_soon_count: number
+  due_soon: DueSoonProject[]
+  in_progress_projects: InProgressProject[]
+  today: string
 }
 export const getEfficiencyStats = () => http.get<EfficiencyStats>('/efficiency-stats').then((r) => r.data)
 
