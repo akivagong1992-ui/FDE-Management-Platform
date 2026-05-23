@@ -17,13 +17,13 @@ async function load() {
   }
 }
 
-// C-tier number split for the brag tile
 const cTotal = computed(() => (sav.value?.total_c_view ?? 0) / 10000)
-const cSavings = computed(() => (sav.value?.savings_from_revenue_projects ?? 0) / 10000)
-const cValue = computed(() => (sav.value?.value_created_from_no_revenue_projects ?? 0) / 10000)
 const activeProjects = computed(() => overview.value?.active_projects ?? 0)
 const teamSize = computed(() => overview.value?.team_size ?? 0)
 const onTimePct = computed(() => Math.round((overview.value?.on_time_delivery_rate ?? 0) * 100))
+const deliveredClients = computed(() => overview.value?.delivered_clients ?? [])
+const capabilities = computed(() => overview.value?.capability_by_category ?? [])
+const maxCap = computed(() => Math.max(1, ...capabilities.value.map((c) => c.engineer_count)))
 
 onMounted(async () => {
   await load()
@@ -40,7 +40,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
         <div class="kpi-value glow-text"><CountNumber :value="activeProjects" /></div>
       </div>
       <div class="panel kpi-card brag">
-        <div class="kpi-label">为公司创造的价值</div>
+        <div class="kpi-label">降本金额</div>
         <div class="kpi-value glow-text">
           <CountNumber :value="cTotal" :decimals="1" /><span class="unit">万 HKD</span>
         </div>
@@ -58,45 +58,39 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
     </div>
 
     <div class="lower">
-      <div class="panel area-c-split">
-        <div class="panel-title">创造价值构成（口径 C）</div>
-        <div class="split-rows">
-          <div class="split-row">
-            <span class="split-label">相比传统外包 · 累计节省</span>
-            <span class="split-value">HK$ <CountNumber :value="cSavings" :decimals="1" /> 万</span>
-          </div>
-          <div class="split-row">
-            <span class="split-label">无收入项目 · 创造价值</span>
-            <span class="split-value">HK$ <CountNumber :value="cValue" :decimals="1" /> 万</span>
-          </div>
-          <div class="split-row total">
-            <span class="split-label">合计</span>
-            <span class="split-value brag-num">HK$ <CountNumber :value="cTotal" :decimals="1" /> 万</span>
-          </div>
-          <div class="split-meta">
-            来自 {{ sav?.revenue_project_count ?? 0 }} 个有收入项目 +
-            {{ sav?.no_revenue_project_count ?? 0 }} 个无收入项目
+      <!-- 能力矩阵卡 -->
+      <div class="panel">
+        <div class="panel-title">能力矩阵</div>
+        <div v-if="capabilities.length === 0" class="empty">暂无技能登记</div>
+        <div v-else class="cap-grid">
+          <div v-for="c in capabilities" :key="c.category" class="cap-cell">
+            <div class="cap-name">{{ c.category }}</div>
+            <div class="cap-bar">
+              <div class="cap-fill" :style="{ width: `${(c.engineer_count / maxCap) * 100}%` }" />
+            </div>
+            <div class="cap-num">
+              <CountNumber :value="c.engineer_count" /> 人
+            </div>
           </div>
         </div>
+        <div class="cap-meta" v-if="capabilities.length > 0">
+          覆盖 <strong class="hi">{{ capabilities.length }}</strong> 个技能领域
+          / 团队总规模 <strong class="hi">{{ teamSize }}</strong> 人
+        </div>
       </div>
-      <div class="panel area-map">
-        <div class="panel-title">数据健康</div>
-        <div class="health-block">
-          <div class="health-row">
-            <span class="dot ok"></span>
-            <span>驾驶舱数据 60 秒自动刷新</span>
+
+      <!-- 已交付客户卡 -->
+      <div class="panel">
+        <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
+        <div v-if="deliveredClients.length === 0" class="empty">暂无已验收/已归档项目</div>
+        <div v-else class="client-grid">
+          <div v-for="(name, i) in deliveredClients" :key="i" class="client-chip">
+            <span class="chip-dot"></span>
+            <span class="chip-name">{{ name }}</span>
           </div>
-          <div class="health-row">
-            <span class="dot ok"></span>
-            <span>口径隔离 CI 守门：A/B 数字永远不会出现在驾驶舱</span>
-          </div>
-          <div class="health-row">
-            <span class="dot ok"></span>
-            <span>三层成本透视：电信付 · Vendor 真实 · 传统外包对标</span>
-          </div>
-          <div class="health-meta">
-            最后更新：{{ overview?.updated_at?.slice(0, 16).replace('T', ' ') || '—' }}
-          </div>
+        </div>
+        <div class="cap-meta" v-if="deliveredClients.length > 0">
+          数据口径：拥有验收/归档项目的客户
         </div>
       </div>
     </div>
@@ -105,23 +99,13 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 
 <style scoped>
 .grid {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  gap: 16px;
+  display: flex; flex-direction: column; height: 100%; gap: 16px;
 }
 .kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  height: 140px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px;
 }
 .kpi-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
 }
 .kpi-card.brag {
   border-color: var(--cockpit-accent-3);
@@ -131,89 +115,71 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
   color: var(--cockpit-accent-3);
   text-shadow: 0 0 8px var(--cockpit-accent-3), 0 0 16px rgba(255, 64, 129, 0.5);
 }
-.unit {
-  font-size: 0.4em;
-  margin-left: 8px;
-  color: var(--cockpit-text-dim);
-  font-weight: normal;
-}
+.unit { font-size: 0.4em; margin-left: 8px; color: var(--cockpit-text-dim); font-weight: normal; }
+
 .lower {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 16px;
-  min-height: 0;
+  flex: 1; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; min-height: 0;
 }
-.health-block {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-top: 16px;
-  height: calc(100% - 30px);
+.empty {
+  display: flex; align-items: center; justify-content: center;
+  height: calc(100% - 30px); color: var(--cockpit-text-dim);
 }
-.health-row {
-  display: flex; align-items: center; gap: 12px;
-  color: var(--cockpit-text); font-size: 14px;
-  padding: 10px;
-  border: 1px solid var(--cockpit-border);
-  background: rgba(0, 229, 255, 0.04);
+
+/* 能力矩阵 */
+.cap-grid {
+  display: flex; flex-direction: column; gap: 10px; margin-top: 12px;
 }
-.dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: #67ff8a;
-  box-shadow: 0 0 8px #67ff8a;
-  animation: dot-pulse 2s ease-in-out infinite;
+.cap-cell {
+  display: grid; grid-template-columns: 90px 1fr 70px; gap: 12px; align-items: center;
 }
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.4; }
+.cap-name { color: var(--cockpit-text); font-size: 14px; }
+.cap-bar {
+  height: 14px; background: rgba(0, 229, 255, 0.08);
+  border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden;
 }
-.health-meta {
-  margin-top: auto;
-  text-align: right;
-  color: var(--cockpit-text-dim);
-  font-size: 12px;
+.cap-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
+  box-shadow: 0 0 8px var(--cockpit-accent);
+  transition: width 0.6s ease;
 }
-.split-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-}
-.split-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 229, 255, 0.15);
-}
-.split-row.total {
-  border-bottom: none;
-  border-top: 2px solid var(--cockpit-accent);
-  padding-top: 16px;
-  margin-top: 4px;
-}
-.split-label {
-  font-size: 15px;
-  color: var(--cockpit-text-dim);
-  letter-spacing: 2px;
-}
-.split-value {
+.cap-num {
   font-family: 'Courier New', monospace;
-  font-size: 22px;
-  color: var(--cockpit-accent);
-  font-weight: 600;
-}
-.brag-num {
-  font-size: 28px;
-  color: var(--cockpit-accent-3);
-  text-shadow: 0 0 8px var(--cockpit-accent-3);
-}
-.split-meta {
-  margin-top: 12px;
+  color: var(--cockpit-accent); font-weight: 600;
   text-align: right;
-  font-size: 12px;
+}
+.cap-meta {
+  margin-top: 16px;
   color: var(--cockpit-text-dim);
+  font-size: 12px;
   letter-spacing: 1px;
 }
+.hi { color: var(--cockpit-accent); font-family: 'Courier New', monospace; padding: 0 2px; }
+
+/* 已交付客户 */
+.client-grid {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;
+  align-content: flex-start;
+}
+.client-chip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid var(--cockpit-border);
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--cockpit-text);
+  transition: all 0.3s;
+}
+.client-chip:hover {
+  background: rgba(255, 64, 129, 0.12);
+  border-color: var(--cockpit-accent-3);
+  box-shadow: 0 0 8px rgba(255, 64, 129, 0.3);
+}
+.chip-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cockpit-accent);
+  box-shadow: 0 0 4px var(--cockpit-accent);
+}
+.chip-name { letter-spacing: 1px; }
 </style>

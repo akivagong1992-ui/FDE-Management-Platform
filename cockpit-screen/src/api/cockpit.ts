@@ -13,13 +13,14 @@ export interface OverviewKpi {
   active_projects: number
   team_size: number
   on_time_delivery_rate: number
-  knowledge_assets: number
-  renewal_rate: number
-  certifications: number
+  delivered_clients: string[]
+  capability_by_category: { category: string; engineer_count: number }[]
+  by_status: { label: string; count: number }[]
   updated_at: string
-  // Phase 2b — these mock fields are gradually replaced by real ones
-  cumulative_margin_hkd?: number  // (kept for backward-compat; replaced by C-tier)
-  outsource_saving_hkd?: number
+  // Legacy
+  knowledge_assets?: number
+  renewal_rate?: number
+  certifications?: number
 }
 
 export const getOverview = () => http.get<OverviewKpi>('/overview').then((r) => r.data)

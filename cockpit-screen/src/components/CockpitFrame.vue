@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 const router = useRouter()
 const route = useRoute()
 
+const logoSrc = '/china-telecom-logo.png'
+
 const tabs = [
   { n: 1, path: '/overview', title: '总览' },
   { n: 2, path: '/project-map', title: '项目地图' },
@@ -54,8 +56,14 @@ onUnmounted(() => {
   <div class="cockpit">
     <header class="header">
       <div class="header-side">
-        <span class="brand glow-text">人力管理平台 · 领导驾驶舱</span>
-        <span class="subtitle">中国电信国际香港分公司 · 工程师团队</span>
+        <img
+          :src="logoSrc"
+          alt="中国电信"
+          class="logo"
+          @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+        />
+        <span class="brand glow-text">交付团队驾驶舱</span>
+        <span class="subtitle">中国电信国际香港分公司</span>
       </div>
       <div class="header-center">
         <span class="time">{{ now.toLocaleString('zh-CN', { hour12: false }) }}</span>
@@ -107,8 +115,9 @@ onUnmounted(() => {
   padding: 0 24px;
   border-bottom: 1px solid var(--cockpit-border);
 }
-.header-side { flex: 1; display: flex; align-items: baseline; gap: 12px; }
+.header-side { flex: 1; display: flex; align-items: center; gap: 14px; }
 .header-side.right { justify-content: flex-end; }
+.logo { height: 38px; width: auto; object-fit: contain; filter: brightness(1.1); }
 .header-center { flex: 0 0 auto; }
 .brand { font-size: 22px; font-weight: 700; letter-spacing: 4px; }
 .subtitle { color: var(--cockpit-text-dim); font-size: 13px; letter-spacing: 2px; }
