@@ -33,6 +33,15 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:5174"
 
+    # ── 飞书 / Lark 集成接口位 ─────────────────────────
+    # Phase 4 才真接：现在留接口、配置和 stub channel，运行时仅记日志。
+    FEISHU_APP_ID: str = ""
+    FEISHU_APP_SECRET: str = ""
+    FEISHU_BOT_WEBHOOK_URL: str = ""
+    FEISHU_EVENT_VERIFY_TOKEN: str = ""
+    FEISHU_EVENT_ENCRYPT_KEY: str = ""
+    NOTIFICATION_CHANNELS: str = "log"  # CSV: log,feishu,email
+
 
 @lru_cache
 def get_settings() -> Settings:

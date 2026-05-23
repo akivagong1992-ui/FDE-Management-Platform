@@ -6,6 +6,7 @@ from app.models.expense import ExpenseRequest
 from app.models.idp import IDP
 from app.models.knowledge_asset import KnowledgeAsset
 from app.models.need_party import NeedParty
+from app.models.notification_log import NotificationLog
 from app.models.project import Project, SalesTransferLog
 from app.models.project_revenue import ProjectRevenue
 from app.models.renewal_attempt import RenewalAttempt
@@ -45,4 +46,5 @@ __all__ = [
     "TrainingRecord",
     "IDP",
     "RenewalAttempt",
+    "NotificationLog",
 ]

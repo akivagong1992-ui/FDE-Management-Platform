@@ -16,6 +16,9 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(32), default="admin")  # admin/pm/finance/engineer/lead
     is_active: Mapped[bool] = mapped_column(default=True)
+    # Feishu (Lark) integration — empty until Phase 4 actually wires SSO
+    feishu_open_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    feishu_union_id: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

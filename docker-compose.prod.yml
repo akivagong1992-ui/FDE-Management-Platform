@@ -1,0 +1,128 @@
+# 生产环境 docker-compose — 天翼云 ECS 自托管版本
+#
+# 跑前：
+#   1. cp .env.production.example .env.production && 编辑实际密钥
+#   2. 把 admin-web 和 cockpit-screen 各自 pnpm build 后，dist/ 会被 nginx 服务
+#   3. docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# 部署后：
+#   - https://your-domain/admin/   → 管理后台
+#   - https://your-domain/cockpit/ → 驾驶舱
+#   - https://your-domain/api/     → 后端
+#
+# 如果你用了天翼云托管 Postgres / Redis，把 services.postgres + services.redis 整段删掉，
+# 把 backend 的 DATABASE_URL / REDIS_URL 改成天翼云的连接串即可。
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: manpower-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    container_name: manpower-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks: [internal]
+
+  backend:
+    build: ./backend
+    container_name: manpower-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY}
+      UPLOAD_DIR: /app/uploads
+      COCKPIT_ALLOWED_IPS: ${COCKPIT_ALLOWED_IPS}
+      COCKPIT_TOKEN: ${COCKPIT_TOKEN}
+      DEFAULT_ADMIN_USERNAME: ${DEFAULT_ADMIN_USERNAME}
+      DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
+      CORS_ORIGINS: ${PUBLIC_URL}
+      DEBUG: "false"
+      # 飞书集成（Phase 4 真接时填写）
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BOT_WEBHOOK_URL: ${FEISHU_BOT_WEBHOOK_URL:-}
+      NOTIFICATION_CHANNELS: ${NOTIFICATION_CHANNELS:-log}
+    volumes:
+      - backend_uploads:/app/uploads
+    # 启动时先跑 alembic 迁移，再启 uvicorn
+    command: >
+      sh -c "uv run alembic upgrade head &&
+             uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2"
+    networks: [internal]
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: manpower-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./admin-web/dist:/usr/share/nginx/html/admin:ro
+      - ./cockpit-screen/dist:/usr/share/nginx/html/cockpit:ro
+      - ./nginx/certs:/etc/nginx/certs:ro    # 放 fullchain.pem + privkey.pem
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - internal
+      - public
+
+  # ── 备份（每日凌晨 2 点 pg_dump，保留 30 天） ──
+  pg-backup:
+    image: postgres:16-alpine
+    container_name: manpower-pg-backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: |
+      sh -c '
+        while true; do
+          DATE=$$(date +%Y%m%d-%H%M)
+          pg_dump -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} \
+            -Fc -f /backups/manpower-$$DATE.dump
+          find /backups -name "manpower-*.dump" -mtime +30 -delete
+          sleep 86400
+        done
+      '
+    networks: [internal]
+
+volumes:
+  pg_data:
+  redis_data:
+  backend_uploads:
+
+networks:
+  internal:  # backend + db + redis 互通，外网不可达
+  public:    # nginx 暴露 80/443

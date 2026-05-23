@@ -33,9 +33,15 @@ async def _seed_dict_category(db, category: str, defaults: list[tuple[str, str]]
 
 
 async def init_db_and_seed() -> None:
-    """Create tables (Phase 0 dev convenience — Phase 1+ migrate via Alembic) and seed admin user."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Dev: auto-create schema via SQLAlchemy. Prod (Postgres): expect Alembic to have applied migrations
+    before service starts (run `uv run alembic upgrade head` in entrypoint or CI/CD).
+    """
+    if "sqlite" in settings.DATABASE_URL.lower():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("SQLite: tables ensured via create_all")
+    else:
+        logger.info("Non-SQLite DB: assuming Alembic migrations applied externally")
     async with SessionLocal() as db:
         # Seed admin user
         exists = (
