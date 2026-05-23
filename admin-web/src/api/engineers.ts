@@ -71,6 +71,7 @@ export interface EngineerPayload {
   monthly_cost_to_telecom?: number | null
   monthly_real_cost?: number | null
   notes?: string | null
+  initial_skill_ids?: number[]  // 新增工程师时可附带技能字典 id
 }
 
 export const listEngineers = (params?: { vendor_id?: number; status_filter?: string }) =>

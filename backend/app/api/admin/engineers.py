@@ -121,12 +121,25 @@ async def create_engineer(
     if payload.employment_form == "vendor_via_labor" and not payload.labor_company:
         raise HTTPException(status_code=400, detail="vendor_via_labor 需填写劳务公司")
 
-    data = payload.model_dump(exclude={"id_doc_number", "monthly_real_cost"})
+    data = payload.model_dump(exclude={"id_doc_number", "monthly_real_cost", "initial_skill_ids"})
     e = Engineer(**data)
     e.id_doc_number_enc = encrypt_field(payload.id_doc_number)
     if _can_view_cost(user):
         e.monthly_real_cost = payload.monthly_real_cost
     db.add(e)
+    await db.flush()  # 拿到 e.id 再挂技能
+
+    # 附带技能（dedupe + 跳过不存在的 skill_id）
+    seen_skill_ids: set[int] = set()
+    for sid in payload.initial_skill_ids:
+        if sid in seen_skill_ids:
+            continue
+        skill = await db.get(Skill, sid)
+        if not skill:
+            continue
+        db.add(EngineerSkill(engineer_id=e.id, skill_id=sid, level=0))
+        seen_skill_ids.add(sid)
+
     await db.commit()
     await db.refresh(e)
     return _to_out(e, include_cost=_can_view_cost(user))

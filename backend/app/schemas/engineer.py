@@ -45,6 +45,7 @@ class EngineerCreate(EngineerBase):
     id_doc_number: str | None = None  # plaintext input; service layer encrypts
     monthly_cost_to_telecom: Decimal | None = None
     monthly_real_cost: Decimal | None = None  # ignored if caller is not lead/finance
+    initial_skill_ids: list[int] = []  # 新增时可选附带技能字典 id
 
 
 class EngineerUpdate(BaseModel):

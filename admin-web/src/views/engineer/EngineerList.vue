@@ -7,6 +7,7 @@ import {
   type Engineer, type EngineerPayload,
 } from '@/api/engineers'
 import { listVendors, type Vendor } from '@/api/vendors'
+import { listSkills, type Skill } from '@/api/skills'
 import EngineerDrawer from './EngineerDrawer.vue'
 
 const auth = useAuthStore()
@@ -14,6 +15,7 @@ const isLead = computed(() => auth.role === 'lead' || auth.role === 'admin' || a
 
 const rows = ref<Engineer[]>([])
 const vendors = ref<Vendor[]>([])
+const skills = ref<Skill[]>([])
 const loading = ref(false)
 const filter = reactive<{ vendor_id?: number; status_filter?: string }>({})
 
@@ -33,6 +35,7 @@ const form = reactive<EngineerPayload>({
   status: 'active',
   monthly_cost_to_telecom: undefined,
   monthly_real_cost: undefined,
+  initial_skill_ids: [],
 })
 
 const drawerOpen = ref(false)
@@ -43,6 +46,7 @@ async function load() {
   try {
     rows.value = await listEngineers(filter)
     if (vendors.value.length === 0) vendors.value = await listVendors()
+    if (skills.value.length === 0) skills.value = await listSkills()
   } finally {
     loading.value = false
   }
@@ -57,6 +61,7 @@ function openCreate() {
     id_doc_type: 'HKID', id_doc_number: '',
     status: 'active',
     monthly_cost_to_telecom: undefined, monthly_real_cost: undefined,
+    initial_skill_ids: [],
   })
   dialog.value = true
 }
@@ -161,8 +166,9 @@ onMounted(load)
         </template>
       </el-table-column>
       <el-table-column prop="mobile" label="手机" width="140" />
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" size="small" @click.stop="openDetail(row)">详情</el-button>
           <el-button link size="small" @click.stop="openEdit(row)">编辑</el-button>
           <el-button link type="danger" size="small" @click.stop="onDelete(row)">删除</el-button>
         </template>
@@ -221,6 +227,24 @@ onMounted(load)
             <el-option label="在职" value="active" />
             <el-option label="已离职" value="departed" />
           </el-select>
+        </el-form-item>
+
+        <!-- 仅新增时显示技能初选；编辑后续在抽屉里维护 -->
+        <el-form-item v-if="editingId === null" label="技能">
+          <el-select
+            v-model="form.initial_skill_ids" multiple filterable
+            collapse-tags collapse-tags-tooltip
+            placeholder="从技能字典中勾选（可空，后续在工程师详情抽屉补充）"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="s in skills" :key="s.id"
+              :label="`[${s.category}] ${s.name}`" :value="s.id"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            来自「员工派单 → 技能字典」。仅记录会/不会，水平由抽屉的厂商认证体现
+          </div>
         </el-form-item>
 
         <el-row v-if="isLead" :gutter="12">
