@@ -13,7 +13,7 @@ export type CertLevel = 'L1' | 'L2' | 'L3'  // 初级 / 中级 / 高级
 export const CERT_LEVEL_LABEL: Record<CertLevel, string> = {
   L1: 'L1 初级', L2: 'L2 中级', L3: 'L3 高级',
 }
-export const CERT_CATEGORIES = ['编程语言', '网络', '通信', '安全', '云', '数据', '其他'] as const
+export const CERT_CATEGORIES = ['网络能力', '安全能力', '弱电能力', '云能力', '数据能力', 'AI 能力'] as const
 export type CertCategory = typeof CERT_CATEGORIES[number]
 
 export interface Certificate {

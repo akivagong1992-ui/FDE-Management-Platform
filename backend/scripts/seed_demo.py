@@ -80,40 +80,56 @@ ENGINEER_NAMES = [
     "唐丽琴", "范俊宇", "彭瑞祺", "苏文豪", "蒋家俊", "贾敏",
 ]
 
+# 团队能力分类（6 类）：网络 / 安全 / 弱电 / 云 / 数据 / AI
 SKILLS = [
-    ("Python", "编程语言"), ("Java", "编程语言"), ("Go", "编程语言"),
-    ("JavaScript", "编程语言"), ("C++", "编程语言"),
-    ("BGP/MPLS", "网络"), ("SDN", "网络"), ("5G NR", "通信"),
-    ("光纤施工", "通信"), ("CCIE 路由交换", "网络"),
-    ("渗透测试", "安全"), ("零信任架构", "安全"), ("CISSP 域", "安全"),
-    ("Kubernetes", "云"), ("AWS / Azure", "云"),
-    ("PostgreSQL", "数据"), ("BigQuery", "数据"),
-    ("PMP 项目管理", "其他"),
+    # 网络能力
+    ("BGP/MPLS", "网络能力"), ("SDN", "网络能力"),
+    ("CCIE 路由交换", "网络能力"), ("5G NR 无线", "网络能力"),
+    ("SD-WAN", "网络能力"),
+    # 安全能力
+    ("渗透测试", "安全能力"), ("零信任架构", "安全能力"),
+    ("CISSP 域", "安全能力"), ("SOC 运营", "安全能力"),
+    # 弱电能力
+    ("光纤施工", "弱电能力"), ("综合布线", "弱电能力"),
+    ("机房工程", "弱电能力"), ("视频监控系统", "弱电能力"),
+    # 云能力
+    ("Kubernetes", "云能力"), ("AWS / Azure", "云能力"),
+    ("阿里云 / 腾讯云", "云能力"), ("容器化部署", "云能力"),
+    # 数据能力
+    ("PostgreSQL", "数据能力"), ("Spark / Flink", "数据能力"),
+    ("数据中台", "数据能力"), ("BI 报表", "数据能力"),
+    # AI 能力
+    ("机器学习", "AI 能力"), ("大语言模型 / LLM", "AI 能力"),
+    ("计算机视觉", "AI 能力"), ("推荐系统", "AI 能力"),
 ]
 
 # 厂商认证：(name, issuer, cert_category, cert_level)
 # cert_level: L1 初级 / L2 中级 / L3 高级
+# 类别与 SKILLS 同枚举（6 类）
 CERTS = [
     # L3 高级
-    ("CCIE 路由交换", "Cisco", "网络", "L3"),
-    ("CISSP", "ISC2", "安全", "L3"),
-    ("华为 HCIE", "华为", "网络", "L3"),
-    ("CISA", "ISACA", "安全", "L3"),
-    ("AWS Solutions Architect Professional", "AWS", "云", "L3"),
+    ("CCIE 路由交换", "Cisco", "网络能力", "L3"),
+    ("华为 HCIE-数通", "华为", "网络能力", "L3"),
+    ("CISSP", "ISC2", "安全能力", "L3"),
+    ("CISA", "ISACA", "安全能力", "L3"),
+    ("AWS Solutions Architect Professional", "AWS", "云能力", "L3"),
+    ("AWS Machine Learning Specialty", "AWS", "AI 能力", "L3"),
     # L2 中级
-    ("PMP", "PMI", "其他", "L2"),
-    ("AWS Solutions Architect Associate", "AWS", "云", "L2"),
-    ("CKA", "CNCF", "云", "L2"),
-    ("CCNP 安全", "Cisco", "安全", "L2"),
-    ("OCP Java", "Oracle", "编程语言", "L2"),
-    ("Python PCAP", "Python Institute", "编程语言", "L2"),
-    ("华为 HCIP-数通", "华为", "通信", "L2"),
+    ("AWS Solutions Architect Associate", "AWS", "云能力", "L2"),
+    ("CKA", "CNCF", "云能力", "L2"),
+    ("CCNP 安全", "Cisco", "安全能力", "L2"),
+    ("华为 HCIP-数通", "华为", "网络能力", "L2"),
+    ("华为 HCIP-大数据", "华为", "数据能力", "L2"),
+    ("RCDD 综合布线设计师", "BICSI", "弱电能力", "L2"),
+    ("TensorFlow Developer", "Google", "AI 能力", "L2"),
     # L1 初级
-    ("CCNA", "Cisco", "网络", "L1"),
-    ("华为 HCIA-Cloud", "华为", "云", "L1"),
-    ("华为 HCIA-大数据", "华为", "数据", "L1"),
-    ("AWS Cloud Practitioner", "AWS", "云", "L1"),
-    ("CompTIA Security+", "CompTIA", "安全", "L1"),
+    ("CCNA", "Cisco", "网络能力", "L1"),
+    ("华为 HCIA-Cloud", "华为", "云能力", "L1"),
+    ("华为 HCIA-大数据", "华为", "数据能力", "L1"),
+    ("AWS Cloud Practitioner", "AWS", "云能力", "L1"),
+    ("CompTIA Security+", "CompTIA", "安全能力", "L1"),
+    ("综合布线工程师初级", "中国建筑学会", "弱电能力", "L1"),
+    ("NVIDIA DLI 入门认证", "NVIDIA", "AI 能力", "L1"),
 ]
 
 PROJECT_TEMPLATES_REVENUE = [

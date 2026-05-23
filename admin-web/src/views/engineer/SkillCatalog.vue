@@ -8,7 +8,7 @@ const loading = ref(false)
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<Partial<SkillPayload>>({
-  name: '', category: '编程语言', description: '', is_active: true,
+  name: '', category: '网络能力', description: '', is_active: true,
 })
 
 const grouped = computed(() => {
@@ -24,7 +24,7 @@ async function load() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { name: '', category: '编程语言', description: '', is_active: true })
+  Object.assign(form, { name: '', category: '网络能力', description: '', is_active: true })
   dialog.value = true
 }
 
@@ -87,13 +87,12 @@ onMounted(load)
         <el-form-item label="名称" required><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="分类">
           <el-select v-model="form.category" style="width: 100%">
-            <el-option label="编程语言" value="编程语言" />
-            <el-option label="网络" value="网络" />
-            <el-option label="通信" value="通信" />
-            <el-option label="安全" value="安全" />
-            <el-option label="云 / 容器" value="云" />
-            <el-option label="数据" value="数据" />
-            <el-option label="其他" value="其他" />
+            <el-option label="网络能力" value="网络能力" />
+            <el-option label="安全能力" value="安全能力" />
+            <el-option label="弱电能力" value="弱电能力" />
+            <el-option label="云能力" value="云能力" />
+            <el-option label="数据能力" value="数据能力" />
+            <el-option label="AI 能力" value="AI 能力" />
           </el-select>
         </el-form-item>
         <el-form-item label="说明"><el-input v-model="form.description" /></el-form-item>

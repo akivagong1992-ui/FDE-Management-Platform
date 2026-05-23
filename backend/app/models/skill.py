@@ -13,7 +13,7 @@ class Skill(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    category: Mapped[str] = mapped_column(String(32))  # 编程语言/网络/通信/安全/云/数据/其他
+    category: Mapped[str] = mapped_column(String(32))  # 网络能力/安全能力/弱电能力/云能力/数据能力/AI 能力
     description: Mapped[str | None] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

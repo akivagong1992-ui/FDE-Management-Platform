@@ -80,7 +80,7 @@ CERT_LEVEL_L3 = "L3"
 CERT_LEVELS = (CERT_LEVEL_L1, CERT_LEVEL_L2, CERT_LEVEL_L3)
 
 # Cert category — 与 Skill.category 同枚举，决定能力矩阵热力图纵轴
-CERT_CATEGORIES = ("编程语言", "网络", "通信", "安全", "云", "数据", "其他")
+CERT_CATEGORIES = ("网络能力", "安全能力", "弱电能力", "云能力", "数据能力", "AI 能力")
 
 
 class Certificate(Base):
