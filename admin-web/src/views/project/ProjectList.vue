@@ -264,7 +264,7 @@ onMounted(load)
             v-model="form.outsource_benchmark_amount" :min="0" :precision="2" style="width: 240px"
             placeholder="HK$"
           />
-          <span style="margin-left: 12px; color: #909399; font-size: 12px">如果当年走老外包，估算花多少（HK$）</span>
+          <span style="margin-left: 12px; color: #909399; font-size: 12px">外部服务商报价</span>
         </el-form-item>
         <el-form-item label="估算依据" v-if="form.outsource_benchmark_amount">
           <el-select v-model="form.benchmark_basis" clearable style="width: 100%" placeholder="选择依据，越靠前越可信">
@@ -287,19 +287,26 @@ onMounted(load)
         </template>
 
         <el-row :gutter="12">
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="状态">
               <el-select v-model="form.status" style="width: 100%">
                 <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
+            <el-form-item label="地区">
+              <el-select v-model="form.district" clearable placeholder="未指定" style="width: 100%">
+                <el-option v-for="(label, code) in DISTRICT_LABELS" :key="code" :label="label" :value="code" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="6">
             <el-form-item label="计划开始">
               <el-date-picker v-model="form.planned_start_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <el-col :span="6">
             <el-form-item label="计划完成">
               <el-date-picker v-model="form.planned_end_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
             </el-form-item>
@@ -307,34 +314,6 @@ onMounted(load)
         </el-row>
 
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" /></el-form-item>
-
-        <el-divider content-position="left">效率 / 续单 / 地区</el-divider>
-        <el-row :gutter="12">
-          <el-col :span="8">
-            <el-form-item label="地区">
-              <el-select v-model="form.district" clearable placeholder="未指定" style="width: 100%">
-                <el-option v-for="(label, code) in DISTRICT_LABELS" :key="code" :label="label" :value="code" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="返工次数">
-              <el-input-number v-model="form.rework_count" :min="0" :max="50" controls-position="right" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="变更次数">
-              <el-input-number v-model="form.change_count" :min="0" :max="50" controls-position="right" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="续单源项目">
-          <el-select v-model="form.renewal_of_project_id" clearable filterable
-                     placeholder="若本项目是某历史项目的续单，选择源项目" style="width: 100%">
-            <el-option v-for="p in rows.filter((q) => q.id !== editingId)"
-                       :key="p.id" :label="`${p.code || ''} ${p.name}`" :value="p.id" />
-          </el-select>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>
