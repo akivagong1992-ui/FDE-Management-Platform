@@ -14,6 +14,16 @@ export const DISTRICT_LABELS: Record<HKDistrict, string> = {
   NT_WEST: '新界西', OUTLYING: '离岛',
 }
 
+export type BenchmarkBasis =
+  | 'historical_avg' | 'industry_benchmark' | 'vendor_quote' | 'manual_estimate'
+
+export const BENCHMARK_BASIS_LABELS: Record<BenchmarkBasis, string> = {
+  vendor_quote: '外包供应商真实报价（最强）',
+  historical_avg: '同类历史项目均价',
+  industry_benchmark: '行业基准 / 公开报告',
+  manual_estimate: '经验估算（最弱）',
+}
+
 export interface Project {
   id: number
   code?: string | null
@@ -39,6 +49,8 @@ export interface Project {
   rework_count?: number
   change_count?: number
   renewal_of_project_id?: number | null
+  benchmark_basis?: BenchmarkBasis | null
+  benchmark_basis_note?: string | null
   created_at: string
   updated_at: string
 }
@@ -63,6 +75,8 @@ export interface ProjectPayload {
   rework_count?: number
   change_count?: number
   renewal_of_project_id?: number | null
+  benchmark_basis?: BenchmarkBasis | null
+  benchmark_basis_note?: string | null
 }
 
 export interface TransferLog {

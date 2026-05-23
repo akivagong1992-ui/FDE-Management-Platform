@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getProfitCompare, type ProfitCompare } from '@/api/cockpit'
 
 const data = ref<ProfitCompare | null>(null)
@@ -11,6 +12,10 @@ function fmt10k(n: number | undefined | null): string {
   if (n == null) return '—'
   return (n / 10000).toLocaleString('en-HK', { maximumFractionDigits: 1 })
 }
+
+const cSavings10k = computed(() => (data.value?.total_savings ?? 0) / 10000)
+const cValue10k = computed(() => (data.value?.total_value_created ?? 0) / 10000)
+const cTotal10k = computed(() => (data.value?.total_c_view ?? 0) / 10000)
 
 const maxSavings = computed(() => Math.max(1, ...(data.value?.top_savings_projects || []).map((p) => p.savings)))
 const maxValue = computed(() => Math.max(1, ...(data.value?.top_value_projects || []).map((p) => p.value_created)))
@@ -24,15 +29,15 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="kpi-row">
       <div class="panel kpi-card">
         <div class="kpi-label">累计节省（vs 传统外包）</div>
-        <div class="kpi-value glow-text">{{ fmt10k(data?.total_savings) }}<span class="unit">万 HKD</span></div>
+        <div class="kpi-value glow-text"><CountNumber :value="cSavings10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">无收入项目 · 创造价值</div>
-        <div class="kpi-value glow-text">{{ fmt10k(data?.total_value_created) }}<span class="unit">万 HKD</span></div>
+        <div class="kpi-value glow-text"><CountNumber :value="cValue10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card brag">
         <div class="kpi-label">合计 (口径 C)</div>
-        <div class="kpi-value glow-text">{{ fmt10k(data?.total_c_view) }}<span class="unit">万 HKD</span></div>
+        <div class="kpi-value glow-text"><CountNumber :value="cTotal10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
     </div>
 

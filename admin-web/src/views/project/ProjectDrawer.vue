@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   getProject, listTransferLogs, transferSales,
+  BENCHMARK_BASIS_LABELS,
   type Project, type TransferLog, type TransferReason,
 } from '@/api/projects'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
@@ -118,6 +119,16 @@ function salesNameById(id: number): string {
           <span style="color: #909399; font-size: 12px; margin-left: 8px">
             （如果当年走老外包，估算花多少）
           </span>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="project.benchmark_basis" label="估算依据 (R6)">
+          <el-tag :type="project.benchmark_basis === 'vendor_quote' ? 'success'
+                        : project.benchmark_basis === 'historical_avg' ? 'primary'
+                        : project.benchmark_basis === 'industry_benchmark' ? 'warning' : 'info'">
+            {{ BENCHMARK_BASIS_LABELS[project.benchmark_basis] }}
+          </el-tag>
+          <div v-if="project.benchmark_basis_note" style="color: #606266; margin-top: 4px; font-size: 12px">
+            {{ project.benchmark_basis_note }}
+          </div>
         </el-descriptions-item>
         <el-descriptions-item v-if="project.kind === 'no_revenue'" label="自动计算的创造价值">
           <span style="color: #e6a23c; font-weight: 600">HK$ {{ project.value_created_computed ?? '—' }}</span>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getKnowledgeStats, type KnowledgeStats } from '@/api/cockpit'
 
 const stats = ref<KnowledgeStats | null>(null)
@@ -12,6 +13,12 @@ async function load() {
 function fmtInt(n: number | undefined | null): string {
   return n == null ? '—' : Math.round(n).toLocaleString('en-HK')
 }
+
+const total = computed(() => stats.value?.total_assets ?? 0)
+const refCount = computed(() => stats.value?.total_references ?? 0)
+const distinctReused = computed(() => stats.value?.distinct_reused_assets ?? 0)
+const hoursSaved = computed(() => stats.value?.total_hours_saved ?? 0)
+const coverage = computed(() => stats.value?.project_coverage ?? 0)
 
 const maxCount = computed(() => Math.max(1, ...(stats.value?.by_category || []).map((c) => c.count)))
 
@@ -27,20 +34,20 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="kpi-row">
       <div class="panel kpi-card brag">
         <div class="kpi-label">累计知识资产</div>
-        <div class="kpi-value glow-text">{{ fmtInt(stats?.total_assets) }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="total" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">跨项目复用次数</div>
-        <div class="kpi-value glow-text">{{ fmtInt(stats?.total_references) }}</div>
-        <div class="kpi-sub">{{ fmtInt(stats?.distinct_reused_assets) }} 个资产被复用</div>
+        <div class="kpi-value glow-text"><CountNumber :value="refCount" /></div>
+        <div class="kpi-sub"><CountNumber :value="distinctReused" /> 个资产被复用</div>
       </div>
       <div class="panel kpi-card brag-2">
         <div class="kpi-label">复用节省工时</div>
-        <div class="kpi-value glow-text">{{ fmtInt(stats?.total_hours_saved) }}<span class="unit"> 工时</span></div>
+        <div class="kpi-value glow-text"><CountNumber :value="hoursSaved" /><span class="unit"> 工时</span></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">沉淀过的项目数</div>
-        <div class="kpi-value glow-text">{{ fmtInt(stats?.project_coverage) }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="coverage" /></div>
       </div>
     </div>
 

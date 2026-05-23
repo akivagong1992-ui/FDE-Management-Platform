@@ -57,6 +57,8 @@ def _to_out(p: Project) -> ProjectOut:
         rework_count=p.rework_count or 0,
         change_count=p.change_count or 0,
         renewal_of_project_id=p.renewal_of_project_id,
+        benchmark_basis=p.benchmark_basis,
+        benchmark_basis_note=p.benchmark_basis_note,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )

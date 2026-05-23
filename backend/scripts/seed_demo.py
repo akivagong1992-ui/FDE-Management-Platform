@@ -296,6 +296,16 @@ async def main() -> None:
                     weights=[30, 30, 15, 15, 10])[0],
                 rework_count=random.choices([0, 0, 0, 1, 2], weights=[55, 20, 10, 10, 5])[0],
                 change_count=random.choices([0, 1, 2, 3, 4], weights=[30, 30, 20, 15, 5])[0],
+                benchmark_basis=random.choices(
+                    ["vendor_quote", "historical_avg", "industry_benchmark", "manual_estimate"],
+                    weights=[40, 30, 20, 10])[0],
+                benchmark_basis_note=random.choice([
+                    "参考 2024 同类项目 P-2024-005 报价",
+                    "Gartner 2025 IT 服务行业基准",
+                    "外包供应商 A/B 实际报价单 + 10%",
+                    "PM 经验估算",
+                    None, None,
+                ]),
             )
             db.add(p); proj_objs.append(p)
         for i, tmpl in enumerate(PROJECT_TEMPLATES_NO_REVENUE):

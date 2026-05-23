@@ -35,6 +35,13 @@ class ProjectBase(BaseModel):
     change_count: int = 0
     renewal_of_project_id: int | None = None
 
+    # Phase 3-next-iii (R6 — outsource benchmark credibility)
+    benchmark_basis: str | None = Field(
+        default=None,
+        pattern="^(historical_avg|industry_benchmark|vendor_quote|manual_estimate)?$",
+    )
+    benchmark_basis_note: str | None = None
+
 
 class ProjectCreate(ProjectBase):
     pass
@@ -60,6 +67,8 @@ class ProjectUpdate(BaseModel):
     rework_count: int | None = None
     change_count: int | None = None
     renewal_of_project_id: int | None = None
+    benchmark_basis: str | None = None
+    benchmark_basis_note: str | None = None
 
 
 class ProjectOut(ProjectBase):

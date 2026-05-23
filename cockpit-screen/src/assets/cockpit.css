@@ -56,3 +56,37 @@ a { color: inherit; text-decoration: none; }
   border-left: 3px solid var(--cockpit-accent);
   padding-left: 8px;
 }
+
+/* ── Animations: pulse-glow on brag tiles + tab fade ─────────────── */
+
+@keyframes brag-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 64, 129, 0.30); }
+  50%      { box-shadow: 0 0 36px rgba(255, 64, 129, 0.60); }
+}
+@keyframes brag2-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(255, 224, 130, 0.25); }
+  50%      { box-shadow: 0 0 32px rgba(255, 224, 130, 0.55); }
+}
+@keyframes brag-growth-pulse {
+  0%, 100% { box-shadow: 0 0 16px rgba(255, 224, 130, 0.25); }
+  50%      { box-shadow: 0 0 30px rgba(255, 224, 130, 0.50); }
+}
+
+.kpi-card.brag         { animation: brag-pulse 3.6s ease-in-out infinite; }
+.kpi-card.brag-2       { animation: brag2-pulse 3.6s ease-in-out infinite; }
+.kpi-card.brag-growth  { animation: brag-growth-pulse 3.6s ease-in-out infinite; }
+
+/* Tab page transitions */
+.tab-fade-enter-active,
+.tab-fade-leave-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.tab-fade-enter-from { opacity: 0; transform: translateY(12px) scale(0.99); }
+.tab-fade-leave-to   { opacity: 0; transform: translateY(-8px) scale(1.01); }
+
+/* Subtle accent pulse on panel-title (top-left vertical bar) */
+@keyframes accent-blink {
+  0%, 80%, 100% { background: var(--cockpit-accent); }
+  90%           { background: var(--cockpit-accent-3); }
+}
+.panel-title { position: relative; }

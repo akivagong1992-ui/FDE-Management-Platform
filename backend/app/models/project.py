@@ -15,6 +15,12 @@ HK_DISTRICTS = [
     ("OUTLYING", "离岛"),
 ]
 
+# Outsource benchmark basis (R6) — 节省金额公式背后的依据
+BENCHMARK_BASIS_HISTORICAL = "historical_avg"      # 同类历史项目均价
+BENCHMARK_BASIS_INDUSTRY = "industry_benchmark"    # 行业基准 / 公开报告
+BENCHMARK_BASIS_VENDOR_QUOTE = "vendor_quote"      # 外包供应商真实报价单
+BENCHMARK_BASIS_MANUAL = "manual_estimate"         # 经验估算（最弱）
+
 
 # ─── Enums ─────────────────────────────────────────────────────────────
 
@@ -62,6 +68,9 @@ class Project(Base):
 
     # 价值估算 — 两种项目都填，C 口径用
     outsource_benchmark_amount: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    # R6: 外包估算的依据，影响 C 口径数字的可信度（仅元数据，不影响计算）
+    benchmark_basis: Mapped[str | None] = mapped_column(String(32))     # historical_avg / industry_benchmark / vendor_quote / manual_estimate
+    benchmark_basis_note: Mapped[str | None] = mapped_column(Text)      # 依据说明（如参考的历史项目编号、行业报告链接）
     # 若项目为 no_revenue：value_created 默认 = outsource_benchmark_amount
     # 仅当 no_revenue 时启用以下两个字段
     value_created_basis: Mapped[str | None] = mapped_column(String(32))

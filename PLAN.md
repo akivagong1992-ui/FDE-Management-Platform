@@ -553,10 +553,15 @@ Manpower-management-platform/
 - [x] seed_demo 扩展：所有项目随机分配 district + rework/change 计数，~45% revenue 项目挂续单源；生成 76 培训 + 19 IDP
 
 **3-next-iii — 剩余**（待办）
-- [ ] 大屏动效打磨（数字滚动、霓虹脉冲、轮播节奏）
-- [ ] **节省金额** brag 指标公式打磨（R6）
+**3-next-iii Round 1（已完成 ✅）**
+- [x] **大屏动效**：CountNumber 组件（easeOutCubic 数字滚动）+ .brag/.brag-2/.brag-growth 三类 KPI 卡循环脉冲发光 + Tab 切换淡入淡出过渡
+- [x] **R6 节省金额公式打磨**：Project 加 `benchmark_basis` 枚举（vendor_quote / historical_avg / industry_benchmark / manual_estimate）+ `benchmark_basis_note` 文本；项目表单按金额可见性条件展开，详情抽屉以彩色 tag 显示可信度
+- [x] 总览 Tab 用"数据健康"面板替换原占位（含数据隔离 + 三层成本透视 + 60s 刷新提示，含闪烁绿点）
+
+**3-next-iii Round 2（待办）**
 - [ ] 真 HK 地图（ECharts geo + 香港 geoJSON，替代当前 SVG schematic）
 - [ ] RenewalTracking 详表（赢/输/失败原因）
+- [ ] CountNumber 应用到所有剩余 cockpit tabs（Tab 4/5/7/8）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -635,3 +640,4 @@ Manpower-management-platform/
 - **v0.4.0** (seed_demo + Vendor 节省修复)：一次性脚本灌 30 工程师 / 28 项目 / 248 工时 / 30 资产 / 9 复盘等演示级数据；修复 Vendor 节省榜双重计数（改为按服务费比例分摊）。
 - **v0.4.1** (Phase 3-next-i 完成后)：AssetReference + EngineerSkillSnapshot 两个新模型；管理后台 `/capability` 完整页（含 SVG 团队成长曲线 + 拍快照按钮）；`/knowledge` 详情抽屉加复用记录区块；驾驶舱 Tab 6 加复用 KPI、Tab 7 加成长曲线。seed_demo 生成 8 季度 × 30 工程师 = 240 快照 + 36 复用记录。
 - **v0.4.2** (Phase 3-next-ii 完成后)：Project 扩展 district / rework_count / change_count / renewal_of_project_id 四个字段；新建 TrainingRecord + IDP 两域 + admin CRUD（培训成本仅 lead/finance 可见）；`/capability` 模块改为 3 Tab（成长曲线 / 培训记录 / IDP）；驾驶舱 Tab 2 改为 SVG HK schematic 5 区热力图（可点击筛选项目）；Tab 5 加返工率/人均变更/零失误 3 个 KPI；Tab 8 加显式续单率（与粗略代理并列）。seed 自动分配 5 区、~45% revenue 项目挂续单源、生成 76 培训 + 19 IDP。
+- **v0.4.3** (Phase 3-next-iii Round 1 完成后)：大屏动效落地——CountNumber 组件（easeOutCubic 数字滚动）应用到 Overview/ProfitCompare/Knowledge 主 KPI；三类 brag 卡（粉/金/绿）循环脉冲发光；Tab 切换 fade-in 过渡；总览页"数据健康"面板（含跳动绿点 + 隔离守门提示）。R6 落地——Project 加 `benchmark_basis` (vendor_quote/historical/industry/manual) + note 字段；表单按金额可见性展开；详情抽屉以彩色 tag 显示可信度；seed 按 40/30/20/10 权重自动分配 basis。

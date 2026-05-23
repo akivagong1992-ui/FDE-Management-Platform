@@ -80,7 +80,11 @@ onUnmounted(() => {
     </nav>
 
     <main class="body">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="tab-fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
   </div>
 </template>

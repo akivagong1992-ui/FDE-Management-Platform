@@ -4,8 +4,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   createProject, deleteProject, listProjects, updateProject,
-  DISTRICT_LABELS,
-  type HKDistrict, type Project, type ProjectPayload, type ProjectStatus, type ProjectKind,
+  DISTRICT_LABELS, BENCHMARK_BASIS_LABELS,
+  type BenchmarkBasis, type HKDistrict,
+  type Project, type ProjectPayload, type ProjectStatus, type ProjectKind,
 } from '@/api/projects'
 import { listNeedParties, type NeedParty } from '@/api/needParties'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
@@ -29,6 +30,7 @@ const form = reactive<ProjectPayload>({
   status: 'drafting', code: '', planned_start_date: undefined, planned_end_date: undefined,
   actual_start_date: undefined, actual_end_date: undefined, description: '',
   district: null, rework_count: 0, change_count: 0, renewal_of_project_id: null,
+  benchmark_basis: null, benchmark_basis_note: '',
 })
 
 const drawerOpen = ref(false)
@@ -77,6 +79,7 @@ function openCreate() {
     actual_start_date: undefined, actual_end_date: undefined,
     description: '',
     district: null, rework_count: 0, change_count: 0, renewal_of_project_id: null,
+    benchmark_basis: null, benchmark_basis_note: '',
   })
   dialog.value = true
 }
@@ -103,6 +106,8 @@ function openEdit(p: Project) {
     rework_count: p.rework_count || 0,
     change_count: p.change_count || 0,
     renewal_of_project_id: p.renewal_of_project_id || null,
+    benchmark_basis: p.benchmark_basis || null,
+    benchmark_basis_note: p.benchmark_basis_note || '',
   })
   dialog.value = true
 }
@@ -260,6 +265,14 @@ onMounted(load)
             placeholder="HK$"
           />
           <span style="margin-left: 12px; color: #909399; font-size: 12px">如果当年走老外包，估算花多少（HK$）</span>
+        </el-form-item>
+        <el-form-item label="估算依据" v-if="form.outsource_benchmark_amount">
+          <el-select v-model="form.benchmark_basis" clearable style="width: 100%" placeholder="选择依据，越靠前越可信">
+            <el-option v-for="(label, code) in BENCHMARK_BASIS_LABELS" :key="code" :label="label" :value="code" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="form.benchmark_basis" label="依据说明">
+          <el-input v-model="form.benchmark_basis_note" placeholder="如：参考 2024 同类项目 P-2024-005 / Gartner 报告链接" />
         </el-form-item>
 
         <template v-if="form.kind === 'no_revenue'">
