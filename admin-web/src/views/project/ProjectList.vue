@@ -114,7 +114,7 @@ function openEdit(p: Project) {
 
 async function onSubmit() {
   if (!form.name || !form.need_party_id || !form.sales_person_id) {
-    ElMessage.warning('名称 + 需求方 + 销售人员必填')
+    ElMessage.warning('名称 + 客户名称 + 销售人员必填')
     return
   }
   if (form.kind === 'no_revenue' && form.value_created_basis === 'other' && !form.value_created_note) {
@@ -224,7 +224,7 @@ onMounted(load)
 
         <el-row :gutter="12">
           <el-col :span="12">
-            <el-form-item label="需求方" required>
+            <el-form-item label="客户名称" required>
               <el-select v-model="form.need_party_id" filterable style="width: 100%">
                 <el-option v-for="np in needParties" :key="np.id" :label="np.name" :value="np.id" />
               </el-select>
@@ -259,12 +259,11 @@ onMounted(load)
           </span>
         </el-form-item>
 
-        <el-form-item label="传统外包估算">
+        <el-form-item label="外部服务商报价">
           <el-input-number
             v-model="form.outsource_benchmark_amount" :min="0" :precision="2" style="width: 240px"
             placeholder="HK$"
           />
-          <span style="margin-left: 12px; color: #909399; font-size: 12px">外部服务商报价</span>
         </el-form-item>
         <el-form-item label="估算依据" v-if="form.outsource_benchmark_amount">
           <el-select v-model="form.benchmark_basis" clearable style="width: 100%" placeholder="选择依据，越靠前越可信">
