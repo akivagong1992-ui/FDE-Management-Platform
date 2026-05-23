@@ -1,9 +1,15 @@
-"""Timesheet API: single CRUD + bulk + Excel import + template download."""
+"""Timesheet API: 单天 / 区间批量创建 + Excel 导入 + 模板下载。
+
+时段语义：
+- 1 天最多 3 个时段（上午 / 下午 / 晚上），每段自然 0.5 人天
+- 倍率：香港工作日的上下午 1.0×；工作日晚上 + 非工作日全天 1.5×
+- 服务端在保存时按 work_date 的 weekday() 决定 is_workday，并算出 weighted_days
+"""
 
 import io
 from datetime import date as date_cls
-from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from datetime import datetime, timedelta
+from decimal import Decimal
 
 from fastapi import (
     APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status,
@@ -17,13 +23,17 @@ from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.models.engineer import Engineer
 from app.models.project import Project
-from app.models.timesheet import Timesheet
+from app.models.timesheet import (
+    SLOT_AFTERNOON, SLOT_EVENING, SLOT_MORNING,
+    Timesheet, compute_weighted_days, is_hk_workday,
+)
 from app.schemas.timesheet import (
     ImportResult,
     ImportRowError,
-    TimesheetBulkCreate,
     TimesheetCreate,
     TimesheetOut,
+    TimesheetRangeCreate,
+    TimesheetRangeResult,
     TimesheetUpdate,
 )
 
@@ -39,7 +49,12 @@ def _to_out(t: Timesheet) -> TimesheetOut:
         project_name=t.project.name if t.project else None,
         assignment_id=t.assignment_id,
         work_date=t.work_date,
-        person_days=t.person_days,
+        has_morning=t.has_morning,
+        has_afternoon=t.has_afternoon,
+        has_evening=t.has_evening,
+        is_workday=t.is_workday,
+        natural_days=t.natural_days,
+        weighted_days=t.weighted_days,
         description=t.description,
         is_approved=t.is_approved,
         created_at=t.created_at,
@@ -68,22 +83,37 @@ async def list_timesheets(
     return [_to_out(t) for t in rows]
 
 
-async def _create_one(db: AsyncSession, payload: TimesheetCreate) -> Timesheet:
+async def _build_and_save_one(
+    db: AsyncSession, payload: TimesheetCreate, *, commit: bool = True,
+) -> Timesheet:
     if not await db.get(Engineer, payload.engineer_id):
         raise HTTPException(status_code=400, detail=f"工程师 #{payload.engineer_id} 不存在")
     if not await db.get(Project, payload.project_id):
         raise HTTPException(status_code=400, detail=f"项目 #{payload.project_id} 不存在")
-    t = Timesheet(**payload.model_dump())
+    is_wd = is_hk_workday(payload.work_date)
+    natural, weighted = compute_weighted_days(
+        payload.work_date, payload.has_morning, payload.has_afternoon, payload.has_evening,
+        is_workday=is_wd,
+    )
+    t = Timesheet(
+        engineer_id=payload.engineer_id, project_id=payload.project_id,
+        assignment_id=payload.assignment_id, work_date=payload.work_date,
+        has_morning=payload.has_morning, has_afternoon=payload.has_afternoon,
+        has_evening=payload.has_evening, is_workday=is_wd,
+        natural_days=natural, weighted_days=weighted,
+        description=payload.description,
+    )
     db.add(t)
     try:
-        await db.commit()
+        if commit:
+            await db.commit()
+            await db.refresh(t)
     except IntegrityError as e:
         await db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="同一工程师在同一项目同一天的工时已存在（如需修改请用编辑）",
+            detail=f"{payload.work_date} 当天该工程师在该项目的工时已存在；如需补时段请编辑",
         ) from e
-    await db.refresh(t)
     return t
 
 
@@ -93,25 +123,50 @@ async def create_timesheet(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
 ) -> TimesheetOut:
-    t = await _create_one(db, payload)
+    t = await _build_and_save_one(db, payload)
     return _to_out(t)
 
 
-@router.post("/bulk", response_model=ImportResult)
-async def bulk_create(
-    payload: TimesheetBulkCreate,
+@router.post("/range", response_model=TimesheetRangeResult, status_code=status.HTTP_201_CREATED)
+async def create_timesheet_range(
+    payload: TimesheetRangeCreate,
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
-) -> ImportResult:
-    created, skipped, errors = 0, 0, []
-    for idx, item in enumerate(payload.items, start=1):
+) -> TimesheetRangeResult:
+    """起止日期 + 时段集合 → 逐日展开，每天一条记录。失败的日期记入 skipped。"""
+    has_morning = SLOT_MORNING in payload.slots
+    has_afternoon = SLOT_AFTERNOON in payload.slots
+    has_evening = SLOT_EVENING in payload.slots
+
+    created: list[TimesheetOut] = []
+    skipped: list[ImportRowError] = []
+    total_natural = Decimal("0")
+    total_weighted = Decimal("0")
+
+    cur = payload.start_date
+    idx = 0
+    while cur <= payload.end_date:
+        idx += 1
+        single = TimesheetCreate(
+            engineer_id=payload.engineer_id, project_id=payload.project_id,
+            assignment_id=payload.assignment_id, work_date=cur,
+            has_morning=has_morning, has_afternoon=has_afternoon, has_evening=has_evening,
+            description=payload.description,
+        )
         try:
-            await _create_one(db, item)
-            created += 1
-        except HTTPException as e:
-            skipped += 1
-            errors.append(ImportRowError(row=idx, message=str(e.detail)))
-    return ImportResult(created=created, skipped=skipped, errors=errors)
+            t = await _build_and_save_one(db, single)
+            out = _to_out(t)
+            created.append(out)
+            total_natural += out.natural_days
+            total_weighted += out.weighted_days
+        except HTTPException as he:
+            skipped.append(ImportRowError(row=idx, message=f"{cur}: {he.detail}"))
+        cur += timedelta(days=1)
+
+    return TimesheetRangeResult(
+        created=created, skipped=skipped,
+        total_natural_days=total_natural, total_weighted_days=total_weighted,
+    )
 
 
 @router.patch("/{ts_id}", response_model=TimesheetOut)
@@ -126,6 +181,8 @@ async def update_timesheet(
         raise HTTPException(status_code=404, detail="工时记录不存在")
     for k, v in payload.model_dump(exclude_unset=True).items():
         setattr(t, k, v)
+    # 任何 slot 或 is_workday 变化都要重算
+    t.recompute()
     await db.commit()
     await db.refresh(t)
     return _to_out(t)
@@ -162,21 +219,29 @@ async def approve_timesheet(
 
 # ─── Excel template + import ─────────────────────────────────────────
 
-EXCEL_HEADERS = ["工程师姓名", "项目编号或名称", "工作日期(YYYY-MM-DD)", "人天(0.5 步进)", "描述(可选)"]
+EXCEL_HEADERS = [
+    "工程师姓名", "项目编号或名称", "工作日期(YYYY-MM-DD)",
+    "上午(0/1)", "下午(0/1)", "晚上(0/1)", "描述(可选)",
+]
+
+
+def _to_bool(v) -> bool:
+    if v is None or v == "":
+        return False
+    s = str(v).strip().lower()
+    return s in ("1", "true", "yes", "y", "是", "✓", "x")
 
 
 @router.get("/template")
 async def download_template(
     _: dict = Depends(get_current_user),
 ) -> Response:
-    """返回一个空白 Excel 模板，含正确表头 + 1 行示例。"""
     wb = Workbook()
     ws = wb.active
     ws.title = "工时导入"
     ws.append(EXCEL_HEADERS)
-    ws.append(["李志强", "PROJ-001", "2026-05-23", 1.0, "基站现场调试（整天）"])
-    ws.append(["李志强", "PROJ-001", "2026-05-24", 0.5, "半天 PR 评审"])
-
+    ws.append(["李志强", "PROJ-001", "2026-05-23", 1, 1, 0, "中环现场调试整天"])
+    ws.append(["李志强", "PROJ-001", "2026-05-24", 0, 0, 1, "周末晚上加班"])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -193,7 +258,6 @@ async def import_excel(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
 ) -> ImportResult:
-    """读 Excel → 按行解析 → 逐行创建工时记录，最后返回 created/skipped/errors。"""
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="仅支持 .xlsx / .xls 文件")
     content = await file.read()
@@ -203,10 +267,8 @@ async def import_excel(
         raise HTTPException(status_code=400, detail=f"Excel 解析失败：{e}") from e
     ws = wb.active
 
-    rows_iter = ws.iter_rows(min_row=2, values_only=True)  # skip header
+    rows_iter = ws.iter_rows(min_row=2, values_only=True)
     created, skipped, errors = 0, 0, []
-
-    # Cache lookups
     eng_by_name: dict[str, Engineer] = {}
     proj_by_key: dict[str, Project] = {}
 
@@ -214,16 +276,16 @@ async def import_excel(
         try:
             if not row or all(c is None for c in row):
                 continue
-            eng_name_raw, proj_key_raw, date_raw, days_raw, desc_raw = (list(row) + [None] * 5)[:5]
-            if eng_name_raw is None or proj_key_raw is None or date_raw is None or days_raw is None:
-                errors.append(ImportRowError(row=idx, message="缺少必填字段"))
+            (eng_name_raw, proj_key_raw, date_raw,
+             am_raw, pm_raw, eve_raw, desc_raw) = (list(row) + [None] * 7)[:7]
+            if eng_name_raw is None or proj_key_raw is None or date_raw is None:
+                errors.append(ImportRowError(row=idx, message="缺少必填字段（工程师/项目/日期）"))
                 skipped += 1
                 continue
 
             eng_name = str(eng_name_raw).strip()
             proj_key = str(proj_key_raw).strip()
 
-            # Lookup engineer by full_name
             if eng_name not in eng_by_name:
                 e = (await db.execute(
                     select(Engineer).where(Engineer.full_name == eng_name)
@@ -235,7 +297,6 @@ async def import_excel(
                 eng_by_name[eng_name] = e
             engineer = eng_by_name[eng_name]
 
-            # Lookup project: prefer code, fallback to name
             if proj_key not in proj_by_key:
                 p = (await db.execute(
                     select(Project).where(Project.code == proj_key)
@@ -251,7 +312,6 @@ async def import_excel(
                 proj_by_key[proj_key] = p
             project = proj_by_key[proj_key]
 
-            # Date
             if isinstance(date_raw, datetime):
                 work_date = date_raw.date()
             elif isinstance(date_raw, date_cls):
@@ -259,21 +319,19 @@ async def import_excel(
             else:
                 work_date = date_cls.fromisoformat(str(date_raw).strip())
 
-            # Person-days (0.5 step validated downstream by Pydantic)
-            try:
-                person_days = Decimal(str(days_raw))
-            except (InvalidOperation, ValueError) as e:
-                raise ValueError(f"人天格式不对: {days_raw}") from e
+            am = _to_bool(am_raw); pm = _to_bool(pm_raw); eve = _to_bool(eve_raw)
+            if not (am or pm or eve):
+                errors.append(ImportRowError(row=idx, message="上午/下午/晚上 至少选一个"))
+                skipped += 1
+                continue
 
             payload = TimesheetCreate(
-                engineer_id=engineer.id,
-                project_id=project.id,
-                work_date=work_date,
-                person_days=person_days,
+                engineer_id=engineer.id, project_id=project.id,
+                work_date=work_date, has_morning=am, has_afternoon=pm, has_evening=eve,
                 description=str(desc_raw).strip() if desc_raw else None,
             )
             try:
-                await _create_one(db, payload)
+                await _build_and_save_one(db, payload)
                 created += 1
             except HTTPException as he:
                 errors.append(ImportRowError(row=idx, message=str(he.detail)))

@@ -579,12 +579,15 @@ async def main() -> None:
 
         # ── Timesheets ────────────────────────────────────────────────
         ts_count = 0
-        # Last 30 days, ~5 engineers per day, 1-3 entries each
+        # 近 30 天，每天若干工程师 × 1-2 项目，每天选 slot 组合并自动算加权
+        from app.models.timesheet import compute_weighted_days, is_hk_workday  # noqa: PLC0415
         for d in range(30):
             wd = days_ago(d)
-            if wd.weekday() >= 5:  # skip weekends mostly
-                continue
-            for e in random.sample(active_engineers, k=min(8, len(active_engineers))):
+            is_wd = is_hk_workday(wd)
+            # 工作日：大多数人填上下午整天；周末/节假日：少数人加班
+            engs_today = random.sample(active_engineers,
+                                       k=min(8 if is_wd else 3, len(active_engineers)))
+            for e in engs_today:
                 projects_for_eng = random.sample(proj_objs, k=random.randint(1, 2))
                 seen = set()
                 for p in projects_for_eng:
@@ -592,14 +595,28 @@ async def main() -> None:
                     if key in seen:
                         continue
                     seen.add(key)
+                    # 时段组合：工作日 70% 上下午、20% 全天、10% 仅上午；非工作日 = 晚上加班
+                    if is_wd:
+                        roll = random.random()
+                        if roll < 0.7:
+                            has_m, has_a, has_e = True, True, False
+                        elif roll < 0.9:
+                            has_m, has_a, has_e = True, True, True  # 加班晚上
+                        else:
+                            has_m, has_a, has_e = True, False, False
+                    else:
+                        has_m, has_a, has_e = False, False, True  # 周末晚上加班
+                    natural, weighted = compute_weighted_days(wd, has_m, has_a, has_e, is_workday=is_wd)
                     db.add(Timesheet(
                         engineer_id=e.id, project_id=p.id, work_date=wd,
-                        person_days=random.choice([Decimal("0.5"), Decimal("1.0")]),
+                        has_morning=has_m, has_afternoon=has_a, has_evening=has_e,
+                        is_workday=is_wd,
+                        natural_days=natural, weighted_days=weighted,
                         is_approved=random.random() < 0.6,
                     ))
                     ts_count += 1
         await db.flush()
-        print(f"  ✓ timesheets x{ts_count} (近 30 天)")
+        print(f"  ✓ timesheets x{ts_count} (近 30 天，含晚上 / 周末加权)")
 
         # ── Knowledge Assets ──────────────────────────────────────────
         ka_count = 0
