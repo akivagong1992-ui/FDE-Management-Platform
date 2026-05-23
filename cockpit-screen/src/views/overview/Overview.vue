@@ -1,17 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import * as echarts from 'echarts'
 import CountNumber from '@/components/CountNumber.vue'
-import { getOverview, getSavingsAndValue, type OverviewKpi, type SavingsAndValue } from '@/api/cockpit'
+import {
+  getOverview, getProjectBoard, getSavingsAndValue,
+  type OverviewKpi, type ProjectBoard, type SavingsAndValue,
+} from '@/api/cockpit'
 
 const overview = ref<OverviewKpi | null>(null)
 const sav = ref<SavingsAndValue | null>(null)
+const board = ref<ProjectBoard | null>(null)
 let refreshTimer: number | undefined
 
 async function load() {
   try {
-    const [o, s] = await Promise.all([getOverview(), getSavingsAndValue()])
+    const [o, s, b] = await Promise.all([getOverview(), getSavingsAndValue(), getProjectBoard()])
     overview.value = o
     sav.value = s
+    board.value = b
   } catch {
     /* keep last successful snapshot on transient errors */
   }
@@ -25,15 +31,127 @@ const deliveredClients = computed(() => overview.value?.delivered_clients ?? [])
 const capabilities = computed(() => overview.value?.capability_by_category ?? [])
 const maxCap = computed(() => Math.max(1, ...capabilities.value.map((c) => c.engineer_count)))
 
+// ── HK map (来自原 Tab 2，简化为只读展示，无 click-to-filter) ─────
+const DISTRICT_LABELS: Record<string, string> = {
+  HK_ISLAND: '港岛', KOWLOON: '九龙', NT_EAST: '新界东',
+  NT_WEST: '新界西', OUTLYING: '离岛',
+}
+const DISTRICT_TO_MACRO: Record<string, string> = {
+  '中西区': 'HK_ISLAND', '湾仔区': 'HK_ISLAND', '东区': 'HK_ISLAND', '南区': 'HK_ISLAND',
+  '油尖旺区': 'KOWLOON', '深水埗区': 'KOWLOON', '九龙城区': 'KOWLOON',
+  '黄大仙区': 'KOWLOON', '观塘区': 'KOWLOON',
+  '沙田区': 'NT_EAST', '大埔区': 'NT_EAST', '北区': 'NT_EAST', '西贡区': 'NT_EAST',
+  '葵青区': 'NT_WEST', '荃湾区': 'NT_WEST', '屯门区': 'NT_WEST', '元朗区': 'NT_WEST',
+  '离岛区': 'OUTLYING',
+}
+const MACRO_COLOR: Record<string, string> = {
+  HK_ISLAND: '#00e5ff', KOWLOON: '#7c4dff', NT_EAST: '#67ff8a',
+  NT_WEST: '#ffe082', OUTLYING: '#ff80ab',
+}
+
+const districtCount = computed(() => {
+  const m: Record<string, number> = {}
+  for (const d of board.value?.by_district || []) m[d.code] = d.count
+  return m
+})
+
+const mapEl = ref<HTMLDivElement>()
+let chart: echarts.ECharts | null = null
+const mapError = ref<string | null>(null)
+
+function withAlpha(hex: string, a: number): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${a})`
+}
+
+async function loadMap() {
+  if (!mapEl.value) return
+  try {
+    const resp = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/810000_full.json')
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const geo = await resp.json()
+    echarts.registerMap('HK', geo)
+    chart = echarts.init(mapEl.value)
+    renderMap()
+  } catch (e: unknown) {
+    mapError.value = e instanceof Error ? e.message : 'fetch failed'
+  }
+}
+
+function renderMap() {
+  if (!chart) return
+  const counts = districtCount.value
+  const seriesData = Object.entries(DISTRICT_TO_MACRO).map(([dist, macro]) => ({
+    name: dist,
+    value: counts[macro] || 0,
+    macro,
+    itemStyle: {
+      areaColor: counts[macro]
+        ? withAlpha(MACRO_COLOR[macro], 0.55)
+        : 'rgba(0,229,255,.06)',
+      borderColor: 'rgba(0,229,255,.6)', borderWidth: 1,
+    },
+  }))
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#0a1929',
+      borderColor: 'var(--cockpit-accent)',
+      textStyle: { color: '#cfe3ff' },
+      formatter: (p: { name: string; value: number; data?: { macro?: string } }) => {
+        const macro = p.data?.macro
+        const label = macro ? DISTRICT_LABELS[macro] || macro : ''
+        return `<b>${p.name}</b> (${label})<br/>项目数: ${p.value}`
+      },
+    },
+    geo: {
+      map: 'HK', roam: false, zoom: 1.15,
+      label: { show: true, color: '#cfe3ff', fontSize: 10 },
+      itemStyle: { areaColor: 'rgba(0,30,60,.3)', borderColor: 'rgba(0,229,255,.4)' },
+      emphasis: { label: { color: '#fff', fontSize: 12 }, itemStyle: { areaColor: 'rgba(255,64,129,.4)' } },
+    },
+    series: [
+      {
+        name: 'HK', type: 'map', map: 'HK', roam: false, zoom: 1.15,
+        data: seriesData,
+        label: { show: true, color: '#cfe3ff', fontSize: 10 },
+        emphasis: {
+          label: { color: '#fff', fontSize: 12 },
+          itemStyle: { areaColor: 'rgba(255,64,129,.5)' },
+        },
+      },
+    ],
+  })
+}
+
+function resizeChart() { chart?.resize() }
+
 onMounted(async () => {
   await load()
-  refreshTimer = window.setInterval(load, 60000)
+  await nextTick()
+  await loadMap()
+  refreshTimer = window.setInterval(async () => {
+    await load()
+    renderMap()
+  }, 60000)
+  window.addEventListener('resize', resizeChart)
 })
-onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
+
+onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+  if (chart) chart.dispose()
+  window.removeEventListener('resize', resizeChart)
+})
 </script>
 
 <template>
   <div class="grid">
+    <!-- KPI 4 卡 -->
     <div class="kpi-row">
       <div class="panel kpi-card">
         <div class="kpi-label">在管项目</div>
@@ -57,8 +175,18 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
       </div>
     </div>
 
+    <!-- 香港项目地理分布（原 Tab 2 移过来） -->
+    <div class="panel map-panel">
+      <div class="panel-title">
+        香港项目分布
+        <span v-if="mapError" class="map-err" :title="mapError">⚠ 地图数据加载失败</span>
+      </div>
+      <div v-show="!mapError" ref="mapEl" class="echarts-map"></div>
+      <div v-if="mapError" class="empty">地图数据需联网拉取 (DataV CDN)</div>
+    </div>
+
+    <!-- 下方两卡：能力矩阵 + 已交付客户 -->
     <div class="lower">
-      <!-- 能力矩阵卡 -->
       <div class="panel">
         <div class="panel-title">能力矩阵</div>
         <div v-if="capabilities.length === 0" class="empty">暂无技能登记</div>
@@ -79,7 +207,6 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
         </div>
       </div>
 
-      <!-- 已交付客户卡 -->
       <div class="panel">
         <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
         <div v-if="deliveredClients.length === 0" class="empty">暂无已验收/已归档项目</div>
@@ -117,6 +244,10 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 }
 .unit { font-size: 0.4em; margin-left: 8px; color: var(--cockpit-text-dim); font-weight: normal; }
 
+.map-panel { flex: 1.4; min-height: 260px; display: flex; flex-direction: column; }
+.echarts-map { flex: 1; min-height: 240px; }
+.map-err { margin-left: 12px; color: #ff8e00; font-size: 11px; }
+
 .lower {
   flex: 1; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; min-height: 0;
 }
@@ -126,9 +257,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 }
 
 /* 能力矩阵 */
-.cap-grid {
-  display: flex; flex-direction: column; gap: 10px; margin-top: 12px;
-}
+.cap-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .cap-cell {
   display: grid; grid-template-columns: 90px 1fr 70px; gap: 12px; align-items: center;
 }

@@ -9,12 +9,11 @@ const logoSrc = '/china-telecom-logo.png'
 
 const tabs = [
   { n: 1, path: '/overview', title: '总览' },
-  { n: 2, path: '/project-map', title: '项目地图' },
-  { n: 3, path: '/profit-compare', title: '利润对比 ⭐' },
-  { n: 4, path: '/engineer', title: '工程师视图' },
-  { n: 5, path: '/efficiency', title: '效率榜' },
-  { n: 6, path: '/knowledge', title: '技术沉淀 ⭐' },
-  { n: 7, path: '/capability', title: '团队能力 ⭐' },
+  { n: 2, path: '/profit-compare', title: '利润对比 ⭐' },
+  { n: 3, path: '/engineer', title: '工程师视图' },
+  { n: 4, path: '/efficiency', title: '项目进度视图' },
+  { n: 5, path: '/knowledge', title: '技术沉淀 ⭐' },
+  { n: 6, path: '/capability', title: '团队能力 ⭐' },
 ]
 
 const activePath = computed(() => route.path)
