@@ -1,3 +1,4 @@
+from app.models.asset_reference import AssetReference
 from app.models.assignment import Assignment
 from app.models.data_dict import DataDict
 from app.models.engineer import Certificate, Engineer
@@ -9,6 +10,7 @@ from app.models.project_revenue import ProjectRevenue
 from app.models.retrospective import ProjectRetrospective
 from app.models.sales_person import SalesPerson
 from app.models.skill import EngineerSkill, Skill
+from app.models.skill_snapshot import EngineerSkillSnapshot
 from app.models.supplier import Supplier
 from app.models.timesheet import Timesheet
 from app.models.user import User
@@ -35,4 +37,6 @@ __all__ = [
     "ProjectRevenue",
     "KnowledgeAsset",
     "ProjectRetrospective",
+    "AssetReference",
+    "EngineerSkillSnapshot",
 ]

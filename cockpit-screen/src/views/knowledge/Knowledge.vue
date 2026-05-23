@@ -30,16 +30,17 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text">{{ fmtInt(stats?.total_assets) }}</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">近 30 天新增</div>
-        <div class="kpi-value glow-text">{{ fmtInt(stats?.recent_30d) }}</div>
+        <div class="kpi-label">跨项目复用次数</div>
+        <div class="kpi-value glow-text">{{ fmtInt(stats?.total_references) }}</div>
+        <div class="kpi-sub">{{ fmtInt(stats?.distinct_reused_assets) }} 个资产被复用</div>
+      </div>
+      <div class="panel kpi-card brag-2">
+        <div class="kpi-label">复用节省工时</div>
+        <div class="kpi-value glow-text">{{ fmtInt(stats?.total_hours_saved) }}<span class="unit"> 工时</span></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">沉淀过的项目数</div>
         <div class="kpi-value glow-text">{{ fmtInt(stats?.project_coverage) }}</div>
-      </div>
-      <div class="panel kpi-card">
-        <div class="kpi-label">资产分类数</div>
-        <div class="kpi-value glow-text">{{ stats?.by_category.length ?? '—' }}</div>
       </div>
     </div>
 
@@ -88,6 +89,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   color: var(--cockpit-accent-3);
   text-shadow: 0 0 8px var(--cockpit-accent-3), 0 0 16px rgba(255, 64, 129, 0.5);
 }
+.kpi-card.brag-2 {
+  border-color: #ffe082;
+  box-shadow: 0 0 18px rgba(255, 224, 130, 0.3);
+}
+.kpi-card.brag-2 .kpi-value { color: #ffe082; text-shadow: 0 0 8px #ffe082; }
+.unit { font-size: 0.4em; color: var(--cockpit-text-dim); font-weight: normal; }
+.kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .lower { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; min-height: 0; }
 .placeholder {
   display: flex; align-items: center; justify-content: center;

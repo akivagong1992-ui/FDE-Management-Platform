@@ -31,9 +31,30 @@ export interface KnowledgeStats {
   by_category: { code: string; label: string; count: number }[]
   recent_30d: number
   project_coverage: number
+  total_references: number
+  distinct_reused_assets: number
+  total_hours_saved: number
 }
 export const getKnowledgeStats = () =>
   http.get<KnowledgeStats>('/knowledge-stats').then((r) => r.data)
+
+export interface GrowthTrendPoint {
+  date: string
+  engineer_count: number
+  avg_skill_count: number
+  avg_skill_level: number
+  avg_cert_count: number
+}
+export interface GrowthTrend {
+  series: GrowthTrendPoint[]
+  snapshots_count: number
+  growth_delta: {
+    avg_skill_count: number
+    avg_skill_level: number
+    avg_cert_count: number
+  }
+}
+export const getGrowthTrend = () => http.get<GrowthTrend>('/growth-trend').then((r) => r.data)
 
 // ── Phase 3 bulk aggregation types ──────────────────────────────
 

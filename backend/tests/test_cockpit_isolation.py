@@ -105,6 +105,7 @@ def test_cockpit_aggregations_isolation() -> None:
         "/api/cockpit/efficiency-stats",
         "/api/cockpit/capability-stats",
         "/api/cockpit/relationship-stats",
+        "/api/cockpit/growth-trend",
     ]
     with TestClient(app) as c:
         for p in paths:

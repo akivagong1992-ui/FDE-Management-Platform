@@ -5,6 +5,10 @@ import {
   createAsset, deleteAsset, getAsset, listAssets, updateAsset,
   type Confidentiality, type KnowledgeAsset, type KnowledgeAssetPayload,
 } from '@/api/knowledgeAssets'
+import {
+  createReference, deleteReference, listReferences,
+  type AssetReference,
+} from '@/api/assetReferences'
 import { listProjects, type Project } from '@/api/projects'
 import { listDict, type DictItem } from '@/api/dataDict'
 
@@ -84,9 +88,38 @@ async function onDelete(a: KnowledgeAsset) {
   await load()
 }
 
+const refs = ref<AssetReference[]>([])
+const refForm = reactive<{ project_id: number | null; estimated_hours_saved: number | null; notes: string }>({
+  project_id: null, estimated_hours_saved: 8, notes: '',
+})
+
 async function openDetail(a: KnowledgeAsset) {
   detail.value = await getAsset(a.id)
+  refs.value = await listReferences(a.id)
+  refForm.project_id = projects.value[0]?.id || null
+  refForm.estimated_hours_saved = 8
+  refForm.notes = ''
   detailOpen.value = true
+}
+
+async function onAddRef() {
+  if (!detail.value || !refForm.project_id) {
+    ElMessage.warning('请选择项目'); return
+  }
+  await createReference(detail.value.id, {
+    project_id: refForm.project_id,
+    estimated_hours_saved: refForm.estimated_hours_saved ?? undefined,
+    notes: refForm.notes || undefined,
+  })
+  refs.value = await listReferences(detail.value.id)
+  ElMessage.success('已添加引用')
+}
+
+async function onDelRef(r: AssetReference) {
+  if (!detail.value) return
+  await ElMessageBox.confirm(`删除引用记录 #${r.id}？`, '提示', { type: 'warning' })
+  await deleteReference(detail.value.id, r.id)
+  refs.value = await listReferences(detail.value.id)
 }
 
 onMounted(load)
@@ -229,6 +262,40 @@ onMounted(load)
         <div v-if="detail.content" style="margin-top: 16px">
           <div style="font-weight: 600; margin-bottom: 8px">正文</div>
           <pre style="white-space: pre-wrap; word-break: break-all; background: #f7f9fc; padding: 12px; border-radius: 4px">{{ detail.content }}</pre>
+        </div>
+
+        <!-- 复用记录 -->
+        <div style="margin-top: 24px">
+          <div style="font-weight: 600; margin-bottom: 8px">
+            复用记录
+            <el-tag size="small" type="success" style="margin-left: 8px">{{ refs.length }} 次</el-tag>
+            <el-tag size="small" type="info" v-if="refs.length > 0" style="margin-left: 4px">
+              累计节省 {{ refs.reduce((s, r) => s + Number(r.estimated_hours_saved || 0), 0) }} 工时
+            </el-tag>
+          </div>
+          <el-table :data="refs" size="small" v-if="refs.length > 0">
+            <el-table-column prop="project_name" label="项目" min-width="160" />
+            <el-table-column label="节省工时" width="90">
+              <template #default="{ row }">{{ row.estimated_hours_saved || '—' }}</template>
+            </el-table-column>
+            <el-table-column prop="notes" label="备注" />
+            <el-table-column label="操作" width="70">
+              <template #default="{ row }">
+                <el-button link type="danger" size="small" @click="onDelRef(row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else :image-size="60" description="还没复用记录" />
+
+          <div style="display: grid; grid-template-columns: 1.5fr 100px 1fr auto; gap: 8px; margin-top: 12px">
+            <el-select v-model="refForm.project_id" filterable placeholder="选项目">
+              <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
+            </el-select>
+            <el-input-number v-model="refForm.estimated_hours_saved" :min="0" :max="10000"
+                             :step="4" :precision="1" controls-position="right" placeholder="节省工时" />
+            <el-input v-model="refForm.notes" placeholder="备注（可选）" />
+            <el-button type="primary" @click="onAddRef">添加</el-button>
+          </div>
         </div>
       </div>
     </el-drawer>

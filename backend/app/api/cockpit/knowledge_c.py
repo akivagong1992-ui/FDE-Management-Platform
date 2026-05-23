@@ -7,6 +7,7 @@ from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.models.asset_reference import AssetReference
 from app.models.data_dict import DataDict
 from app.models.knowledge_asset import KnowledgeAsset
 
@@ -45,10 +46,24 @@ async def knowledge_stats(db: AsyncSession = Depends(get_db)) -> dict:
         .where(KnowledgeAsset.project_id.is_not(None))
     )).scalar_one() or 0
 
+    # Reuse stats (Phase 3-next-i)
+    reuse_count = (await db.execute(
+        select(func.count(AssetReference.id))
+    )).scalar_one() or 0
+    total_hours_saved = (await db.execute(
+        select(func.coalesce(func.sum(AssetReference.estimated_hours_saved), 0))
+    )).scalar_one()
+    distinct_reused_assets = (await db.execute(
+        select(func.count(distinct(AssetReference.asset_id)))
+    )).scalar_one() or 0
+
     return {
         "total_assets": int(total),
         "by_category": by_category,
         "recent_30d": int(recent),
         "project_coverage": int(proj_cov),
+        "total_references": int(reuse_count),
+        "distinct_reused_assets": int(distinct_reused_assets),
+        "total_hours_saved": float(total_hours_saved or 0),
         # No money fields by design — keeps cockpit isolation invariant
     }

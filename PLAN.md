@@ -535,14 +535,23 @@ Manpower-management-platform/
 - [x] 管理后台 `/relationship` 模块（项目复盘 CRUD + 满意度评分 + 闭环开关）
 - [x] 续单率代理指标（NeedParty 拥有 ≥2 项目 / 总客户）
 
-**3 next — 深化**（待办）
+**3-next-i — 知识复用 + 能力成长**（已完成 ✅）
+- [x] **AssetReference** 模型：知识资产被某项目复用，可填"节省工时"折算
+- [x] **EngineerSkillSnapshot** 模型 + `/api/admin/skill-snapshots/trigger` 一键拍快照接口
+- [x] Cockpit Tab 6 新增 KPI：跨项目复用次数 + 节省工时
+- [x] Cockpit Tab 7 新增成长曲线（季度快照 SVG 折线 + 增长 delta）
+- [x] 管理后台 `/capability` 模块（KPI + 团队成长曲线 + 最新快照表 + 拍快照按钮）
+- [x] 管理后台 `/knowledge` 详情抽屉新增"复用记录"区块（增/删 reference）
+- [x] pytest 隔离测试扩展覆盖 `/api/cockpit/growth-trend`
+
+**3-next-ii — 深化**（待办）
 - [ ] **效率指标深化**：人均交付、返工率、变更次数
-- [ ] **能力成长曲线**：EngineerSkillSnapshot 季度快照 + IDP 个人发展计划
-- [ ] **知识资产复用追踪**：AssetReference + 节省工时折算
+- [ ] **IDP 个人发展计划**（基于现有 EngineerSkillSnapshot，加 target + due_date 字段）
 - [ ] 完整 RenewalTracking model（替代当前粗略代理）
 - [ ] 大屏动效打磨、自动轮播、4K 适配
 - [ ] **节省金额** brag 指标公式打磨（R6）
 - [ ] HK 地图组件（替代项目看板，需 geoJSON）
+- [ ] 培训记录 Training model（4.8 完整）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -618,3 +627,5 @@ Manpower-management-platform/
 - **v0.3.7**：Timesheet 单位由「小时」改为「**人天**」(`person_days`)，0.5 自然倍数步进 (0.5/1.0/1.5/...)，单日上限 3。前后端 + Excel 模板同步；用户拍板**不**接入"人天 × 工时单价"做成本（成本仍由 VendorServiceFee 主导）。
 - **v0.3.8** (Phase 2b-ii 完成后)：KnowledgeAsset 模型 + 7 类资产字典 seed + 三级保密分级（public/internal/confidential）+ 关键词搜索；engineer 角色看不到机密项；驾驶舱 Tab 6 接真数据（累计/近 30 天/项目覆盖/分类条形图 + 痛点叙事）。pytest 隔离测试覆盖到知识资产接口。下一步 Phase 3。
 - **v0.3.9** (Phase 3 bulk 完成后)：ProjectRetrospective + 5 个驾驶舱聚合 endpoint + 管理后台 ⑧ 复盘模块；驾驶舱 Tab 2/3/4/5/7/8 全部从 placeholder 改为真数据组件（项目看板 / 利润对比 / 工程师视图 / 效率仪表盘 / 技能矩阵热力 / 客户满意度雷达）。pytest 隔离覆盖到 11 个 cockpit endpoint。8 Tab 真实数据全开。
+- **v0.4.0** (seed_demo + Vendor 节省修复)：一次性脚本灌 30 工程师 / 28 项目 / 248 工时 / 30 资产 / 9 复盘等演示级数据；修复 Vendor 节省榜双重计数（改为按服务费比例分摊）。
+- **v0.4.1** (Phase 3-next-i 完成后)：AssetReference + EngineerSkillSnapshot 两个新模型；管理后台 `/capability` 完整页（含 SVG 团队成长曲线 + 拍快照按钮）；`/knowledge` 详情抽屉加复用记录区块；驾驶舱 Tab 6 加复用 KPI、Tab 7 加成长曲线。seed_demo 生成 8 季度 × 30 工程师 = 240 快照 + 36 复用记录。

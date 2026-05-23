@@ -11,9 +11,12 @@ import random
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
+from sqlalchemy import select
+
 from app.core.crypto import encrypt_field
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
+from app.models.asset_reference import AssetReference
 from app.models.assignment import Assignment
 from app.models.data_dict import DataDict
 from app.models.engineer import Certificate, Engineer
@@ -25,6 +28,7 @@ from app.models.project_revenue import ProjectRevenue
 from app.models.retrospective import ProjectRetrospective
 from app.models.sales_person import SalesPerson
 from app.models.skill import EngineerSkill, Skill
+from app.models.skill_snapshot import EngineerSkillSnapshot
 from app.models.supplier import Supplier
 from app.models.timesheet import Timesheet
 from app.models.user import User
@@ -489,6 +493,54 @@ async def main() -> None:
                 retro_count += 1
         await db.flush()
         print(f"  ✓ retrospectives x{retro_count}")
+
+        # ── Asset References (knowledge reuse) ────────────────────────
+        ref_count = 0
+        all_assets = (await db.execute(select(KnowledgeAsset))).scalars().all()
+        # ~50% of assets get referenced 1-3 times
+        for a in all_assets:
+            if random.random() < 0.5:
+                continue
+            for _ in range(random.randint(1, 3)):
+                target_project = random.choice(proj_objs)
+                hours_saved = Decimal(random.choice([4, 8, 16, 24, 40, 60])) + random.choice([Decimal("0"), Decimal("0.5")])
+                db.add(AssetReference(
+                    asset_id=a.id, project_id=target_project.id,
+                    estimated_hours_saved=hours_saved,
+                    notes=f"复用 {a.title[:20]}",
+                    referenced_by_user_id=admin.id,
+                ))
+                ref_count += 1
+        await db.flush()
+        print(f"  ✓ asset references x{ref_count}")
+
+        # ── EngineerSkillSnapshots (8 quarters of growth) ─────────────
+        # For each active engineer, create snapshots every ~90 days for 2 years
+        # with simulated growth: skill_count and avg_level slightly higher
+        # in later snapshots.
+        snap_count = 0
+        for e in active_engineers:
+            base_skills = random.randint(2, 4)  # starting skill count
+            base_level = round(random.uniform(2.0, 3.5), 2)
+            base_certs = random.randint(0, 1)
+            # 8 snapshots: 720d ago to 0d ago, every 90d
+            for q in range(8):
+                snap_date = days_ago(720 - q * 90)
+                # Simulate growth: each quarter +0.3 skill on avg, +0.05 level, +0.1 cert
+                growth_factor = q / 8.0
+                skills_now = base_skills + int(growth_factor * random.uniform(2, 5))
+                level_now = round(min(5.0, base_level + growth_factor * random.uniform(0.5, 1.2)), 2)
+                certs_now = base_certs + int(growth_factor * random.uniform(0, 3))
+                db.add(EngineerSkillSnapshot(
+                    engineer_id=e.id, snapshot_date=snap_date,
+                    skill_count=skills_now,
+                    avg_level=Decimal(str(level_now)),
+                    cert_count=certs_now,
+                    level=e.level,
+                ))
+                snap_count += 1
+        await db.flush()
+        print(f"  ✓ skill snapshots x{snap_count} (8 季度 × {len(active_engineers)} 工程师)")
 
         await db.commit()
 
