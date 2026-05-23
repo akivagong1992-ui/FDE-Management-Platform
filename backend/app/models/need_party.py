@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -23,4 +23,9 @@ class NeedParty(Base):
     contact_phone: Mapped[str | None] = mapped_column(String(32))
     contact_email: Mapped[str | None] = mapped_column(String(128))
     notes: Mapped[str | None] = mapped_column(Text)
+
+    # 驾驶舱展示控制
+    show_in_cockpit: Mapped[bool] = mapped_column(Boolean, default=False)  # 是否在驾驶舱已交付客户区展示
+    logo_path: Mapped[str | None] = mapped_column(String(255))  # uploads 相对路径，对应 /api/uploads/<path>
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

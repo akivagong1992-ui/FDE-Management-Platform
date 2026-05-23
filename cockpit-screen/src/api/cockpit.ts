@@ -9,12 +9,16 @@ export interface SavingsAndValue {
   currency: string
 }
 
+export interface DeliveredClient {
+  name: string
+  logo_path: string | null
+}
 export interface OverviewKpi {
   active_projects: number
   team_size: number
   on_time_delivery_rate: number  // 后端保留供审计；前端不再展示，改用 completed_this_month
   completed_this_month: number
-  delivered_clients: string[]
+  delivered_clients: DeliveredClient[]
   capability_by_category: { category: string; engineer_count: number }[]
   by_status: { label: string; count: number }[]
   updated_at: string

@@ -10,6 +10,8 @@ class NeedPartyBase(BaseModel):
     contact_phone: str | None = None
     contact_email: EmailStr | None = None
     notes: str | None = None
+    show_in_cockpit: bool = False
+    logo_path: str | None = None
 
 
 class NeedPartyCreate(NeedPartyBase):
@@ -23,6 +25,8 @@ class NeedPartyUpdate(BaseModel):
     contact_phone: str | None = None
     contact_email: EmailStr | None = None
     notes: str | None = None
+    show_in_cockpit: bool | None = None
+    logo_path: str | None = None
 
 
 class NeedPartyOut(NeedPartyBase):

@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from sqlalchemy import select
 
@@ -87,6 +89,12 @@ app.add_middleware(
 
 app.include_router(admin_router)
 app.include_router(cockpit_router)
+
+# 上传文件静态服务：admin/cockpit 通过 /api/uploads/<path> 访问 logos / 证书附件
+# 挂在 /api 前缀下复用既有 Vite + nginx 的 /api/* 代理，免去额外配置
+_upload_root = Path(settings.UPLOAD_DIR)
+_upload_root.mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=str(_upload_root)), name="uploads")
 
 
 @app.get("/health")

@@ -200,15 +200,15 @@ onUnmounted(() => {
 
         <div class="panel">
           <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
-          <div v-if="deliveredClients.length === 0" class="empty">暂无已验收/已归档项目</div>
-          <div v-else class="client-grid">
-            <div v-for="(name, i) in deliveredClients" :key="i" class="client-chip">
-              <span class="chip-dot"></span>
-              <span class="chip-name">{{ name }}</span>
+          <div v-if="deliveredClients.length === 0" class="empty">暂无授权展示的客户</div>
+          <div v-else class="logo-grid">
+            <div v-for="(c, i) in deliveredClients" :key="i" class="logo-tile" :title="c.name">
+              <img :src="`/api/uploads/${c.logo_path}`" :alt="c.name" class="logo-img" />
+              <div class="logo-name">{{ c.name }}</div>
             </div>
           </div>
           <div class="cap-meta" v-if="deliveredClients.length > 0">
-            数据口径：拥有验收/归档项目的客户
+            仅展示后台勾选「驾驶舱展示」+ 已上传 Logo 的客户
           </div>
         </div>
       </div>
@@ -289,30 +289,41 @@ onUnmounted(() => {
 }
 .hi { color: var(--cockpit-accent); font-family: 'Courier New', monospace; padding: 0 2px; }
 
-/* 已交付客户 */
-.client-grid {
-  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;
+/* 已交付客户 logo 矩阵 */
+.logo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px; margin-top: 12px;
   align-content: flex-start;
 }
-.client-chip {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 14px;
-  background: rgba(0, 229, 255, 0.08);
+.logo-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--cockpit-border);
   border-radius: 10px;
-  font-size: 13px;
-  color: var(--cockpit-text);
   transition: all 0.3s;
+  min-height: 92px;
 }
-.client-chip:hover {
-  background: rgba(255, 64, 129, 0.12);
-  border-color: var(--cockpit-accent-3);
-  box-shadow: 0 0 8px rgba(255, 64, 129, 0.3);
+.logo-tile:hover {
+  background: rgba(0, 229, 255, 0.10);
+  border-color: var(--cockpit-accent);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
 }
-.chip-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--cockpit-accent);
-  box-shadow: 0 0 4px var(--cockpit-accent);
+.logo-img {
+  max-width: 80px; max-height: 44px;
+  object-fit: contain;
+  filter: brightness(1.1);
 }
-.chip-name { letter-spacing: 1px; }
+.logo-name {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--cockpit-text-dim);
+  text-align: center;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
 </style>
