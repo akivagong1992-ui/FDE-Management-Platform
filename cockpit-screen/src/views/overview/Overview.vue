@@ -135,7 +135,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
 .cap-name { color: var(--cockpit-text); font-size: 14px; }
 .cap-bar {
   height: 14px; background: rgba(0, 229, 255, 0.08);
-  border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden;
+  border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
 }
 .cap-fill {
   height: 100%;
@@ -166,7 +166,7 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer) })
   padding: 8px 14px;
   background: rgba(0, 229, 255, 0.08);
   border: 1px solid var(--cockpit-border);
-  border-radius: 2px;
+  border-radius: 10px;
   font-size: 13px;
   color: var(--cockpit-text);
   transition: all 0.3s;

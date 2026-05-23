@@ -269,12 +269,12 @@ function withAlpha(hex: string, a: number): string {
 .proj-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; overflow-y: auto; max-height: 100%; }
 .proj-row {
   background: rgba(10, 25, 41, 0.6); border: 1px solid var(--cockpit-border);
-  border-left: 4px solid var(--cockpit-accent); padding: 10px; border-radius: 2px;
+  border-left: 4px solid var(--cockpit-accent); padding: 10px; border-radius: 10px;
 }
 .proj-name { color: var(--cockpit-text); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .proj-meta { display: flex; gap: 8px; align-items: center; }
 .proj-badge {
-  font-size: 11px; padding: 2px 6px; border-radius: 2px; color: #061327; font-weight: 600;
+  font-size: 11px; padding: 2px 6px; border-radius: 999px; color: #061327; font-weight: 600;
 }
 .proj-client { color: var(--cockpit-text-dim); font-size: 12px; }
 .empty { color: var(--cockpit-text-dim); padding: 20px; text-align: center; }

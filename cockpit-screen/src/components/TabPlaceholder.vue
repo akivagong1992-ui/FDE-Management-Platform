@@ -50,7 +50,7 @@ defineProps<{
   justify-content: center;
   height: calc(100% - 30px);
   border: 1px dashed var(--cockpit-border);
-  border-radius: 2px;
+  border-radius: 10px;
   gap: 8px;
 }
 .big-icon { font-size: 64px; opacity: 0.5; }

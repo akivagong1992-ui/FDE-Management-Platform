@@ -117,7 +117,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 }
 .kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 
-.sat-bar { width: 80%; height: 12px; background: rgba(0,229,255,.1); border: 1px solid var(--cockpit-border); margin-top: 8px; border-radius: 2px; overflow: hidden; }
+.sat-bar { width: 80%; height: 12px; background: rgba(0,229,255,.1); border: 1px solid var(--cockpit-border); margin-top: 8px; border-radius: 999px; overflow: hidden; }
 .sat-fill { height: 100%; background: linear-gradient(90deg, var(--cockpit-accent-3), #ffe082); box-shadow: 0 0 6px var(--cockpit-accent-3); transition: width .6s ease; }
 
 .lower { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; min-height: 0; }
@@ -130,7 +130,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .rank-2 { color: #cfe3ff; }
 .rank-3 { color: #ff8e00; }
 .bar-label { color: var(--cockpit-text); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-track { height: 12px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden; }
+.bar-track { height: 12px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2)); box-shadow: 0 0 6px var(--cockpit-accent); }
 .bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; font-size: 12px; }
 .reason-row { grid-template-columns: 140px 1fr 50px; }

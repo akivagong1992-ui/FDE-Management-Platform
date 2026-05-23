@@ -82,7 +82,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .level-strip { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
 .level-cell {
   display: flex; flex-direction: column; align-items: center;
-  padding: 4px 8px; border: 1px solid var(--cockpit-border); border-radius: 2px;
+  padding: 4px 8px; border: 1px solid var(--cockpit-border); border-radius: 8px;
 }
 .level-tag { color: var(--cockpit-accent); font-size: 11px; font-weight: 600; }
 .level-num { color: var(--cockpit-text); font-family: 'Courier New', monospace; font-weight: 700; }
@@ -95,7 +95,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .bar-list { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
 .bar-row { display: grid; grid-template-columns: 140px 1fr 80px; gap: 12px; align-items: center; }
 .bar-label { color: var(--cockpit-text); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bar-track { height: 14px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden; }
+.bar-track { height: 14px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2)); box-shadow: 0 0 8px var(--cockpit-accent); }
 .bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; font-size: 13px; }
 </style>

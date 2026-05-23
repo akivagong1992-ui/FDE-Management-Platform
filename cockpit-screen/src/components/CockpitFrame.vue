@@ -129,7 +129,7 @@ onUnmounted(() => {
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 10px;
 }
 .btn:hover { background: rgba(0, 229, 255, 0.1); }
 
@@ -150,7 +150,7 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 14px;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 10px;
   transition: all 0.2s;
 }
 .tab:hover { color: var(--cockpit-text); border-color: var(--cockpit-border); }

@@ -114,7 +114,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .bar-label { color: var(--cockpit-text); font-size: 14px; }
 .bar-track {
   height: 14px; background: rgba(0, 229, 255, 0.08);
-  border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden;
+  border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
 }
 .bar-fill {
   height: 100%;

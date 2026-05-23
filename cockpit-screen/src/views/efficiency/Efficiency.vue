@@ -103,7 +103,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
 .status-pill {
-  padding: 16px; border: 1px solid var(--cockpit-border); border-radius: 2px;
+  padding: 16px; border: 1px solid var(--cockpit-border); border-radius: 10px;
   background: rgba(10, 25, 41, 0.6); text-align: center;
 }
 .status-label { color: var(--cockpit-text-dim); font-size: 12px; letter-spacing: 2px; }
@@ -117,7 +117,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .recent-name { color: var(--cockpit-text); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .recent-meta { display: flex; gap: 12px; align-items: center; }
 .recent-date { color: var(--cockpit-text-dim); font-size: 11px; font-family: 'Courier New', monospace; }
-.recent-tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 2px; }
+.recent-tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .recent-tag.on { background: rgba(0,229,255,.2); color: var(--cockpit-accent); }
 .recent-tag.late { background: rgba(255,64,129,.2); color: var(--cockpit-accent-3); }
 </style>

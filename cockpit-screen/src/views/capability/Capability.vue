@@ -194,7 +194,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .bar-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .bar-row { display: grid; grid-template-columns: 120px 1fr 50px; gap: 8px; align-items: center; }
 .bar-label { color: var(--cockpit-text); font-size: 13px; }
-.bar-track { height: 12px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden; }
+.bar-track { height: 12px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2)); box-shadow: 0 0 6px var(--cockpit-accent); }
 .bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; }
 </style>
