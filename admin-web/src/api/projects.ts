@@ -1,7 +1,7 @@
 import http from './http'
 
 export type ProjectKind = 'revenue' | 'no_revenue'
-export type ProjectStatus = 'drafting' | 'in_progress' | 'accepting' | 'closing' | 'archived'
+export type ProjectStatus = 'drafting' | 'in_progress' | 'accepting' | 'closing' | 'archived' | 'cancelled'
 export type ValueBasis =
   | 'outsource_equiv' | 'replace_audit_fee' | 'avoid_penalty'
   | 'save_hours' | 'strategic_reserve' | 'other'

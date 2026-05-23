@@ -13,8 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
 from app.models.need_party import NeedParty
-from app.models.project import PROJECT_KIND_NO_REVENUE, PROJECT_KIND_REVENUE, Project
-from app.models.project_revenue import ProjectRevenue
+from app.models.project import (
+    PROJECT_KIND_NO_REVENUE,
+    PROJECT_KIND_REVENUE,
+    PROJECT_STATUS_ARCHIVED,
+    PROJECT_STATUS_CANCELLED,
+    PROJECT_STATUS_CLOSING,
+    Project,
+)
+from app.models.project_revenue import REVENUE_STATUS_RECEIVED, ProjectRevenue
 from app.models.sales_person import SalesPerson
 from app.models.vendor_service_fee import VendorServiceFee
 
@@ -177,28 +184,54 @@ async def compute_by_need_party(db: AsyncSession) -> list[dict]:
 # ── 口径 C — savings + value_created (cockpit-only) ────────────────────
 
 async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
-    """口径 C：(Σ 传统外包对标 − Σ 实际成本)  +  Σ 无收入项目 value_created。
+    """口径 C：仅在 *实际实现价值* 后才计入驾驶舱降本。
+
+    收款门槛（方案 B）：
+    ─ 有收入项目: 至少有 1 笔 ProjectRevenue.status='received'，且 status != cancelled。
+                  effective_benchmark = min(outsource_benchmark, Σ 实收金额)；
+                  savings = effective_benchmark − actual_cost。
+                  实收 < 报价 时按实收封顶，避免虚高。
+    ─ 无收入项目: status ∈ {closing, archived}（项目已完成）且 status != cancelled。
+                  value_created = outsource_benchmark_amount（已封顶为完成标记）。
 
     驾驶舱专用接口。**禁止返回口径 A 或 B 的数字**（合规约束）。
     """
     costs = await _project_costs(db)
 
-    # Revenue-kind projects: savings = benchmark - actual_cost
-    rev_rows = (await db.execute(
-        select(Project).where(Project.kind == PROJECT_KIND_REVENUE)
-    )).scalars().all()
-    total_benchmark_revenue = ZERO
-    total_actual_cost_revenue = ZERO
-    for p in rev_rows:
-        bench = _dec(p.outsource_benchmark_amount)
-        actual = costs.get(p.id, ZERO)
-        total_benchmark_revenue += bench
-        total_actual_cost_revenue += actual
-    savings = total_benchmark_revenue - total_actual_cost_revenue
+    # 1) 先汇总每个项目的实收金额（status=received 才算）
+    received_rows = (await db.execute(
+        select(ProjectRevenue.project_id, func.coalesce(func.sum(ProjectRevenue.amount), 0))
+        .where(ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
+        .group_by(ProjectRevenue.project_id)
+    )).all()
+    received_by_pid: dict[int, Decimal] = {pid: _dec(amt) for pid, amt in received_rows}
 
-    # No-revenue projects: value_created = outsource_benchmark_amount (R13 auto)
+    # 2) 有收入项目：实收门槛 + 报价封顶
+    rev_rows = (await db.execute(
+        select(Project).where(
+            Project.kind == PROJECT_KIND_REVENUE,
+            Project.status != PROJECT_STATUS_CANCELLED,
+        )
+    )).scalars().all()
+
+    savings = ZERO
+    counted_revenue_projects = 0
+    for p in rev_rows:
+        received = received_by_pid.get(p.id, ZERO)
+        if received <= 0:
+            continue  # 还没收到任何钱 → 不计入降本（避免虚报）
+        bench = _dec(p.outsource_benchmark_amount)
+        effective_bench = min(bench, received) if bench > 0 else received
+        actual = costs.get(p.id, ZERO)
+        savings += effective_bench - actual
+        counted_revenue_projects += 1
+
+    # 3) 无收入项目：必须已完成（closing / archived），且非 cancelled
     no_rev_rows = (await db.execute(
-        select(Project).where(Project.kind == PROJECT_KIND_NO_REVENUE)
+        select(Project).where(
+            Project.kind == PROJECT_KIND_NO_REVENUE,
+            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
+        )
     )).scalars().all()
     value_created = sum((_dec(p.outsource_benchmark_amount) for p in no_rev_rows), ZERO)
 
@@ -207,7 +240,8 @@ async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
         "savings_from_revenue_projects": float(savings),
         "value_created_from_no_revenue_projects": float(value_created),
         "total_c_view": float(total_c),
-        "revenue_project_count": len(rev_rows),
+        # 信息透明：让前端能展示「N 个项目计入 / 总报价 M」给老板看
+        "revenue_project_count": counted_revenue_projects,
         "no_revenue_project_count": len(no_rev_rows),
         "currency": "HKD",
         # NOTE: by design this response carries NO field named like

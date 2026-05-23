@@ -42,6 +42,7 @@ const STATUS_OPTIONS: { label: string; value: ProjectStatus }[] = [
   { label: '验收', value: 'accepting' },
   { label: '收尾', value: 'closing' },
   { label: '归档', value: 'archived' },
+  { label: '跑单 / 取消', value: 'cancelled' },
 ]
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(STATUS_OPTIONS.map((o) => [o.value, o.label]))
 

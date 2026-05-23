@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 PROJECT_KIND_PATTERN = "^(revenue|no_revenue)$"
-PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|closing|archived)$"
+PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|closing|archived|cancelled)$"
 VALUE_BASIS_PATTERN = (
     "^(outsource_equiv|replace_audit_fee|avoid_penalty|save_hours|strategic_reserve|other)$"
 )

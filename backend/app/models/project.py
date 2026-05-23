@@ -34,6 +34,7 @@ PROJECT_STATUS_IN_PROGRESS = "in_progress"  # 进行中
 PROJECT_STATUS_ACCEPTING = "accepting"    # 验收
 PROJECT_STATUS_CLOSING = "closing"        # 收尾
 PROJECT_STATUS_ARCHIVED = "archived"      # 归档
+PROJECT_STATUS_CANCELLED = "cancelled"    # 跑单 / 中途取消（不进任何驾驶舱算式）
 
 # value_created_basis (only for no_revenue)
 VALUE_BASIS_OUTSOURCE_EQUIV = "outsource_equiv"        # 等同外包成本（默认）

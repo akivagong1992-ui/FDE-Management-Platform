@@ -21,10 +21,12 @@ from app.models.project import (
     PROJECT_KIND_REVENUE,
     PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
+    PROJECT_STATUS_CANCELLED,
     PROJECT_STATUS_CLOSING,
     PROJECT_STATUS_IN_PROGRESS,
     Project,
 )
+from app.models.project_revenue import REVENUE_STATUS_RECEIVED, ProjectRevenue
 from app.models.skill import EngineerSkill, Skill
 from app.models.vendor import Vendor
 from app.models.vendor_service_fee import VendorServiceFee
@@ -101,23 +103,42 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
     """口径 C 扩展：节省 vs 创造价值 + Top 项目 + Vendor 节省贡献榜。"""
     costs = await _project_costs(db)
 
+    # 收款门槛 + 报价 cap + 排除 cancelled，与 /api/cockpit/savings-and-value 同口径
     rev_projects = (await db.execute(
-        select(Project).where(Project.kind == PROJECT_KIND_REVENUE)
+        select(Project).where(
+            Project.kind == PROJECT_KIND_REVENUE,
+            Project.status != PROJECT_STATUS_CANCELLED,
+        )
     )).scalars().all()
     no_rev_projects = (await db.execute(
-        select(Project).where(Project.kind == PROJECT_KIND_NO_REVENUE)
+        select(Project).where(
+            Project.kind == PROJECT_KIND_NO_REVENUE,
+            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
+        )
     )).scalars().all()
 
-    # Top savings on revenue projects
+    # 每个项目的累计实收金额（status=received 才算）
+    received_rows = (await db.execute(
+        select(ProjectRevenue.project_id, func.coalesce(func.sum(ProjectRevenue.amount), 0))
+        .where(ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
+        .group_by(ProjectRevenue.project_id)
+    )).all()
+    received_by_pid: dict[int, float] = {pid: float(amt) for pid, amt in received_rows}
+
+    # Top savings on revenue projects：实收 > 0 才计入；effective_bench = min(benchmark, received)
     rev_with_savings = []
     for p in rev_projects:
+        received = received_by_pid.get(p.id, 0.0)
+        if received <= 0:
+            continue
         bench = float(p.outsource_benchmark_amount or 0)
+        effective_bench = min(bench, received) if bench > 0 else received
         actual = costs.get(p.id, 0.0)
-        savings = bench - actual
+        savings = effective_bench - actual
         rev_with_savings.append({
             "project_id": p.id, "name": p.name,
             "savings": savings,
-            "benchmark": bench,
+            "benchmark": effective_bench,
             "actual": actual,
         })
     rev_with_savings.sort(key=lambda x: -x["savings"])
