@@ -14,10 +14,10 @@ ID_DOC_HKID = "HKID"
 ID_DOC_PASSPORT = "passport"
 ID_DOC_MAINLAND = "mainland_id"
 
-STATUS_RESERVED = "reserved"
-STATUS_PENDING = "pending"
-STATUS_ACTIVE = "active"
-STATUS_DEPARTED = "departed"
+# 工程师在职状态：2 态简化（reserved / pending 已废除，迁移合并到 active）
+STATUS_ACTIVE = "active"      # 在职
+STATUS_DEPARTED = "departed"  # 已离职
+ENGINEER_STATUSES = (STATUS_ACTIVE, STATUS_DEPARTED)
 
 
 class Engineer(Base):
@@ -46,7 +46,7 @@ class Engineer(Base):
 
     # 级别 / 状态
     level: Mapped[int | None] = mapped_column(default=3)  # L1-L5
-    status: Mapped[str] = mapped_column(String(16), default=STATUS_RESERVED)
+    status: Mapped[str] = mapped_column(String(16), default=STATUS_ACTIVE)
     entry_date: Mapped[date | None] = mapped_column(Date)
     exit_date: Mapped[date | None] = mapped_column(Date)
 

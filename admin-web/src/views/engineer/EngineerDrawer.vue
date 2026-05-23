@@ -141,9 +141,13 @@ async function onDeleteCert(id: number) {
             @click="revealOpen = false"
           >隐藏</el-button>
         </el-descriptions-item>
-        <el-descriptions-item label="状态"><el-tag>{{ engineer.status }}</el-tag></el-descriptions-item>
-        <el-descriptions-item label="入场">{{ engineer.entry_date || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="离场">{{ engineer.exit_date || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="engineer.status === 'active' ? 'success' : 'info'" size="small">
+            {{ engineer.status === 'active' ? '在职' : '已离职' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="入职日">{{ engineer.entry_date || '—' }}</el-descriptions-item>
+        <el-descriptions-item label="离职日">{{ engineer.exit_date || '—' }}</el-descriptions-item>
       </el-descriptions>
 
       <el-descriptions v-if="isLead" :column="2" border title="成本（仅 lead/finance 可见）" style="margin-top: 16px">

@@ -30,7 +30,7 @@ const form = reactive<EngineerPayload>({
   email: '',
   id_doc_type: 'HKID',
   id_doc_number: '',
-  status: 'reserved',
+  status: 'active',
   monthly_cost_to_telecom: undefined,
   monthly_real_cost: undefined,
 })
@@ -55,7 +55,7 @@ function openCreate() {
     employment_form: 'vendor_via_labor',
     labor_company: '', full_name: '', english_name: '', gender: '', mobile: '', email: '',
     id_doc_type: 'HKID', id_doc_number: '',
-    status: 'reserved',
+    status: 'active',
     monthly_cost_to_telecom: undefined, monthly_real_cost: undefined,
   })
   dialog.value = true
@@ -123,10 +123,8 @@ onMounted(load)
         <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
       </el-select>
       <el-select v-model="filter.status_filter" placeholder="按状态筛选" clearable style="width: 150px" @change="load">
-        <el-option label="储备" value="reserved" />
-        <el-option label="待入场" value="pending" />
-        <el-option label="在场" value="active" />
-        <el-option label="离场" value="departed" />
+        <el-option label="在职" value="active" />
+        <el-option label="已离职" value="departed" />
       </el-select>
       <div style="flex: 1" />
       <el-button type="primary" @click="openCreate">新增工程师</el-button>
@@ -144,7 +142,9 @@ onMounted(load)
       <el-table-column prop="labor_company" label="劳务公司" min-width="150" />
       <el-table-column label="状态" width="80">
         <template #default="{ row }">
-          <el-tag :type="row.status === 'active' ? 'success' : 'info'">{{ row.status }}</el-tag>
+          <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
+            {{ row.status === 'active' ? '在职' : '已离职' }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="id_doc_number_masked" label="证件号(脱敏)" width="130" />
@@ -218,10 +218,8 @@ onMounted(load)
 
         <el-form-item label="状态">
           <el-select v-model="form.status" style="width: 220px">
-            <el-option label="储备" value="reserved" />
-            <el-option label="待入场" value="pending" />
-            <el-option label="在场" value="active" />
-            <el-option label="离场" value="departed" />
+            <el-option label="在职" value="active" />
+            <el-option label="已离职" value="departed" />
           </el-select>
         </el-form-item>
 

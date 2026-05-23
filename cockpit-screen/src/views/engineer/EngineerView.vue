@@ -23,7 +23,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="data?.total ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">在场工程师</div>
+        <div class="kpi-label">在职工程师</div>
         <div class="kpi-value glow-text"><CountNumber :value="data?.active ?? 0" /></div>
       </div>
       <div class="panel kpi-card">

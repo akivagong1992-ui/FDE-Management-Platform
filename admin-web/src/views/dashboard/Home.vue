@@ -65,7 +65,7 @@ const wan = (n: number | null | undefined) =>
       <el-card shadow="hover">
         <div class="kpi-label">团队规模（在册）</div>
         <div class="kpi-value">{{ overview?.team_size ?? '—' }}</div>
-        <div class="kpi-sub">active 状态工程师</div>
+        <div class="kpi-sub">在职工程师</div>
       </el-card>
     </el-col>
     <el-col :span="6">

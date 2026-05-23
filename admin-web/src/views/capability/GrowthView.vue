@@ -27,7 +27,7 @@ async function load() {
 
 async function onTrigger() {
   await ElMessageBox.confirm(
-    '将为所有在场工程师拍一份当日快照。已存在的会自动跳过。',
+    '将为所有在职工程师拍一份当日快照。已存在的会自动跳过。',
     '触发能力快照', { type: 'info' },
   )
   triggering.value = true
