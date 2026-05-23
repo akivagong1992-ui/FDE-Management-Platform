@@ -11,7 +11,7 @@ const loading = ref(false)
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<Partial<NeedPartyPayload>>({
-  name: '', party_type: 'internal_dept', contact_person: '', contact_phone: '', contact_email: '', notes: '',
+  name: '', party_type: 'external_company', contact_person: '', contact_phone: '', contact_email: '', notes: '',
 })
 
 async function load() {
@@ -21,7 +21,7 @@ async function load() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { name: '', party_type: 'internal_dept', contact_person: '', contact_phone: '', contact_email: '', notes: '' })
+  Object.assign(form, { name: '', party_type: 'external_company', contact_person: '', contact_phone: '', contact_email: '', notes: '' })
   dialog.value = true
 }
 

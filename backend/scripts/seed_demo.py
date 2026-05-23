@@ -51,17 +51,18 @@ VENDORS = [
     ("华域 IT 服务", "华域", "梁经理", "+852 9001 0004", "月结60天"),
 ]
 
+# 业务真实情况：销售面向「电信之外」的外部企业客户，无集团内部门
 NEED_PARTIES = [
-    ("集团香港 IT 部", "internal_dept", "王主管"),
-    ("香港数据中心", "internal_dept", "陈总监"),
-    ("网络运营部", "internal_dept", "李经理"),
-    ("客户服务中心", "internal_dept", "张主任"),
-    ("集团合规部", "internal_dept", "孙总监"),
-    ("海事卫星业务部", "internal_dept", "周经理"),
-    ("国际批发业务", "internal_dept", "吴总监"),
-    ("5G 创新实验室", "internal_dept", "郑博士"),
-    ("跨境光纤项目组", "internal_dept", "韩工"),
-    ("中海集团", "external_company", "钱总"),
+    ("汇丰银行（HSBC）", "external_company", "李先生"),
+    ("渣打银行（Standard Chartered）", "external_company", "陈女士"),
+    ("港铁公司（MTR）", "external_company", "黄经理"),
+    ("香港机管局（HKAA）", "external_company", "张总监"),
+    ("国泰航空（Cathay Pacific）", "external_company", "刘先生"),
+    ("香港交易所（HKEX）", "external_company", "周经理"),
+    ("招商局港口控股", "external_company", "钱总"),
+    ("太古地产（Swire Properties）", "external_company", "孙总监"),
+    ("嘉里物流（Kerry Logistics）", "external_company", "吴经理"),
+    ("友邦保险（AIA）", "external_company", "郑先生"),
 ]
 
 SALES_PEOPLE = [
