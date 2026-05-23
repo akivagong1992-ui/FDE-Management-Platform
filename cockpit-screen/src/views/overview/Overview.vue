@@ -175,50 +175,51 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- 香港项目地理分布（原 Tab 2 移过来） -->
-    <div class="panel map-panel">
-      <div class="panel-title">
-        香港项目分布
-        <span v-if="mapError" class="map-err" :title="mapError">⚠ 地图数据加载失败</span>
-      </div>
-      <div v-show="!mapError" ref="mapEl" class="echarts-map"></div>
-      <div v-if="mapError" class="empty">地图数据需联网拉取 (DataV CDN)</div>
-    </div>
-
-    <!-- 下方两卡：能力矩阵 + 已交付客户 -->
+    <!-- 下方主区：左侧上下两卡（能力矩阵 / 已交付客户）+ 右侧地图 -->
     <div class="lower">
-      <div class="panel">
-        <div class="panel-title">能力矩阵</div>
-        <div v-if="capabilities.length === 0" class="empty">暂无技能登记</div>
-        <div v-else class="cap-grid">
-          <div v-for="c in capabilities" :key="c.category" class="cap-cell">
-            <div class="cap-name">{{ c.category }}</div>
-            <div class="cap-bar">
-              <div class="cap-fill" :style="{ width: `${(c.engineer_count / maxCap) * 100}%` }" />
-            </div>
-            <div class="cap-num">
-              <CountNumber :value="c.engineer_count" /> 人
+      <div class="left-col">
+        <div class="panel">
+          <div class="panel-title">能力矩阵</div>
+          <div v-if="capabilities.length === 0" class="empty">暂无技能登记</div>
+          <div v-else class="cap-grid">
+            <div v-for="c in capabilities" :key="c.category" class="cap-cell">
+              <div class="cap-name">{{ c.category }}</div>
+              <div class="cap-bar">
+                <div class="cap-fill" :style="{ width: `${(c.engineer_count / maxCap) * 100}%` }" />
+              </div>
+              <div class="cap-num">
+                <CountNumber :value="c.engineer_count" /> 人
+              </div>
             </div>
           </div>
+          <div class="cap-meta" v-if="capabilities.length > 0">
+            覆盖 <strong class="hi">{{ capabilities.length }}</strong> 个技能领域
+            / 团队总规模 <strong class="hi">{{ teamSize }}</strong> 人
+          </div>
         </div>
-        <div class="cap-meta" v-if="capabilities.length > 0">
-          覆盖 <strong class="hi">{{ capabilities.length }}</strong> 个技能领域
-          / 团队总规模 <strong class="hi">{{ teamSize }}</strong> 人
+
+        <div class="panel">
+          <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
+          <div v-if="deliveredClients.length === 0" class="empty">暂无已验收/已归档项目</div>
+          <div v-else class="client-grid">
+            <div v-for="(name, i) in deliveredClients" :key="i" class="client-chip">
+              <span class="chip-dot"></span>
+              <span class="chip-name">{{ name }}</span>
+            </div>
+          </div>
+          <div class="cap-meta" v-if="deliveredClients.length > 0">
+            数据口径：拥有验收/归档项目的客户
+          </div>
         </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
-        <div v-if="deliveredClients.length === 0" class="empty">暂无已验收/已归档项目</div>
-        <div v-else class="client-grid">
-          <div v-for="(name, i) in deliveredClients" :key="i" class="client-chip">
-            <span class="chip-dot"></span>
-            <span class="chip-name">{{ name }}</span>
-          </div>
+      <div class="panel map-panel">
+        <div class="panel-title">
+          香港项目分布
+          <span v-if="mapError" class="map-err" :title="mapError">⚠ 地图数据加载失败</span>
         </div>
-        <div class="cap-meta" v-if="deliveredClients.length > 0">
-          数据口径：拥有验收/归档项目的客户
-        </div>
+        <div v-show="!mapError" ref="mapEl" class="echarts-map"></div>
+        <div v-if="mapError" class="empty">地图数据需联网拉取 (DataV CDN)</div>
       </div>
     </div>
   </div>
@@ -244,12 +245,15 @@ onUnmounted(() => {
 }
 .unit { font-size: 0.4em; margin-left: 8px; color: var(--cockpit-text-dim); font-weight: normal; }
 
-.map-panel { flex: 1.4; min-height: 260px; display: flex; flex-direction: column; }
-.echarts-map { flex: 1; min-height: 240px; }
+.map-panel { display: flex; flex-direction: column; }
+.echarts-map { flex: 1; min-height: 320px; }
 .map-err { margin-left: 12px; color: #ff8e00; font-size: 11px; }
 
 .lower {
-  flex: 1; display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; min-height: 0;
+  flex: 1; display: grid; grid-template-columns: 1fr 1.1fr; gap: 16px; min-height: 0;
+}
+.left-col {
+  display: grid; grid-template-rows: 1fr 1fr; gap: 16px; min-height: 0;
 }
 .empty {
   display: flex; align-items: center; justify-content: center;
