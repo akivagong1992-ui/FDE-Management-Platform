@@ -57,7 +57,7 @@ onMounted(load)
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
       <div style="color: #606266; font-size: 13px">
-        外部支出供应商（耗材 / 分包 / 临时人力 / 许可 / 差旅）。<strong>与 Vendor 区分</strong>——Vendor 是供人公司。
+        其他支出供应商（耗材 / 分包 / 临时人力 / 许可 / 差旅）。<strong>与 Vendor 区分</strong>——Vendor 是供人公司。
       </div>
       <el-button type="primary" @click="openCreate">新增供应商</el-button>
     </div>

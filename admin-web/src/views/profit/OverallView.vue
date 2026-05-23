@@ -39,7 +39,7 @@ onMounted(load)
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">外部支出</div>
+            <div style="color: #909399; font-size: 13px">其他支出</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
               HK$ {{ fmt(data.total_external_expenses) }}
             </div>

@@ -7,7 +7,7 @@ import {
 } from '@/api/trainings'
 import { listEngineers, type Engineer } from '@/api/engineers'
 
-// 学费已迁移到「外部支出」→ 类型选「外部培训费」，此处只记录学习行为本身
+// 学费已迁移到「其他支出」→ 类型选「外部培训费」，此处只记录学习行为本身
 const rows = ref<Training[]>([])
 const engineers = ref<Engineer[]>([])
 const loading = ref(false)
@@ -79,7 +79,7 @@ onMounted(load)
 <template>
   <div>
     <el-alert type="info" :closable="false" style="margin-bottom: 12px">
-      培训学费请在「外部支出 → 类型 = 外部培训费」录入，此处只登记学习行为本身（课程、学时、是否通过）
+      培训学费请在「其他支出 → 类型 = 外部培训费」录入，此处只登记学习行为本身（课程、学时、是否通过）
     </el-alert>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px">
       <el-select v-model="filter.engineer_id" placeholder="按工程师筛选" clearable filterable style="width: 220px" @change="load">
