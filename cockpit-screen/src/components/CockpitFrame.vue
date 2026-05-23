@@ -60,8 +60,8 @@ onUnmounted(() => {
           class="logo"
           @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
         />
-        <span class="brand glow-text">交付团队驾驶舱</span>
-        <span class="subtitle">中国电信国际香港分公司</span>
+        <span class="brand glow-text">FDE驾驶舱</span>
+        <span class="subtitle">电信国际香港事业部</span>
       </div>
       <div class="header-center">
         <span class="time">{{ now.toLocaleString('zh-CN', { hour12: false }) }}</span>
