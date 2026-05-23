@@ -23,6 +23,7 @@ def _to_out(r: ProjectRevenue) -> ProjectRevenueOut:
         project_id=r.project_id,
         project_name=r.project.name if r.project else None,
         amount=r.amount,
+        gross_amount=r.gross_amount,
         currency=r.currency,
         recognized_date=r.recognized_date,
         invoice_no=r.invoice_no,

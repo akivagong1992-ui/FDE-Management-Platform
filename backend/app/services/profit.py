@@ -183,6 +183,92 @@ async def compute_by_need_party(db: AsyncSession) -> list[dict]:
 
 # ── 口径 C — savings + value_created (cockpit-only) ────────────────────
 
+async def compute_company_margin_lift(db: AsyncSession) -> dict:
+    """公司级利润率提升（admin lead/finance 专享，**绝不进驾驶舱**）。
+
+    对照两条路线：
+      老外包模式: 公司毛利 = 客户付款 − 外部服务商报价
+      FDE 模式:   公司毛利 = 客户付款 − 团队实际成本（VSF + 其他支出）
+
+    仅对 *已收款* 项目计入：
+      gross_received = Σ ProjectRevenue.gross_amount where status='received'
+      bench = Σ Project.outsource_benchmark_amount（仅这些项目）
+      actual = Σ 该项目的 VSF + 已批支出
+    """
+    costs = await _project_costs(db)
+
+    # 取每个项目的实收总额 + 实收 gross 总额
+    rev_rows = (await db.execute(
+        select(
+            ProjectRevenue.project_id,
+            func.coalesce(func.sum(ProjectRevenue.amount), 0),
+            func.coalesce(func.sum(
+                func.coalesce(ProjectRevenue.gross_amount, ProjectRevenue.amount)
+            ), 0),
+        )
+        .where(ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
+        .group_by(ProjectRevenue.project_id)
+    )).all()
+    received_team: dict[int, Decimal] = {pid: _dec(amt) for pid, amt, _ in rev_rows}
+    received_gross: dict[int, Decimal] = {pid: _dec(gross) for pid, _, gross in rev_rows}
+
+    # 仅有实收 + revenue 类项目 + 非 cancelled
+    projects = (await db.execute(
+        select(Project).where(
+            Project.kind == PROJECT_KIND_REVENUE,
+            Project.status != PROJECT_STATUS_CANCELLED,
+        )
+    )).scalars().all()
+
+    total_gross = ZERO
+    total_team = ZERO
+    total_benchmark = ZERO
+    total_actual = ZERO
+    counted = 0
+    for p in projects:
+        team_recv = received_team.get(p.id, ZERO)
+        if team_recv <= 0:
+            continue  # 没收到钱 → 不计入
+        gross_recv = received_gross.get(p.id, team_recv)
+        bench = _dec(p.outsource_benchmark_amount)
+        actual = costs.get(p.id, ZERO)
+        total_gross += gross_recv
+        total_team += team_recv
+        total_benchmark += bench
+        total_actual += actual
+        counted += 1
+
+    if total_gross > 0:
+        outsource_margin = total_gross - total_benchmark
+        fde_margin = total_gross - total_actual
+        outsource_margin_pct = outsource_margin / total_gross * 100
+        fde_margin_pct = fde_margin / total_gross * 100
+        margin_lift_pct = fde_margin_pct - outsource_margin_pct
+    else:
+        outsource_margin = ZERO
+        fde_margin = ZERO
+        outsource_margin_pct = ZERO
+        fde_margin_pct = ZERO
+        margin_lift_pct = ZERO
+
+    extra_profit = total_benchmark - total_actual  # = vendor markup absorbed
+
+    return {
+        "counted_projects": counted,
+        "total_gross_revenue": float(total_gross),
+        "total_team_revenue": float(total_team),
+        "total_outsource_benchmark": float(total_benchmark),
+        "total_actual_cost": float(total_actual),
+        "outsource_margin": float(outsource_margin),
+        "fde_margin": float(fde_margin),
+        "outsource_margin_pct": float(outsource_margin_pct),
+        "fde_margin_pct": float(fde_margin_pct),
+        "margin_lift_pct": float(margin_lift_pct),
+        "extra_profit": float(extra_profit),
+        "currency": "HKD",
+    }
+
+
 async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
     """口径 C：仅在 *实际实现价值* 后才计入驾驶舱降本。
 

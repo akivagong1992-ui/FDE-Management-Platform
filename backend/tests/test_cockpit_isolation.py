@@ -31,6 +31,14 @@ FORBIDDEN_PATTERNS = [
         # B-tier per-project / per-sales / per-client margin fields
         r"\bsales_person_id\b.*\bmargin\b",
         r"\bneed_party_id\b.*\bmargin\b",
+        # 客户付款总额 + FDE 利润率提升相关字段，揭露后可反推 vendor markup
+        r"\bgross_amount\b",
+        r"\bgross_revenue\b",
+        r"\btotal_gross_revenue\b",
+        r"\boutsource_margin\b",
+        r"\bfde_margin\b",
+        r"\bmargin_lift\b",
+        r"\bextra_profit\b",
     ]
 ]
 
@@ -97,14 +105,14 @@ def _assert_isolation(client: TestClient, path: str) -> None:
 
 
 def test_cockpit_aggregations_isolation() -> None:
-    """Tab 2 / 3 / 4 / 5 / 7 / 8 — none of the new endpoints may leak A/B numbers."""
+    """所有 cockpit aggregation 端点不得泄露 A/B 数字。
+    relationship-stats 已撤掉（Tab 8 整个被移除），故不在列表内。"""
     paths = [
         "/api/cockpit/project-board",
         "/api/cockpit/profit-compare",
         "/api/cockpit/engineer-stats",
         "/api/cockpit/efficiency-stats",
         "/api/cockpit/capability-stats",
-        "/api/cockpit/relationship-stats",
         "/api/cockpit/growth-trend",
     ]
     with TestClient(app) as c:

@@ -6,7 +6,8 @@ export interface ProjectRevenue {
   id: number
   project_id: number
   project_name?: string | null
-  amount: number | string
+  amount: number | string                  // 团队入账（pass-through 到 Vendor）
+  gross_amount?: number | string | null    // 客户付款总额（销售切除前）
   currency: string
   recognized_date: string
   invoice_no?: string | null
@@ -19,6 +20,7 @@ export interface ProjectRevenue {
 export interface RevenuePayload {
   project_id: number
   amount: number
+  gross_amount?: number | null
   currency?: string
   recognized_date: string
   invoice_no?: string | null

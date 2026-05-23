@@ -16,7 +16,8 @@ const filter = reactive<{ project_id?: number; status_filter?: RevenueStatus }>(
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<RevenuePayload>({
-  project_id: 0, amount: 0, recognized_date: new Date().toISOString().slice(0, 10),
+  project_id: 0, amount: 0, gross_amount: undefined,
+  recognized_date: new Date().toISOString().slice(0, 10),
   invoice_no: '', description: '', status: 'pending',
 })
 
@@ -40,7 +41,8 @@ function openCreate() {
   editingId.value = null
   Object.assign(form, {
     project_id: revenueProjects.value[0]?.id || 0,
-    amount: 0, recognized_date: new Date().toISOString().slice(0, 10),
+    amount: 0, gross_amount: undefined,
+    recognized_date: new Date().toISOString().slice(0, 10),
     invoice_no: '', description: '', status: 'pending',
   })
   dialog.value = true
@@ -49,7 +51,9 @@ function openCreate() {
 function openEdit(r: ProjectRevenue) {
   editingId.value = r.id
   Object.assign(form, {
-    project_id: r.project_id, amount: Number(r.amount),
+    project_id: r.project_id,
+    amount: Number(r.amount),
+    gross_amount: r.gross_amount == null ? undefined : Number(r.gross_amount),
     recognized_date: r.recognized_date, invoice_no: r.invoice_no || '',
     description: r.description || '', status: r.status,
   })
@@ -125,8 +129,18 @@ onMounted(load)
           </el-select>
           <div style="color: #909399; font-size: 12px; margin-top: 4px">仅"有收入项目"可登记收入</div>
         </el-form-item>
-        <el-form-item label="金额 (HKD)" required>
+        <el-form-item label="客户付款总额 (HKD)">
+          <el-input-number v-model="form.gross_amount" :min="0" :precision="2" style="width: 100%"
+                           placeholder="客户实际付公司的总钱数（销售切除前）" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            可选 — 仅用于公司毛利率统计（不影响驾驶舱降本计算）
+          </div>
+        </el-form-item>
+        <el-form-item label="团队入账 (HKD)" required>
           <el-input-number v-model="form.amount" :min="0" :precision="2" style="width: 100%" />
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            销售切除后流到工程师团队的部分（= 转给 Vendor 的金额）
+          </div>
         </el-form-item>
         <el-form-item label="确认日期" required>
           <el-date-picker v-model="form.recognized_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />

@@ -11,6 +11,7 @@ from app.core.deps import require_role
 from app.services.profit import (
     compute_by_need_party,
     compute_by_sales_person,
+    compute_company_margin_lift,
     compute_overall,
     compute_per_project,
 )
@@ -52,3 +53,14 @@ async def by_need_party(
 ) -> list[dict]:
     """口径 B · 按客户（需求方）汇总。"""
     return await compute_by_need_party(db)
+
+
+@router.get("/margin-lift")
+async def margin_lift(
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
+) -> dict:
+    """公司级利润率提升 = FDE 毛利率 − 老外包毛利率。
+    ⚠️ 内部对账专用，**绝禁** /api/cockpit/* 任何端点返回这组数。
+    """
+    return await compute_company_margin_lift(db)

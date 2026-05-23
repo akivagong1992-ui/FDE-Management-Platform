@@ -488,8 +488,11 @@ async def main() -> None:
             installments = random.randint(1, 3)
             installment_amount = (total / installments).quantize(Decimal("0.01"))
             for i in range(installments):
+                # gross_amount = 客户付款总额；假设销售切了 25-35% 给非工程师服务
+                gross = (installment_amount * Decimal(random.uniform(1.25, 1.35))).quantize(Decimal("0.01"))
                 db.add(ProjectRevenue(
                     project_id=p.id, amount=installment_amount,
+                    gross_amount=gross,
                     recognized_date=random_date_within(360, 0),
                     invoice_no=f"INV-R-{p.id}-{i+1}",
                     status="received" if random.random() < 0.7 else "pending",

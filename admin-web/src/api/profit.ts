@@ -42,7 +42,23 @@ export interface ByNeedPartyRow {
   projects: ProjectMarginRow[]
 }
 
+export interface MarginLift {
+  counted_projects: number
+  total_gross_revenue: number
+  total_team_revenue: number
+  total_outsource_benchmark: number
+  total_actual_cost: number
+  outsource_margin: number
+  fde_margin: number
+  outsource_margin_pct: number
+  fde_margin_pct: number
+  margin_lift_pct: number
+  extra_profit: number
+  currency: string
+}
+
 export const getOverall = () => http.get<OverallProfit>('/profit/overall').then((r) => r.data)
 export const getPerProject = () => http.get<ProjectMarginRow[]>('/profit/per-project').then((r) => r.data)
 export const getBySalesPerson = () => http.get<BySalesRow[]>('/profit/by-sales-person').then((r) => r.data)
 export const getByNeedParty = () => http.get<ByNeedPartyRow[]>('/profit/by-need-party').then((r) => r.data)
+export const getMarginLift = () => http.get<MarginLift>('/profit/margin-lift').then((r) => r.data)
