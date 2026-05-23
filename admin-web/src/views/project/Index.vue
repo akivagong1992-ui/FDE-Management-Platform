@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import PlaceholderModule from '@/components/PlaceholderModule.vue'
+import { ref } from 'vue'
+import ProjectList from './ProjectList.vue'
+import NeedPartyList from './NeedPartyList.vue'
+import SalesPersonList from './SalesPersonList.vue'
+
+const tab = ref<'projects' | 'need_parties' | 'sales_persons'>('projects')
 </script>
+
 <template>
-  <PlaceholderModule
-    dimension="维度 ①"
-    title="项目管理"
-    plan-section="PLAN §4.1"
-    description="项目立项、状态机、里程碑、风险与合规登记、文档归档。"
-  />
+  <el-card>
+    <template #header>
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-weight: 600">① 项目管理</span>
+        <el-tag type="info">Phase 1b — 立项 + 销售/客户档案 + 项目类型 + 转移销售（里程碑/风险见 1b-ii）</el-tag>
+      </div>
+    </template>
+    <el-tabs v-model="tab">
+      <el-tab-pane label="项目列表" name="projects"><ProjectList v-if="tab === 'projects'" /></el-tab-pane>
+      <el-tab-pane label="需求方档案" name="need_parties"><NeedPartyList v-if="tab === 'need_parties'" /></el-tab-pane>
+      <el-tab-pane label="销售人员" name="sales_persons"><SalesPersonList v-if="tab === 'sales_persons'" /></el-tab-pane>
+    </el-tabs>
+  </el-card>
 </template>

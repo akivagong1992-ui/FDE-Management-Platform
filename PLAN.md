@@ -461,12 +461,19 @@ Manpower-management-platform/
 - [x] 敏感字段加密（HKID）+ 角色脱敏 / reveal
 - [x] 真实人工成本字段（lead/finance 可见）
 
-**1b — 项目**（下一步）
-- [ ] 需求方 NeedParty 档案 CRUD
-- [ ] **销售人员 SalesPerson** 档案 CRUD（B 口径汇总维度）
-- [ ] 项目立项 + 状态机 + 里程碑 + **风险/合规登记**
-- [ ] **项目分类字段** `kind = revenue / no_revenue` + 无收入项目的 `value_created` 字段
-- [ ] 项目同时挂 SalesPerson + NeedParty 两个外键
+**1b-i — 项目骨架**（已完成 ✅）
+- [x] 需求方 NeedParty 档案 CRUD
+- [x] **销售人员 SalesPerson** 档案 CRUD + 停用/恢复
+- [x] 项目立项 + 状态机（drafting/in_progress/accepting/closing/archived）
+- [x] **项目分类** `kind = revenue / no_revenue`（**仅 lead 可勾选无收入**）
+- [x] **自动计算** `value_created = outsource_benchmark_amount`（R13）+ basis 枚举
+- [x] 项目同时挂 SalesPerson + NeedParty 两个外键
+- [x] **转移销售按钮** + SalesTransferLog 审计表（R15）
+
+**1b-ii — 项目扩展**（待办）
+- [ ] 项目里程碑 Milestone CRUD
+- [ ] 风险/合规登记 RiskItem + ComplianceEvent（含 PDPO 等香港合规事件）
+- [ ] 项目文档暂存
 - [ ] 培训记录 CRUD（4.8 基础）
 
 **1c — 桥**
@@ -547,9 +554,9 @@ Manpower-management-platform/
 | R10 | **知识资产保密分级** — 机密项是否要做加密存储？是否要做下载水印？ | 资产模块复杂度 | Phase 2 前 |
 | R11 | 多 Vendor 场景下，Vendor 之间是否要做横向比较（驾驶舱 Vendor 性价比榜） | 驾驶舱 Tab 3 内容 | Phase 3 前 |
 | R12 | 培训预算是否独立于项目预算（如年度培训费） | 4.8 模块与利润口径联动 | Phase 1 前 |
-| R13 | **无收入项目"创造价值"的估算依据** — 是 PM 拍脑袋？还是用模板（替代外部审计费 / 避免罚款 / 战略储备工时 等）？ | 口径 C 第二部分的可信度 | Phase 1b 前（项目立项时即需要填）|
-| R14 | **驾驶舱接口隔离**——CI 是否需要强制断言 `/api/cockpit/*` 不返回 A/B 口径数字？ | 合规风险（暴露团队真实利润）| Phase 2 前 |
-| R15 | 一个项目能否**同时挂多个销售人员**（联合销售）？ | SalesPerson 是一对多还是多对多 | Phase 1b 前 |
+| ~~R13~~ ✅ | ~~无收入项目"创造价值"估算依据~~ — **已解决**：项目表勾选"无收入" → 后台自动 `value_created = outsource_benchmark_amount`；同时记 `value_created_basis` 枚举（默认 `outsource_equiv`；可选 替代审计费 / 避免罚款 / 节省工时 / 战略储备 / 其他）+ 备注。**仅 lead/admin 可勾选**。驾驶舱 Tab 3 必须拆解显示 节省 vs 创造价值。 | — | — |
+| R14 | **驾驶舱接口隔离**——CI 强制断言 `/api/cockpit/*` 不返回 A/B 口径数字 | 合规风险（暴露团队真实利润）| Phase 2 前 |
+| ~~R15~~ ✅ | ~~一个项目能否同时挂多个销售人员~~ — **已解决**：一个项目一个销售（单 FK `sales_person_id`）；销售离职/调岗在项目详情点"转移销售"按钮转给他人，落 `SalesTransferLog` 审计表；销售人员可设 `is_active=false` 停用。口径 B 按**当前归属**汇总。 | — | — |
 
 ---
 
@@ -572,3 +579,4 @@ Manpower-management-platform/
 ## 修订历史
 
 - **v0.3.1** (Phase 1a 完成后)：补入"三种利润口径并存"+ 项目分类（revenue/no_revenue）+ SalesPerson 实体。详见 §4.3 / §4.10 / §5 / §8 Phase 1b / R13-R15。驾驶舱新增硬约束：**永不展示口径 A**。
+- **v0.3.2** (Phase 1b-i 完成后)：R13/R15 已解决。NeedParty + SalesPerson + Project + SalesTransferLog 落地；"无收入项目"勾选 + value_created 自动 = 外包估算；转移销售按钮 + 审计日志。下一步 1b-ii（里程碑 / 风险 / 合规）。
