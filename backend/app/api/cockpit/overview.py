@@ -47,19 +47,15 @@ async def overview_kpi(db: AsyncSession = Depends(get_db)) -> dict:
     )
     on_time_rate = (on_time_count / len(finished_projects)) if finished_projects else 0.0
 
-    # 已交付客户：拥有 closing/archived 项目 且 admin 标记 show_in_cockpit=True
-    delivered_clients_rows = (await db.execute(
-        select(NeedParty.id, NeedParty.name, NeedParty.logo_path)
-        .join(Project, Project.need_party_id == NeedParty.id)
-        .where(
-            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
-            NeedParty.show_in_cockpit.is_(True),
-        )
-        .group_by(NeedParty.id, NeedParty.name, NeedParty.logo_path)
+    # 合作客户：admin 端勾选「驾驶舱展示」+ 上传 logo 即出现，不再附加项目状态条件
+    # （客户能否上墙完全由 admin 决策，避免「设了为什么不显示」的困惑）
+    showcase_rows = (await db.execute(
+        select(NeedParty.name, NeedParty.logo_path)
+        .where(NeedParty.show_in_cockpit.is_(True))
         .order_by(NeedParty.name)
     )).all()
-    delivered_clients = [
-        {"name": name, "logo_path": logo} for _, name, logo in delivered_clients_rows
+    showcase_clients = [
+        {"name": name, "logo_path": logo} for name, logo in showcase_rows
     ]
 
     # 能力矩阵：每个 skill_category 下不同工程师数
@@ -93,7 +89,7 @@ async def overview_kpi(db: AsyncSession = Depends(get_db)) -> dict:
         "team_size": int(team_size),
         "on_time_delivery_rate": round(on_time_rate, 4),  # 保留供后端审计；前端不再展示
         "completed_this_month": int(completed_this_month),
-        "delivered_clients": delivered_clients,
+        "showcase_clients": showcase_clients,
         "capability_by_category": capability_by_category,
         "by_status": by_status,
         "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",

@@ -27,7 +27,7 @@ const cTotal = computed(() => (sav.value?.total_c_view ?? 0) / 10000)
 const activeProjects = computed(() => overview.value?.active_projects ?? 0)
 const teamSize = computed(() => overview.value?.team_size ?? 0)
 const completedThisMonth = computed(() => overview.value?.completed_this_month ?? 0)
-const deliveredClients = computed(() => overview.value?.delivered_clients ?? [])
+const showcaseClients = computed(() => overview.value?.showcase_clients ?? [])
 const capabilities = computed(() => overview.value?.capability_by_category ?? [])
 const maxCap = computed(() => Math.max(1, ...capabilities.value.map((c) => c.engineer_count)))
 
@@ -199,16 +199,15 @@ onUnmounted(() => {
         </div>
 
         <div class="panel">
-          <div class="panel-title">已交付客户（{{ deliveredClients.length }}）</div>
-          <div v-if="deliveredClients.length === 0" class="empty">暂无授权展示的客户</div>
+          <div class="panel-title">合作客户（{{ showcaseClients.length }}）</div>
+          <div v-if="showcaseClients.length === 0" class="empty">
+            管理后台「客户列表」勾选「驾驶舱展示」+ 上传 Logo 即出现
+          </div>
           <div v-else class="logo-grid">
-            <div v-for="(c, i) in deliveredClients" :key="i" class="logo-tile" :title="c.name">
+            <div v-for="(c, i) in showcaseClients" :key="i" class="logo-tile" :title="c.name">
               <img :src="`/api/uploads/${c.logo_path}`" :alt="c.name" class="logo-img" />
               <div class="logo-name">{{ c.name }}</div>
             </div>
-          </div>
-          <div class="cap-meta" v-if="deliveredClients.length > 0">
-            仅展示后台勾选「驾驶舱展示」+ 已上传 Logo 的客户
           </div>
         </div>
       </div>
