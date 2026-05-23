@@ -491,21 +491,28 @@ Manpower-management-platform/
 
 **交付**：能"建一个 Vendor、登记工程师、立一个项目（带销售/客户/类型）、派人、记工时"
 
-### **Phase 2 — 利润 + 外部支出 + 知识资产铺底** (3~4 周)
-- [ ] 项目预算编制
-- [ ] 项目收入登记（仅 revenue 类项目）
+### **Phase 2 — 利润 + 外部支出 + 知识资产铺底**
+
+**2a — 支出数据录入端**（已完成 ✅）
+- [x] **Supplier 供应商档案**（与 Vendor 区分，含类别字段）
+- [x] **5 类支出字典**自动 seed（material / subcontract / temp_labor / license / travel）
+- [x] **ExpenseRequest** 申请审批流（pending → approved/rejected → paid）；PM 可申请，lead/finance 可审批
+- [x] **VendorServiceFee** Vendor 服务费录入（按工程师月度 / 按里程碑 / 其他），可挂工程师/项目做成本归集
+- [x] **项目成本归集接口** `/projects/{id}/cost-breakdown`：Vendor 服务费 + 外部支出按类型分组 + 总成本 + 外包对标
+- [x] 传统外包模式对标 (`outsource_benchmark_amount`，Phase 1b 已在 Project 上铺字段，2a 已可用于对比)
+
+**2b — 利润口径 + 知识资产**（待办）
+- [ ] 项目预算编制（ProjectBudget 表）
+- [ ] 项目收入登记 ProjectRevenue（仅 revenue 类项目）
 - [ ] **三种利润口径** API（详见 §4.3）：
   - 口径 A · 团队整体利润（lead/finance 可见）
   - 口径 B · 按销售人员 / 按客户 汇总按钮（lead/finance 可见）
   - 口径 C · 节省 + 创造价值（**驾驶舱专用预聚合接口**）
-- [ ] **Vendor 服务费录入** + **真实人工成本**（lead 可见，Phase 1a 已铺字段）
-- [ ] **传统外包模式对标**（OutsourceBenchmark）录入
-- [ ] **外部支出管理**：5 类支出统一申请审批流（耗材/分包/临时人力/许可/差旅）
-- [ ] 供应商管理（外部支出侧，与 Vendor 区分）
-- [ ] 项目成本自动归集
-- [ ] **驾驶舱接口隔离测试**：断言 `/api/cockpit/*` 不返回 A/B 口径数字
+- [ ] 工时 × 工程师单价 接入成本计算
+- [ ] **驾驶舱接口隔离测试**（R14）：断言 `/api/cockpit/*` 不返回 A/B 口径数字
 - [ ] **知识资产库基础**（4.7 铺底）：分类字典、上传/检索、保密分级
-- **交付**：每个项目赚不赚钱、销售/客户层面是否欠款、节省/创造价值可算出来
+
+**交付**：每个项目赚不赚钱、销售/客户层面是否欠款、节省/创造价值可算出来
 
 ### **Phase 3 — 效率 + 复盘 + 驾驶舱真数据** (2~3 周)
 - [ ] 工期/质量/人均产出 效率指标
@@ -586,3 +593,4 @@ Manpower-management-platform/
 - **v0.3.1** (Phase 1a 完成后)：补入"三种利润口径并存"+ 项目分类（revenue/no_revenue）+ SalesPerson 实体。详见 §4.3 / §4.10 / §5 / §8 Phase 1b / R13-R15。驾驶舱新增硬约束：**永不展示口径 A**。
 - **v0.3.2** (Phase 1b-i 完成后)：R13/R15 已解决。NeedParty + SalesPerson + Project + SalesTransferLog 落地；"无收入项目"勾选 + value_created 自动 = 外包估算；转移销售按钮 + 审计日志。下一步 1b-ii（里程碑 / 风险 / 合规）。
 - **v0.3.3** (Phase 1c 完成后)：Assignment + Timesheet 落地，含 Excel 模板下载 + 批量导入（openpyxl）。`/engineer` 模块现有 5 个 Tab：派单（默认）/ 工时记录 / 工程师档案 / Vendor / 技能字典。工时审核 API 就绪但 UI 在 1d。
+- **v0.3.4** (Phase 2a 完成后)：Supplier + ExpenseRequest（4 状态审批流）+ VendorServiceFee 三个模型落地；5 类支出字典自动 seed；项目 `/cost-breakdown` 接口归集 Vendor 服务费 + 外部支出。`/expense` 三个 Tab：外部支出 / Vendor 服务费 / 供应商。利润 A/B/C 三口径 API + 驾驶舱隔离测试留给 2b。

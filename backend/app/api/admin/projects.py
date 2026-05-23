@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
+from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
 from app.models.need_party import NeedParty
 from app.models.project import (
     PROJECT_KIND_NO_REVENUE,
@@ -13,6 +14,7 @@ from app.models.project import (
 )
 from app.models.sales_person import SalesPerson
 from app.models.user import User
+from app.models.vendor_service_fee import VendorServiceFee
 from app.schemas.project import (
     ProjectCreate,
     ProjectOut,
@@ -210,6 +212,56 @@ async def transfer_sales(
     await db.commit()
     await db.refresh(p)
     return _to_out(p)
+
+
+@router.get("/{project_id}/cost-breakdown")
+async def cost_breakdown(
+    project_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
+) -> dict:
+    """项目成本归集（Phase 2a 版本）— Vendor 服务费 + 外部支出（已批准 / 已支付，不含驳回）。"""
+    p = await db.get(Project, project_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    # Vendor service fees on this project
+    vsf_total = (await db.execute(
+        select(func.coalesce(func.sum(VendorServiceFee.amount), 0))
+        .where(VendorServiceFee.project_id == project_id)
+    )).scalar_one()
+
+    # External expenses (exclude rejected)
+    expenses_total = (await db.execute(
+        select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
+        .where(
+            ExpenseRequest.project_id == project_id,
+            ExpenseRequest.status != EXPENSE_STATUS_REJECTED,
+        )
+    )).scalar_one()
+
+    # Break down by expense_type
+    by_type_rows = (await db.execute(
+        select(ExpenseRequest.expense_type, func.coalesce(func.sum(ExpenseRequest.amount), 0))
+        .where(
+            ExpenseRequest.project_id == project_id,
+            ExpenseRequest.status != EXPENSE_STATUS_REJECTED,
+        )
+        .group_by(ExpenseRequest.expense_type)
+    )).all()
+    expenses_by_type = [{"type": t, "amount": float(amt)} for t, amt in by_type_rows]
+
+    total = float(vsf_total) + float(expenses_total)
+    return {
+        "project_id": project_id,
+        "project_name": p.name,
+        "vendor_service_fees_total": float(vsf_total),
+        "external_expenses_total": float(expenses_total),
+        "external_expenses_by_type": expenses_by_type,
+        "total_cost": total,
+        "outsource_benchmark_amount": float(p.outsource_benchmark_amount) if p.outsource_benchmark_amount else None,
+        "_note": "Phase 2a partial: 仅含 Vendor 服务费 + 外部支出；不含工时 × 单价。完整三口径见 Phase 2b。",
+    }
 
 
 @router.get("/{project_id}/transfer-logs", response_model=list[SalesTransferLogOut])
