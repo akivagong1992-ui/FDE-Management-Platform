@@ -566,8 +566,9 @@ Manpower-management-platform/
 - [x] CountNumber 推到 Tab 4 (engineer) / Tab 5 (efficiency) / Tab 7 (capability) / Tab 8 (relationship)
 - [x] seed 自动生成 12 次续单尝试（3 赢 / 6 输 / 3 待）= 33% 胜率
 
-**3-next-iii Round 3（剩余）**
-- [ ] 真 HK 地图（ECharts geo + 香港 geoJSON，替代当前 SVG schematic）
+**3-next-iii Round 3（已完成 ✅）**
+- [x] 真 HK 地图：ECharts geo 渲染 HK 18 区，运行时从阿里 DataV CDN 拉 geoJSON
+  (`https://geo.datav.aliyun.com/areas_v3/bound/810000_full.json`)；客户端把 18 区映射到我们的 5 大宏区配色；click 区域筛选项目列表；fetch 失败自动 fallback 到原 SVG schematic（带橙色警告条）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -648,3 +649,4 @@ Manpower-management-platform/
 - **v0.4.2** (Phase 3-next-ii 完成后)：Project 扩展 district / rework_count / change_count / renewal_of_project_id 四个字段；新建 TrainingRecord + IDP 两域 + admin CRUD（培训成本仅 lead/finance 可见）；`/capability` 模块改为 3 Tab（成长曲线 / 培训记录 / IDP）；驾驶舱 Tab 2 改为 SVG HK schematic 5 区热力图（可点击筛选项目）；Tab 5 加返工率/人均变更/零失误 3 个 KPI；Tab 8 加显式续单率（与粗略代理并列）。seed 自动分配 5 区、~45% revenue 项目挂续单源、生成 76 培训 + 19 IDP。
 - **v0.4.3** (Phase 3-next-iii Round 1 完成后)：大屏动效落地——CountNumber 组件（easeOutCubic 数字滚动）应用到 Overview/ProfitCompare/Knowledge 主 KPI；三类 brag 卡（粉/金/绿）循环脉冲发光；Tab 切换 fade-in 过渡；总览页"数据健康"面板（含跳动绿点 + 隔离守门提示）。R6 落地——Project 加 `benchmark_basis` (vendor_quote/historical/industry/manual) + note 字段；表单按金额可见性展开；详情抽屉以彩色 tag 显示可信度；seed 按 40/30/20/10 权重自动分配 basis。
 - **v0.4.4** (Phase 3-next-iii Round 2 完成后)：新建 RenewalAttempt 域（outcome=pending/won/lost + 6 类输因枚举）+ admin CRUD；管理后台 `/relationship` 改 2 Tab（复盘 / 续单跟踪），AttemptList 按 outcome 条件展开字段；驾驶舱 Tab 8 重做 4 KPI（满意度 ⭐ / 续单胜率 33% / 闭环率 / 跟踪总数）+ 右下"续单输因分布"水平条形图；CountNumber 推到 Tab 4/5/7/8 主 KPI。seed 12 次尝试（3 赢/6 输/3 待）+ 6 种输因覆盖。
+- **v0.4.5** (Phase 3-next-iii Round 3 完成后)：驾驶舱 Tab 2 升级为真 HK 地图——ECharts geo 运行时拉取阿里 DataV 的 HK 18 区 geoJSON 并 `registerMap('HK', geo)`；客户端把 18 区映射到原有 5 大宏区配色（港岛/九龙/新界东/新界西/离岛），项目数着色，hover tooltip 中文。fetch 失败有橙色警告条 + 自动 fallback 到原 SVG schematic 网格。echarts 让 ProjectMap chunk 涨到 ~1MB（Phase 4 再 tree-shake）。

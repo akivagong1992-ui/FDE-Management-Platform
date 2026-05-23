@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
+import * as echarts from 'echarts'
 import { getProjectBoard, type ProjectBoard, type ProjectBoardItem } from '@/api/cockpit'
 
 const data = ref<ProjectBoard | null>(null)
@@ -21,14 +22,19 @@ const DISTRICT_LABELS: Record<string, string> = {
   NT_WEST: '新界西', OUTLYING: '离岛',
 }
 
-// SVG HK schematic regions (manually laid out — schematic not geographic).
-// Coordinates within 800×400 viewBox.
-const DISTRICT_RECTS: Record<string, { x: number; y: number; w: number; h: number; label: string }> = {
-  NT_WEST:   { x:  50, y:  40, w: 230, h: 120, label: '新界西' },
-  NT_EAST:   { x: 300, y:  40, w: 230, h: 120, label: '新界东' },
-  KOWLOON:   { x: 175, y: 180, w: 280, h:  80, label: '九龙' },
-  HK_ISLAND: { x: 150, y: 280, w: 330, h:  80, label: '港岛' },
-  OUTLYING:  { x: 560, y: 200, w: 180, h: 140, label: '离岛' },
+// HK 18 districts → our 5 macro regions
+const DISTRICT_TO_MACRO: Record<string, string> = {
+  '中西区': 'HK_ISLAND', '湾仔区': 'HK_ISLAND', '东区': 'HK_ISLAND', '南区': 'HK_ISLAND',
+  '油尖旺区': 'KOWLOON', '深水埗区': 'KOWLOON', '九龙城区': 'KOWLOON',
+  '黄大仙区': 'KOWLOON', '观塘区': 'KOWLOON',
+  '沙田区': 'NT_EAST', '大埔区': 'NT_EAST', '北区': 'NT_EAST', '西贡区': 'NT_EAST',
+  '葵青区': 'NT_WEST', '荃湾区': 'NT_WEST', '屯门区': 'NT_WEST', '元朗区': 'NT_WEST',
+  '离岛区': 'OUTLYING',
+}
+
+const MACRO_COLOR: Record<string, string> = {
+  HK_ISLAND: '#00e5ff', KOWLOON: '#7c4dff', NT_EAST: '#67ff8a',
+  NT_WEST: '#ffe082', OUTLYING: '#ff80ab',
 }
 
 const districtCount = computed(() => {
@@ -36,15 +42,6 @@ const districtCount = computed(() => {
   for (const d of data.value?.by_district || []) m[d.code] = d.count
   return m
 })
-
-const maxCount = computed(() => Math.max(1, ...Object.values(districtCount.value)))
-
-function fillFor(code: string): string {
-  const c = districtCount.value[code] || 0
-  if (c === 0) return 'rgba(0,229,255,.05)'
-  const ratio = Math.min(c / maxCount.value, 1)
-  return `rgba(0, 229, 255, ${0.15 + ratio * 0.6})`
-}
 
 const selectedDistrict = ref<string | null>(null)
 const selectedItems = computed(() => {
@@ -56,8 +53,127 @@ function projColor(p: ProjectBoardItem): string {
   return STATUS_COLOR[p.status] || '#6b7d97'
 }
 
-onMounted(async () => { await load(); timer = window.setInterval(load, 60000) })
-onUnmounted(() => { if (timer) clearInterval(timer) })
+// ─── ECharts map ───
+const mapEl = ref<HTMLDivElement>()
+let chart: echarts.ECharts | null = null
+const mapLoaded = ref(false)
+const mapError = ref<string | null>(null)
+
+async function loadMap() {
+  if (!mapEl.value) return
+  try {
+    const resp = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/810000_full.json')
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const geo = await resp.json()
+    echarts.registerMap('HK', geo)
+    chart = echarts.init(mapEl.value)
+    renderMap()
+    mapLoaded.value = true
+  } catch (e: any) {
+    mapError.value = e?.message || 'fetch failed'
+  }
+}
+
+function renderMap() {
+  if (!chart || !mapLoaded.value) return
+  const counts = districtCount.value
+  const seriesData = Object.entries(DISTRICT_TO_MACRO).map(([dist, macro]) => ({
+    name: dist,
+    value: counts[macro] || 0,
+    macro,
+    itemStyle: {
+      areaColor: counts[macro]
+        ? withAlpha(MACRO_COLOR[macro], 0.55)
+        : 'rgba(0,229,255,.06)',
+      borderColor: selectedDistrict.value === macro ? '#ff4081' : 'rgba(0,229,255,.6)',
+      borderWidth: selectedDistrict.value === macro ? 2.5 : 1,
+    },
+  }))
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: '#0a1929',
+      borderColor: 'var(--cockpit-accent)',
+      textStyle: { color: '#cfe3ff' },
+      formatter: (p: any) => {
+        const macro = p.data?.macro
+        const label = DISTRICT_LABELS[macro] || macro
+        return `<b>${p.name}</b> (${label})<br/>项目数: ${p.value}`
+      },
+    },
+    geo: {
+      map: 'HK',
+      roam: false,
+      zoom: 1.15,
+      label: {
+        show: true, color: '#cfe3ff', fontSize: 10,
+      },
+      itemStyle: {
+        areaColor: 'rgba(0,30,60,.3)',
+        borderColor: 'rgba(0,229,255,.4)',
+      },
+      emphasis: {
+        label: { color: '#fff', fontSize: 12 },
+        itemStyle: { areaColor: 'rgba(255,64,129,.4)' },
+      },
+    },
+    series: [
+      {
+        name: 'HK',
+        type: 'map',
+        map: 'HK',
+        roam: false,
+        zoom: 1.15,
+        data: seriesData,
+        label: { show: true, color: '#cfe3ff', fontSize: 10 },
+        emphasis: {
+          label: { color: '#fff', fontSize: 12 },
+          itemStyle: { areaColor: 'rgba(255,64,129,.5)' },
+        },
+      },
+    ],
+  })
+
+  chart.off('click')
+  chart.on('click', (p: any) => {
+    const macro = (p.data as any)?.macro
+    if (!macro) return
+    selectedDistrict.value = selectedDistrict.value === macro ? null : macro
+    renderMap()
+  })
+}
+
+watch([districtCount, selectedDistrict], () => renderMap())
+
+onMounted(async () => {
+  await load()
+  await nextTick()
+  await loadMap()
+  timer = window.setInterval(async () => {
+    await load()
+    renderMap()
+  }, 60000)
+  window.addEventListener('resize', resizeChart)
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  if (chart) chart.dispose()
+  window.removeEventListener('resize', resizeChart)
+})
+
+function resizeChart() { chart?.resize() }
+
+function withAlpha(hex: string, a: number): string {
+  // simple hex → rgba
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${a})`
+}
 </script>
 
 <template>
@@ -76,33 +192,33 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="lower">
       <div class="panel map-panel">
         <div class="panel-title">
-          香港项目分布（schematic）
-          <span v-if="selectedDistrict" class="reset" @click="selectedDistrict = null">[清除选区]</span>
+          香港项目分布
+          <span v-if="selectedDistrict" class="reset" @click="selectedDistrict = null; renderMap()">[清除选区]</span>
+          <span v-if="mapError" class="map-err" :title="mapError">⚠ 地图数据加载失败，显示备用 schematic</span>
         </div>
-        <svg viewBox="0 0 800 400" style="width: 100%; height: calc(100% - 30px)">
-          <!-- water background -->
+
+        <!-- Real HK map (ECharts) -->
+        <div v-show="!mapError" ref="mapEl" class="echarts-map"></div>
+
+        <!-- Fallback SVG schematic -->
+        <svg v-if="mapError" viewBox="0 0 800 400" style="width: 100%; height: calc(100% - 30px)">
           <rect width="800" height="400" fill="rgba(0,30,60,.3)" />
-          <!-- districts -->
-          <g v-for="(r, code) in DISTRICT_RECTS" :key="code"
+          <g v-for="(label, code) in DISTRICT_LABELS" :key="code"
              style="cursor: pointer"
              @click="selectedDistrict = (selectedDistrict === code ? null : code)">
-            <rect :x="r.x" :y="r.y" :width="r.w" :height="r.h"
-                  :fill="fillFor(code)"
+            <rect :x="50 + (Object.keys(DISTRICT_LABELS).indexOf(code) % 3) * 250"
+                  :y="40 + Math.floor(Object.keys(DISTRICT_LABELS).indexOf(code) / 3) * 160"
+                  width="230" height="140"
+                  :fill="districtCount[code] ? `rgba(0,229,255,${0.15 + (districtCount[code] / 8) * 0.5})` : 'rgba(0,229,255,.05)'"
                   :stroke="selectedDistrict === code ? '#ff4081' : 'rgba(0,229,255,.5)'"
-                  :stroke-width="selectedDistrict === code ? '3' : '1.5'"
-                  rx="4" />
-            <text :x="r.x + r.w / 2" :y="r.y + r.h / 2 - 8"
-                  text-anchor="middle" font-size="20"
-                  :fill="districtCount[code] ? '#cfe3ff' : '#6b7d97'"
-                  font-weight="600">
-              {{ r.label }}
-            </text>
-            <text :x="r.x + r.w / 2" :y="r.y + r.h / 2 + 24"
-                  text-anchor="middle" font-size="28"
-                  :fill="districtCount[code] ? '#00e5ff' : '#3a4d68'"
-                  font-family="Courier New" font-weight="700">
-              {{ districtCount[code] || 0 }}
-            </text>
+                  stroke-width="1.5" rx="4" />
+            <text :x="50 + (Object.keys(DISTRICT_LABELS).indexOf(code) % 3) * 250 + 115"
+                  :y="40 + Math.floor(Object.keys(DISTRICT_LABELS).indexOf(code) / 3) * 160 + 60"
+                  text-anchor="middle" font-size="20" fill="#cfe3ff" font-weight="600">{{ label }}</text>
+            <text :x="50 + (Object.keys(DISTRICT_LABELS).indexOf(code) % 3) * 250 + 115"
+                  :y="40 + Math.floor(Object.keys(DISTRICT_LABELS).indexOf(code) / 3) * 160 + 95"
+                  text-anchor="middle" font-size="28" fill="#00e5ff"
+                  font-family="Courier New" font-weight="700">{{ districtCount[code] || 0 }}</text>
           </g>
         </svg>
       </div>
@@ -141,9 +257,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 .lower { flex: 1; display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; min-height: 0; }
 .map-panel { display: flex; flex-direction: column; }
+.echarts-map { flex: 1; min-height: 300px; }
 .reset {
   margin-left: 12px; cursor: pointer; color: var(--cockpit-accent-3);
   font-size: 12px; letter-spacing: 1px;
+}
+.map-err {
+  margin-left: 12px; color: #ff8e00; font-size: 11px;
 }
 
 .proj-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; overflow-y: auto; max-height: 100%; }
