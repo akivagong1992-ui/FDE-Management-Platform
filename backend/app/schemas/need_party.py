@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class NeedPartyBase(BaseModel):
     name: str
-    party_type: str = Field(default="internal_dept", pattern="^(internal_dept|external_company)$")
+    party_type: str = Field(default="外资企业")  # 自由字符串，由前端 CLIENT_TYPES 下拉约束
     contact_person: str | None = None
     contact_phone: str | None = None
     contact_email: EmailStr | None = None
@@ -20,7 +20,7 @@ class NeedPartyCreate(NeedPartyBase):
 
 class NeedPartyUpdate(BaseModel):
     name: str | None = None
-    party_type: str | None = Field(default=None, pattern="^(internal_dept|external_company)$")
+    party_type: str | None = None
     contact_person: str | None = None
     contact_phone: str | None = None
     contact_email: EmailStr | None = None

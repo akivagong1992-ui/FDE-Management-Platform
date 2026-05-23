@@ -2,6 +2,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  CLIENT_TYPES,
   createNeedParty, deleteNeedParty, listNeedParties, updateNeedParty, uploadFile,
   type NeedParty, type NeedPartyPayload,
 } from '@/api/needParties'
@@ -11,12 +12,13 @@ const loading = ref(false)
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const blankForm = (): Partial<NeedPartyPayload> => ({
-  name: '', party_type: 'external_company',
+  name: '', party_type: '外资企业',
   contact_person: '', contact_phone: '', contact_email: '', notes: '',
   show_in_cockpit: false, logo_path: null,
 })
 const form = reactive<Partial<NeedPartyPayload>>(blankForm())
 const uploading = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 async function load() {
   loading.value = true
@@ -52,10 +54,15 @@ async function onUploadLogo(rawFile: File) {
   }
 }
 
+function triggerFilePicker() {
+  fileInputRef.value?.click()
+}
+
 function onLogoChange(ev: Event) {
-  const file = (ev.target as HTMLInputElement).files?.[0]
+  const input = ev.target as HTMLInputElement
+  const file = input.files?.[0]
   if (file) onUploadLogo(file)
-  ;(ev.target as HTMLInputElement).value = ''
+  input.value = ''
 }
 
 async function onToggleShow(np: NeedParty, val: string | number | boolean) {
@@ -116,9 +123,7 @@ onMounted(load)
       <el-table-column prop="name" label="名称" min-width="200" />
       <el-table-column prop="party_type" label="类型" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.party_type === 'internal_dept' ? 'success' : 'warning'">
-            {{ row.party_type === 'internal_dept' ? '内部部门' : '外部合同方' }}
-          </el-tag>
+          <el-tag type="info">{{ row.party_type || '—' }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="驾驶舱展示" width="120">
@@ -145,9 +150,8 @@ onMounted(load)
       <el-form :model="form" label-width="110px">
         <el-form-item label="名称" required><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="form.party_type" style="width: 100%">
-            <el-option label="电信集团内部部门" value="internal_dept" />
-            <el-option label="外部合同方" value="external_company" />
+          <el-select v-model="form.party_type" style="width: 100%" filterable allow-create default-first-option>
+            <el-option v-for="t in CLIENT_TYPES" :key="t" :label="t" :value="t" />
           </el-select>
         </el-form-item>
         <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
@@ -164,12 +168,16 @@ onMounted(load)
               fit="contain"
             />
             <span v-else style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border: 1px dashed #dcdfe6; border-radius: 8px; color: #c0c4cc">无</span>
-            <label class="upload-btn">
-              <input type="file" accept="image/*" style="display: none" @change="onLogoChange" />
-              <el-button :loading="uploading" type="primary" plain>
-                {{ form.logo_path ? '更换 Logo' : '上传 Logo' }}
-              </el-button>
-            </label>
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="onLogoChange"
+            />
+            <el-button :loading="uploading" type="primary" plain @click="triggerFilePicker">
+              {{ form.logo_path ? '更换 Logo' : '上传 Logo' }}
+            </el-button>
             <el-button v-if="form.logo_path" link type="danger" @click="form.logo_path = null">移除</el-button>
           </div>
           <div style="color: #909399; font-size: 12px; margin-top: 4px">
@@ -193,6 +201,3 @@ onMounted(load)
   </div>
 </template>
 
-<style scoped>
-.upload-btn { display: inline-block; cursor: pointer; }
-</style>
