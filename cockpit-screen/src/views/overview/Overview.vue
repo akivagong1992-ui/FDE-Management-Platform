@@ -297,22 +297,15 @@ onUnmounted(() => {
 }
 .logo-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 12px 8px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid var(--cockpit-border);
-  border-radius: 10px;
-  transition: all 0.3s;
-  min-height: 92px;
+  padding: 10px 6px;
+  min-height: 84px;
+  transition: transform 0.3s;
 }
-.logo-tile:hover {
-  background: rgba(0, 229, 255, 0.10);
-  border-color: var(--cockpit-accent);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
-}
+.logo-tile:hover { transform: scale(1.06); }
 .logo-img {
-  max-width: 80px; max-height: 44px;
+  max-width: 90px; max-height: 48px;
   object-fit: contain;
-  filter: brightness(1.1);
+  filter: brightness(1.15);
 }
 .logo-name {
   margin-top: 8px;
