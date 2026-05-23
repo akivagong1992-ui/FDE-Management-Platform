@@ -16,7 +16,6 @@ from app.core.database import get_db
 from app.models.assignment import ASSIGNMENT_STATUS_ENDED, Assignment
 from app.models.engineer import Certificate, Engineer
 from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
-from app.models.need_party import NeedParty
 from app.models.project import (
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
@@ -26,7 +25,6 @@ from app.models.project import (
     PROJECT_STATUS_IN_PROGRESS,
     Project,
 )
-from app.models.retrospective import ProjectRetrospective
 from app.models.skill import EngineerSkill, Skill
 from app.models.vendor import Vendor
 from app.models.vendor_service_fee import VendorServiceFee
@@ -381,58 +379,6 @@ async def capability_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "by_issuer": issuer_list,
         "cert_heatmap": cert_heatmap,
         "top_certified_engineers": top_certified,
-    }
-
-
-# ── Tab 8 · Relationship ────────────────────────────────────────────
-
-@router.get("/relationship-stats")
-async def relationship_stats(db: AsyncSession = Depends(get_db)) -> dict:
-    """项目复盘指标 — 只展示与工程师交付质量直接相关的字段。
-
-    续单/赢输（renewal）由销售/价格/客户内部决策共同决定，不归因工程师团队，
-    故不在驾驶舱展示（model 与 admin API 路由仍保留以备销售团队自用）。
-    """
-    retros = (await db.execute(select(ProjectRetrospective))).scalars().all()
-    if retros:
-        avg_score = round(sum(r.satisfaction_score for r in retros) / len(retros), 2)
-        closed = sum(1 for r in retros if r.is_closed)
-        action_closure_rate = round(closed / len(retros), 4)
-    else:
-        avg_score = 0.0
-        closed = 0
-        action_closure_rate = 0.0
-
-    # Top clients by retrospective satisfaction（仅按复盘平均分）
-    np_lookup = {n.id: n.name for n in (await db.execute(select(NeedParty))).scalars().all()}
-    proj_to_np = {
-        p.id: p.need_party_id
-        for p in (await db.execute(select(Project))).scalars().all()
-    }
-    np_scores: dict[int, list[int]] = defaultdict(list)
-    for r in retros:
-        nid = proj_to_np.get(r.project_id)
-        if nid:
-            np_scores[nid].append(r.satisfaction_score)
-    top_clients_by_satisfaction = sorted(
-        [
-            {
-                "need_party_id": nid,
-                "name": np_lookup.get(nid, f"#{nid}"),
-                "retro_count": len(scores),
-                "avg_satisfaction": round(sum(scores) / len(scores), 2),
-            }
-            for nid, scores in np_scores.items()
-        ],
-        key=lambda x: (-x["avg_satisfaction"], -x["retro_count"]),
-    )[:8]
-
-    return {
-        "total_retrospectives": len(retros),
-        "closed_retrospectives": closed,
-        "average_satisfaction": avg_score,
-        "action_closure_rate": action_closure_rate,
-        "top_clients_by_satisfaction": top_clients_by_satisfaction,
     }
 
 

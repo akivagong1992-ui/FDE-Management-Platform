@@ -15,7 +15,6 @@ const tabs = [
   { n: 5, path: '/efficiency', title: '效率榜' },
   { n: 6, path: '/knowledge', title: '技术沉淀 ⭐' },
   { n: 7, path: '/capability', title: '团队能力 ⭐' },
-  { n: 8, path: '/relationship', title: '项目复盘 ⭐' },
 ]
 
 const activePath = computed(() => route.path)

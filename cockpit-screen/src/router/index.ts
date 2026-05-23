@@ -13,7 +13,6 @@ const routes: RouteRecordRaw[] = [
       { path: 'efficiency', component: () => import('@/views/efficiency/Efficiency.vue'), meta: { title: '效率榜', n: 5 } },
       { path: 'knowledge', component: () => import('@/views/knowledge/Knowledge.vue'), meta: { title: '技术沉淀', n: 6 } },
       { path: 'capability', component: () => import('@/views/capability/Capability.vue'), meta: { title: '团队能力', n: 7 } },
-      { path: 'relationship', component: () => import('@/views/relationship/Relationship.vue'), meta: { title: '客户口碑', n: 8 } },
     ],
   },
 ]

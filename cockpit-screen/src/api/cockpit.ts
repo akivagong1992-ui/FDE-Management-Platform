@@ -130,16 +130,3 @@ export interface CapabilityStats {
 }
 export const getCapabilityStats = () => http.get<CapabilityStats>('/capability-stats').then((r) => r.data)
 
-export interface RelationshipStats {
-  total_retrospectives: number
-  closed_retrospectives: number
-  average_satisfaction: number
-  action_closure_rate: number
-  top_clients_by_satisfaction: {
-    need_party_id: number
-    name: string
-    retro_count: number
-    avg_satisfaction: number
-  }[]
-}
-export const getRelationshipStats = () => http.get<RelationshipStats>('/relationship-stats').then((r) => r.data)
