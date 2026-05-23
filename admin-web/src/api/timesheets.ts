@@ -8,7 +8,7 @@ export interface Timesheet {
   project_name?: string | null
   assignment_id?: number | null
   work_date: string
-  hours: number | string
+  person_days: number | string
   description?: string | null
   is_approved: boolean
   created_at: string
@@ -19,7 +19,7 @@ export interface TimesheetPayload {
   project_id: number
   assignment_id?: number | null
   work_date: string
-  hours: number
+  person_days: number
   description?: string | null
 }
 

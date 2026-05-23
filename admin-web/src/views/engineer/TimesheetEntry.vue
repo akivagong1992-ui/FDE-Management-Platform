@@ -17,7 +17,7 @@ const filter = reactive<{ engineer_id?: number; project_id?: number; date_from?:
 const dialog = ref(false)
 const form = reactive<TimesheetPayload>({
   engineer_id: 0, project_id: 0, work_date: new Date().toISOString().slice(0, 10),
-  hours: 8, description: '',
+  person_days: 1.0, description: '',
 })
 
 const importDialog = ref(false)
@@ -41,14 +41,14 @@ function openCreate() {
     engineer_id: engineers.value[0]?.id || 0,
     project_id: projects.value[0]?.id || 0,
     work_date: new Date().toISOString().slice(0, 10),
-    hours: 8, description: '',
+    person_days: 1.0, description: '',
   })
   dialog.value = true
 }
 
 async function onSubmit() {
-  if (!form.engineer_id || !form.project_id || !form.work_date || !form.hours) {
-    ElMessage.warning('工程师/项目/日期/工时 必填')
+  if (!form.engineer_id || !form.project_id || !form.work_date || !form.person_days) {
+    ElMessage.warning('工程师/项目/日期/人天 必填')
     return
   }
   await createTimesheet(form)
@@ -58,7 +58,10 @@ async function onSubmit() {
 }
 
 async function onDelete(t: Timesheet) {
-  await ElMessageBox.confirm(`删除 ${t.work_date} ${t.engineer_name} 的 ${t.hours}h 工时？`, '提示', { type: 'warning' })
+  await ElMessageBox.confirm(
+    `删除 ${t.work_date} ${t.engineer_name} 的 ${t.person_days} 人天记录？`,
+    '提示', { type: 'warning' },
+  )
   await deleteTimesheet(t.id)
   ElMessage.success('已删除')
   await load()
@@ -120,8 +123,8 @@ onMounted(load)
       <el-table-column prop="work_date" label="日期" width="110" sortable />
       <el-table-column prop="engineer_name" label="工程师" width="100" />
       <el-table-column prop="project_name" label="项目" min-width="200" />
-      <el-table-column label="工时" width="80">
-        <template #default="{ row }">{{ row.hours }}h</template>
+      <el-table-column label="人天" width="90">
+        <template #default="{ row }">{{ row.person_days }} 人天</template>
       </el-table-column>
       <el-table-column prop="description" label="描述" />
       <el-table-column label="审核" width="80">
@@ -154,9 +157,15 @@ onMounted(load)
         <el-form-item label="日期" required>
           <el-date-picker v-model="form.work_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="工时" required>
-          <el-input-number v-model="form.hours" :min="0.25" :max="24" :step="0.25" :precision="2" controls-position="right" />
-          <span style="margin-left: 8px; color: #909399">小时</span>
+        <el-form-item label="人天" required>
+          <el-input-number
+            v-model="form.person_days"
+            :min="0.5" :max="3" :step="0.5" :precision="1"
+            step-strictly controls-position="right"
+          />
+          <span style="margin-left: 8px; color: #909399; font-size: 13px">
+            人天（0.5 步进；典型 1.0；半天 0.5）
+          </span>
         </el-form-item>
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
@@ -172,8 +181,9 @@ onMounted(load)
         <p>步骤：</p>
         <ol style="margin: 4px 0 8px 20px; padding: 0">
           <li>点击下方"选择文件"按钮，上传一份 .xlsx 文件</li>
-          <li>表头列顺序：<code>工程师姓名 | 项目编号或名称 | 工作日期(YYYY-MM-DD) | 工时 | 描述</code></li>
+          <li>表头列顺序：<code>工程师姓名 | 项目编号或名称 | 工作日期(YYYY-MM-DD) | 人天(0.5 步进) | 描述</code></li>
           <li>工程师按姓名精确匹配；项目优先按编号匹配，否则按名称</li>
+          <li><strong>人天必须是 0.5 的自然倍数</strong>（0.5 / 1.0 / 1.5 / 2.0 …），非法值会被该行跳过</li>
           <li>导入逐行进行，失败行不影响成功行；末尾显示错误清单</li>
         </ol>
       </div>

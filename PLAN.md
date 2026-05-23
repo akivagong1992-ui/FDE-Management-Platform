@@ -480,7 +480,7 @@ Manpower-management-platform/
 **1c — 桥**（已完成 ✅）
 - [x] 派单 Assignment CRUD（工程师 × 项目 × 时段 × 角色 × 工时占比 + 状态机）
 - [x] 派单"结束"按钮（一键填实际结束日）
-- [x] 工时录入（单条 + bulk + Excel 导入 + 模板下载）
+- [x] 工时录入（单条 + bulk + Excel 导入 + 模板下载） — **单位 = 人天（0.5 步进，0.5/1.0/1.5/...，上限 3）**
 - [x] 工时唯一约束 (engineer × project × work_date)
 - [x] 工时审核字段铺底（approve API 已就绪，UI 在 Phase 1d 加）
 
@@ -600,4 +600,5 @@ Manpower-management-platform/
 - **v0.3.3** (Phase 1c 完成后)：Assignment + Timesheet 落地，含 Excel 模板下载 + 批量导入（openpyxl）。`/engineer` 模块现有 5 个 Tab：派单（默认）/ 工时记录 / 工程师档案 / Vendor / 技能字典。工时审核 API 就绪但 UI 在 1d。
 - **v0.3.4** (Phase 2a 完成后)：Supplier + ExpenseRequest（4 状态审批流）+ VendorServiceFee 三个模型落地；5 类支出字典自动 seed；项目 `/cost-breakdown` 接口归集 Vendor 服务费 + 外部支出。`/expense` 三个 Tab：外部支出 / Vendor 服务费 / 供应商。利润 A/B/C 三口径 API + 驾驶舱隔离测试留给 2b。
 - **v0.3.5**：支出分类追加第 6 类 `other`（其他 — 不在前 5 类的开销），覆盖 ExpenseType 字典 seed 列表。
-- **v0.3.6** (Phase 2b-i 完成后)：ProjectRevenue + 三口径 API（A/B/C）落地；pytest 强制断言驾驶舱接口不漏 A/B 字段（R14 闭环）；驾驶舱 Tab 1 接入真实 C 口径数据。`/profit` 模块 4 个 Tab。下一步 2b-ii（工时×单价 + 知识资产）。
+- **v0.3.6** (Phase 2b-i 完成后)：ProjectRevenue + 三口径 API（A/B/C）落地；pytest 强制断言驾驶舱接口不漏 A/B 字段（R14 闭环）；驾驶舱 Tab 1 接入真实 C 口径数据。`/profit` 模块 4 个 Tab。下一步 2b-ii（知识资产 + 项目预算）。
+- **v0.3.7**：Timesheet 单位由「小时」改为「**人天**」(`person_days`)，0.5 自然倍数步进 (0.5/1.0/1.5/...)，单日上限 3。前后端 + Excel 模板同步；用户拍板**不**接入"人天 × 工时单价"做成本（成本仍由 VendorServiceFee 主导）。

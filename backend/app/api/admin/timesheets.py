@@ -39,7 +39,7 @@ def _to_out(t: Timesheet) -> TimesheetOut:
         project_name=t.project.name if t.project else None,
         assignment_id=t.assignment_id,
         work_date=t.work_date,
-        hours=t.hours,
+        person_days=t.person_days,
         description=t.description,
         is_approved=t.is_approved,
         created_at=t.created_at,
@@ -162,7 +162,7 @@ async def approve_timesheet(
 
 # ─── Excel template + import ─────────────────────────────────────────
 
-EXCEL_HEADERS = ["工程师姓名", "项目编号或名称", "工作日期(YYYY-MM-DD)", "工时", "描述(可选)"]
+EXCEL_HEADERS = ["工程师姓名", "项目编号或名称", "工作日期(YYYY-MM-DD)", "人天(0.5 步进)", "描述(可选)"]
 
 
 @router.get("/template")
@@ -174,7 +174,8 @@ async def download_template(
     ws = wb.active
     ws.title = "工时导入"
     ws.append(EXCEL_HEADERS)
-    ws.append(["李志强", "PROJ-001", "2026-05-23", 8, "基站现场调试"])
+    ws.append(["李志强", "PROJ-001", "2026-05-23", 1.0, "基站现场调试（整天）"])
+    ws.append(["李志强", "PROJ-001", "2026-05-24", 0.5, "半天 PR 评审"])
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -213,8 +214,8 @@ async def import_excel(
         try:
             if not row or all(c is None for c in row):
                 continue
-            eng_name_raw, proj_key_raw, date_raw, hours_raw, desc_raw = (list(row) + [None] * 5)[:5]
-            if eng_name_raw is None or proj_key_raw is None or date_raw is None or hours_raw is None:
+            eng_name_raw, proj_key_raw, date_raw, days_raw, desc_raw = (list(row) + [None] * 5)[:5]
+            if eng_name_raw is None or proj_key_raw is None or date_raw is None or days_raw is None:
                 errors.append(ImportRowError(row=idx, message="缺少必填字段"))
                 skipped += 1
                 continue
@@ -258,19 +259,17 @@ async def import_excel(
             else:
                 work_date = date_cls.fromisoformat(str(date_raw).strip())
 
-            # Hours
+            # Person-days (0.5 step validated downstream by Pydantic)
             try:
-                hours = Decimal(str(hours_raw))
+                person_days = Decimal(str(days_raw))
             except (InvalidOperation, ValueError) as e:
-                raise ValueError(f"工时格式不对: {hours_raw}") from e
-            if hours <= 0 or hours > 24:
-                raise ValueError(f"工时超出范围: {hours}")
+                raise ValueError(f"人天格式不对: {days_raw}") from e
 
             payload = TimesheetCreate(
                 engineer_id=engineer.id,
                 project_id=project.id,
                 work_date=work_date,
-                hours=hours,
+                person_days=person_days,
                 description=str(desc_raw).strip() if desc_raw else None,
             )
             try:

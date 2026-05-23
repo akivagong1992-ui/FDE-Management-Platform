@@ -7,7 +7,7 @@ from app.core.database import Base
 
 
 class Timesheet(Base):
-    """工时记录 — 工程师在某项目某天的工时。"""
+    """工时记录 — 工程师在某项目某天的人天投入（0.5 步进；典型 1.0；半天 0.5）。"""
 
     __tablename__ = "timesheets"
     __table_args__ = (
@@ -20,7 +20,7 @@ class Timesheet(Base):
     assignment_id: Mapped[int | None] = mapped_column(ForeignKey("assignments.id"))
 
     work_date: Mapped[date] = mapped_column(Date, index=True)
-    hours: Mapped[float] = mapped_column(Numeric(5, 2))  # e.g. 8.00, max 24
+    person_days: Mapped[float] = mapped_column(Numeric(4, 1))  # 0.5 / 1.0 / 1.5 / ...
     description: Mapped[str | None] = mapped_column(Text)
 
     is_approved: Mapped[bool] = mapped_column(default=False)
