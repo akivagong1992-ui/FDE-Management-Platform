@@ -39,16 +39,21 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">已验收项目</div>
-        <div class="kpi-value glow-text">{{ data?.finished_with_dates ?? '—' }}</div>
+        <div class="kpi-label">零失误交付（无返工 ≤1变更）</div>
+        <div class="kpi-value glow-text">{{ data?.clean_delivery_count ?? '—' }}</div>
+        <div class="kpi-sub">已归档项目中</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">按时项目数</div>
-        <div class="kpi-value glow-text">{{ data?.on_time_count ?? '—' }}</div>
+        <div class="kpi-label">返工率</div>
+        <div class="big-pct">
+          {{ data?.rework_rate != null ? Math.round(data.rework_rate * 100) + '%' : '—' }}
+        </div>
+        <div class="kpi-sub">累计返工 {{ data?.total_rework_count ?? 0 }} 次</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">在管项目总数</div>
-        <div class="kpi-value glow-text">{{ data?.total_projects ?? '—' }}</div>
+        <div class="kpi-label">人均变更次数</div>
+        <div class="big-pct">{{ data?.avg_changes_per_project ?? '—' }}</div>
+        <div class="kpi-sub">累计 {{ data?.total_change_count ?? 0 }} 次变更</div>
       </div>
     </div>
 
@@ -88,6 +93,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px; }
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
+.big-pct {
+  font-family: 'Courier New', monospace; font-size: 36px; font-weight: 700;
+  color: var(--cockpit-accent); text-shadow: 0 0 8px var(--cockpit-accent);
+}
+.kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .gauge { margin-top: 4px; }
 .lower { flex: 1; display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; min-height: 0; }
 .empty { display: flex; align-items: center; justify-content: center; height: calc(100% - 30px); color: var(--cockpit-text-dim); }

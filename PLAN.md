@@ -544,14 +544,19 @@ Manpower-management-platform/
 - [x] 管理后台 `/knowledge` 详情抽屉新增"复用记录"区块（增/删 reference）
 - [x] pytest 隔离测试扩展覆盖 `/api/cockpit/growth-trend`
 
-**3-next-ii — 深化**（待办）
-- [ ] **效率指标深化**：人均交付、返工率、变更次数
-- [ ] **IDP 个人发展计划**（基于现有 EngineerSkillSnapshot，加 target + due_date 字段）
-- [ ] 完整 RenewalTracking model（替代当前粗略代理）
-- [ ] 大屏动效打磨、自动轮播、4K 适配
+**3-next-ii — 深化**（已完成 ✅）
+- [x] **效率指标深化**：Project 加 `rework_count` / `change_count` 字段；驾驶舱 Tab 5 加返工率 / 人均变更次数 / 零失误交付 KPI
+- [x] **IDP 个人发展计划**：IDP model + admin CRUD（/capability 下增 Tab）
+- [x] **培训记录**：TrainingRecord model + admin CRUD（成本字段仅 lead/finance 可见）
+- [x] **真续单率**：Project 加 `renewal_of_project_id` 自引用；驾驶舱 Tab 8 加显式续单率（与粗略代理并列展示）
+- [x] **HK 简图**：Project 加 `district` 字段（HK_ISLAND/KOWLOON/NT_EAST/NT_WEST/OUTLYING）；驾驶舱 Tab 2 用 SVG 绘制港岛/九龙/新界/离岛热力图（点击区域筛选项目）
+- [x] seed_demo 扩展：所有项目随机分配 district + rework/change 计数，~45% revenue 项目挂续单源；生成 76 培训 + 19 IDP
+
+**3-next-iii — 剩余**（待办）
+- [ ] 大屏动效打磨（数字滚动、霓虹脉冲、轮播节奏）
 - [ ] **节省金额** brag 指标公式打磨（R6）
-- [ ] HK 地图组件（替代项目看板，需 geoJSON）
-- [ ] 培训记录 Training model（4.8 完整）
+- [ ] 真 HK 地图（ECharts geo + 香港 geoJSON，替代当前 SVG schematic）
+- [ ] RenewalTracking 详表（赢/输/失败原因）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -629,3 +634,4 @@ Manpower-management-platform/
 - **v0.3.9** (Phase 3 bulk 完成后)：ProjectRetrospective + 5 个驾驶舱聚合 endpoint + 管理后台 ⑧ 复盘模块；驾驶舱 Tab 2/3/4/5/7/8 全部从 placeholder 改为真数据组件（项目看板 / 利润对比 / 工程师视图 / 效率仪表盘 / 技能矩阵热力 / 客户满意度雷达）。pytest 隔离覆盖到 11 个 cockpit endpoint。8 Tab 真实数据全开。
 - **v0.4.0** (seed_demo + Vendor 节省修复)：一次性脚本灌 30 工程师 / 28 项目 / 248 工时 / 30 资产 / 9 复盘等演示级数据；修复 Vendor 节省榜双重计数（改为按服务费比例分摊）。
 - **v0.4.1** (Phase 3-next-i 完成后)：AssetReference + EngineerSkillSnapshot 两个新模型；管理后台 `/capability` 完整页（含 SVG 团队成长曲线 + 拍快照按钮）；`/knowledge` 详情抽屉加复用记录区块；驾驶舱 Tab 6 加复用 KPI、Tab 7 加成长曲线。seed_demo 生成 8 季度 × 30 工程师 = 240 快照 + 36 复用记录。
+- **v0.4.2** (Phase 3-next-ii 完成后)：Project 扩展 district / rework_count / change_count / renewal_of_project_id 四个字段；新建 TrainingRecord + IDP 两域 + admin CRUD（培训成本仅 lead/finance 可见）；`/capability` 模块改为 3 Tab（成长曲线 / 培训记录 / IDP）；驾驶舱 Tab 2 改为 SVG HK schematic 5 区热力图（可点击筛选项目）；Tab 5 加返工率/人均变更/零失误 3 个 KPI；Tab 8 加显式续单率（与粗略代理并列）。seed 自动分配 5 区、~45% revenue 项目挂续单源、生成 76 培训 + 19 IDP。

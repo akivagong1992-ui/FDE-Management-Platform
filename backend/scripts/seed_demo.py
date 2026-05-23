@@ -21,9 +21,10 @@ from app.models.assignment import Assignment
 from app.models.data_dict import DataDict
 from app.models.engineer import Certificate, Engineer
 from app.models.expense import EXPENSE_TYPE_DEFAULTS, ExpenseRequest
+from app.models.idp import IDP
 from app.models.knowledge_asset import ASSET_CATEGORY_DEFAULTS, KnowledgeAsset
 from app.models.need_party import NeedParty
-from app.models.project import Project
+from app.models.project import HK_DISTRICTS, Project
 from app.models.project_revenue import ProjectRevenue
 from app.models.retrospective import ProjectRetrospective
 from app.models.sales_person import SalesPerson
@@ -31,6 +32,7 @@ from app.models.skill import EngineerSkill, Skill
 from app.models.skill_snapshot import EngineerSkillSnapshot
 from app.models.supplier import Supplier
 from app.models.timesheet import Timesheet
+from app.models.training import TrainingRecord
 from app.models.user import User
 from app.models.vendor import Vendor
 from app.models.vendor_service_fee import VendorServiceFee
@@ -289,6 +291,11 @@ async def main() -> None:
                 actual_start_date=planned_start + timedelta(days=random.randint(-3, 7)),
                 actual_end_date=actual_end,
                 description=f"项目 {name} — 自动 seed 生成",
+                district=random.choices(
+                    [c for c, _ in HK_DISTRICTS],
+                    weights=[30, 30, 15, 15, 10])[0],
+                rework_count=random.choices([0, 0, 0, 1, 2], weights=[55, 20, 10, 10, 5])[0],
+                change_count=random.choices([0, 1, 2, 3, 4], weights=[30, 30, 20, 15, 5])[0],
             )
             db.add(p); proj_objs.append(p)
         for i, tmpl in enumerate(PROJECT_TEMPLATES_NO_REVENUE):
@@ -307,12 +314,35 @@ async def main() -> None:
                 status=random.choices(["in_progress", "closing", "archived"], weights=[40, 20, 40])[0],
                 planned_start_date=random_date_within(360, 30),
                 planned_end_date=random_date_within(120, -180),
+                district=random.choices(
+                    [c for c, _ in HK_DISTRICTS],
+                    weights=[30, 30, 15, 15, 10])[0],
+                rework_count=0,
+                change_count=random.choice([0, 1, 2]),
             )
             db.add(p); proj_objs.append(p)
         await db.flush()
+
+        # Mark ~25% of revenue projects as renewals of an earlier project from the same need_party
+        renewal_marked = 0
+        for p in proj_objs:
+            if p.kind != "revenue":
+                continue
+            if random.random() > 0.45:
+                continue
+            # find an earlier-created project for the same need_party
+            candidates = [
+                q for q in proj_objs
+                if q.id != p.id and q.id < p.id and q.need_party_id == p.need_party_id
+            ]
+            if candidates:
+                p.renewal_of_project_id = random.choice(candidates).id
+                renewal_marked += 1
+        await db.flush()
         print(f"  ✓ projects x{len(proj_objs)} "
               f"({sum(1 for p in proj_objs if p.kind=='revenue')} revenue / "
-              f"{sum(1 for p in proj_objs if p.kind=='no_revenue')} no_revenue)")
+              f"{sum(1 for p in proj_objs if p.kind=='no_revenue')} no_revenue, "
+              f"{renewal_marked} 续单)")
 
         revenue_projects = [p for p in proj_objs if p.kind == "revenue"]
 
@@ -541,6 +571,57 @@ async def main() -> None:
                 snap_count += 1
         await db.flush()
         print(f"  ✓ skill snapshots x{snap_count} (8 季度 × {len(active_engineers)} 工程师)")
+
+        # ── Training records ──────────────────────────────────────────
+        TRAINING_COURSES = [
+            ("5G NR 进阶", "智联学院", "外训"),
+            ("Kubernetes 实战", "CNCF 中国", "在线"),
+            ("CISSP 备考冲刺", "ISC2", "外训"),
+            ("内部 BGP 故障复盘", "网络团队", "内训"),
+            ("Datadog APM 应用", "Datadog HK", "在线"),
+            ("PMP 续证课程", "PMI 香港", "外训"),
+            ("FastAPI 进阶", "团队负责人", "内训"),
+            ("AWS Solutions Architect", "AWS HK", "外训"),
+            ("ICT 安全意识", "合规部", "在线"),
+            ("DevOps 工具链统一", "团队负责人", "内训"),
+        ]
+        train_count = 0
+        for e in active_engineers:
+            for _ in range(random.randint(1, 4)):
+                course, provider, cat = random.choice(TRAINING_COURSES)
+                db.add(TrainingRecord(
+                    engineer_id=e.id,
+                    course_name=course, provider=provider, category=cat,
+                    training_date=random_date_within(540, 0),
+                    hours=Decimal(random.choice(["8", "16", "24", "40"])),
+                    cost=Decimal(random.randint(500, 8000)) if cat in ("外训", "在线") else None,
+                    passed=random.random() < 0.9,
+                ))
+                train_count += 1
+        await db.flush()
+        print(f"  ✓ trainings x{train_count}")
+
+        # ── IDPs ──────────────────────────────────────────────────────
+        idp_count = 0
+        for e in active_engineers:
+            if random.random() < 0.6:  # 60% have an IDP
+                target_level = min(5, (e.level or 3) + 1)
+                db.add(IDP(
+                    engineer_id=e.id,
+                    title=f"L{e.level} → L{target_level} 成长路径",
+                    target_skills=",".join(random.sample(
+                        ["K8s", "5G", "BGP", "Python", "Java", "CISSP", "AWS"],
+                        k=random.randint(2, 4))),
+                    target_certs=random.choice(["CCIE / CISSP", "AWS SA", "PMP", "CKA"]),
+                    plan_actions="1) 完成内训 2) 报考外部证书 3) 担任项目技术负责人一次",
+                    due_date=random_date_within(-90, -360),
+                    status=random.choices(
+                        ["in_progress", "completed", "draft"],
+                        weights=[60, 25, 15])[0],
+                ))
+                idp_count += 1
+        await db.flush()
+        print(f"  ✓ IDPs x{idp_count}")
 
         await db.commit()
 

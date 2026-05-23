@@ -7,6 +7,13 @@ export type ValueBasis =
   | 'save_hours' | 'strategic_reserve' | 'other'
 export type TransferReason = 'resignation' | 'role_change' | 'other'
 
+export type HKDistrict = 'HK_ISLAND' | 'KOWLOON' | 'NT_EAST' | 'NT_WEST' | 'OUTLYING'
+
+export const DISTRICT_LABELS: Record<HKDistrict, string> = {
+  HK_ISLAND: '港岛', KOWLOON: '九龙', NT_EAST: '新界东',
+  NT_WEST: '新界西', OUTLYING: '离岛',
+}
+
 export interface Project {
   id: number
   code?: string | null
@@ -28,6 +35,10 @@ export interface Project {
   actual_start_date?: string | null
   actual_end_date?: string | null
   description?: string | null
+  district?: HKDistrict | null
+  rework_count?: number
+  change_count?: number
+  renewal_of_project_id?: number | null
   created_at: string
   updated_at: string
 }
@@ -48,6 +59,10 @@ export interface ProjectPayload {
   actual_start_date?: string | null
   actual_end_date?: string | null
   description?: string | null
+  district?: HKDistrict | null
+  rework_count?: number
+  change_count?: number
+  renewal_of_project_id?: number | null
 }
 
 export interface TransferLog {

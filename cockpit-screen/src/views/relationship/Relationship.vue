@@ -29,10 +29,12 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           <div class="rating-num">{{ data?.average_satisfaction?.toFixed(1) ?? '—' }}/5.0</div>
         </div>
       </div>
-      <div class="panel kpi-card">
-        <div class="kpi-label">续单率（粗略代理）</div>
-        <div class="big-pct">{{ renewalPct }}%</div>
-        <div class="kpi-sub">≥2 项目客户 ÷ 总客户</div>
+      <div class="panel kpi-card brag-2">
+        <div class="kpi-label">续单率（显式标记）</div>
+        <div class="big-pct">
+          {{ data?.true_renewal_rate != null ? Math.round(data.true_renewal_rate * 100) + '%' : '—' }}
+        </div>
+        <div class="kpi-sub">{{ data?.renewed_project_count ?? 0 }} 个续单项目 ÷ 总项目</div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">行动项闭环率</div>
@@ -69,7 +71,9 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="hint-block">
           <div class="hint-title">续单 = 团队不可替代的硬证据</div>
           <div class="hint-body">
-            目前 <strong class="hl">{{ renewalPct }}%</strong> 的客户已重复合作。<br />
+            目前 <strong class="hl">{{ renewalPct }}%</strong> 的客户已重复合作（粗略代理）。<br />
+            显式标记续单 <strong class="hl">{{ data?.renewed_project_count ?? 0 }}</strong> 个项目，
+            占比 <strong class="hl">{{ data?.true_renewal_rate != null ? Math.round(data.true_renewal_rate * 100) : 0 }}%</strong>。<br />
             行动项闭环率 <strong class="hl">{{ closurePct }}%</strong>，
             来自 <strong class="hl">{{ data?.total_retrospectives ?? 0 }}</strong> 条复盘。
           </div>
@@ -85,6 +89,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 160px; }
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 12px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
+.kpi-card.brag-2 { border-color: #ffe082; box-shadow: 0 0 18px rgba(255, 224, 130, 0.3); }
+.kpi-card.brag-2 .big-pct { color: #ffe082; text-shadow: 0 0 8px #ffe082; }
 
 .rating { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .stars { display: flex; gap: 2px; }

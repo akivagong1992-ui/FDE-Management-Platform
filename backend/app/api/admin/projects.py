@@ -53,6 +53,10 @@ def _to_out(p: Project) -> ProjectOut:
         actual_start_date=p.actual_start_date,
         actual_end_date=p.actual_end_date,
         description=p.description,
+        district=p.district,
+        rework_count=p.rework_count or 0,
+        change_count=p.change_count or 0,
+        renewal_of_project_id=p.renewal_of_project_id,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )

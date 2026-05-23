@@ -56,7 +56,7 @@ async def _project_costs(db: AsyncSession) -> dict[int, float]:
 
 @router.get("/project-board")
 async def project_board(db: AsyncSession = Depends(get_db)) -> dict:
-    """在管/已归档项目的卡片列表 — 替代地图占位（地图需 HK geoJSON, Phase 4+）。"""
+    """项目看板 — by_district 用于 Tab 2 HK 简图。"""
     rows = (await db.execute(select(Project).order_by(Project.id.desc()))).scalars().all()
     items = [
         {
@@ -65,6 +65,7 @@ async def project_board(db: AsyncSession = Depends(get_db)) -> dict:
             "code": p.code,
             "kind": p.kind,
             "status": p.status,
+            "district": p.district,
             "need_party": p.need_party.name if p.need_party else None,
             "sales_person": p.sales_person.name if p.sales_person else None,
             "planned_start": str(p.planned_start_date) if p.planned_start_date else None,
@@ -72,10 +73,24 @@ async def project_board(db: AsyncSession = Depends(get_db)) -> dict:
         }
         for p in rows
     ]
+    # district aggregation with localized labels
+    DISTRICT_LABELS = {
+        "HK_ISLAND": "港岛", "KOWLOON": "九龙", "NT_EAST": "新界东",
+        "NT_WEST": "新界西", "OUTLYING": "离岛",
+    }
+    district_counts: dict[str, int] = defaultdict(int)
+    for it in items:
+        district_counts[it.get("district") or "UNKNOWN"] += 1
+    by_district = [
+        {"code": code, "label": DISTRICT_LABELS.get(code, code), "count": cnt}
+        for code, cnt in district_counts.items()
+    ]
+    by_district.sort(key=lambda x: -x["count"])
     return {
         "total": len(items),
         "by_status": _count_by(items, "status"),
-        "items": items[:24],  # cap for big-screen rendering
+        "by_district": by_district,
+        "items": items[:24],
     }
 
 
@@ -246,6 +261,17 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         for p in recent_completed
     ]
 
+    # Rework / change stats (Phase 3-next-ii)
+    total_rework = sum((p.rework_count or 0) for p in projects)
+    total_change = sum((p.change_count or 0) for p in projects)
+    projects_with_rework = sum(1 for p in projects if (p.rework_count or 0) > 0)
+    rework_rate = (projects_with_rework / total) if total else 0.0
+    avg_change_per_project = (total_change / total) if total else 0.0
+    clean_delivery_count = sum(
+        1 for p in projects if p.status == PROJECT_STATUS_ARCHIVED
+        and (p.rework_count or 0) == 0 and (p.change_count or 0) <= 1
+    )
+
     return {
         "total_projects": total,
         "finished_with_dates": len(finished_with_dates),
@@ -253,6 +279,11 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "on_time_rate": round(on_time_rate, 4),
         "by_status": by_status,
         "recent_completions": recent_items,
+        "total_rework_count": total_rework,
+        "total_change_count": total_change,
+        "rework_rate": round(rework_rate, 4),
+        "avg_changes_per_project": round(avg_change_per_project, 2),
+        "clean_delivery_count": clean_delivery_count,
     }
 
 
@@ -333,13 +364,22 @@ async def relationship_stats(db: AsyncSession = Depends(get_db)) -> dict:
         key=lambda x: -x["project_count"],
     )[:5]
 
+    # True renewal — projects explicitly linked via renewal_of_project_id (Phase 3-next-ii)
+    total_proj_count = (await db.execute(select(func.count(Project.id)))).scalar_one() or 0
+    renewed_count = (await db.execute(
+        select(func.count(Project.id)).where(Project.renewal_of_project_id.is_not(None))
+    )).scalar_one() or 0
+    true_renewal_rate = round(renewed_count / total_proj_count, 4) if total_proj_count else 0.0
+
     return {
         "total_retrospectives": len(retros),
         "average_satisfaction": avg_score,
         "action_closure_rate": action_closure_rate,
         "renewal_rate_proxy": renewal_rate,
+        "true_renewal_rate": true_renewal_rate,
+        "renewed_project_count": int(renewed_count),
         "top_clients_by_project_count": top_clients,
-        "_renewal_note": "续单率 = 拥有 ≥2 个项目的客户数 / 总客户数（粗略代理）；完整续单跟踪在 Phase 3+",
+        "_renewal_note": "renewal_rate_proxy = 拥有 ≥2 项目的客户 / 总客户；true_renewal_rate = 显式标记 renewal_of_project_id 的项目 / 总项目",
     }
 
 

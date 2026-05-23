@@ -61,11 +61,15 @@ export const getGrowthTrend = () => http.get<GrowthTrend>('/growth-trend').then(
 export interface ProjectBoardItem {
   project_id: number; name: string; code: string | null
   kind: 'revenue' | 'no_revenue'; status: string
+  district: string | null
   need_party: string | null; sales_person: string | null
   planned_start: string | null; planned_end: string | null
 }
 export interface ProjectBoard {
-  total: number; by_status: { label: string; count: number }[]; items: ProjectBoardItem[]
+  total: number
+  by_status: { label: string; count: number }[]
+  by_district: { code: string; label: string; count: number }[]
+  items: ProjectBoardItem[]
 }
 export const getProjectBoard = () => http.get<ProjectBoard>('/project-board').then((r) => r.data)
 
@@ -86,6 +90,11 @@ export interface EngineerStats {
 export const getEngineerStats = () => http.get<EngineerStats>('/engineer-stats').then((r) => r.data)
 
 export interface EfficiencyStats {
+  total_rework_count?: number
+  total_change_count?: number
+  rework_rate?: number
+  avg_changes_per_project?: number
+  clean_delivery_count?: number
   total_projects: number; finished_with_dates: number
   on_time_count: number; on_time_rate: number
   by_status: { label: string; count: number }[]
@@ -106,6 +115,8 @@ export interface RelationshipStats {
   average_satisfaction: number
   action_closure_rate: number
   renewal_rate_proxy: number
+  true_renewal_rate?: number
+  renewed_project_count?: number
   top_clients_by_project_count: { need_party_id: number; name: string; project_count: number }[]
 }
 export const getRelationshipStats = () => http.get<RelationshipStats>('/relationship-stats').then((r) => r.data)

@@ -4,7 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   createProject, deleteProject, listProjects, updateProject,
-  type Project, type ProjectPayload, type ProjectStatus, type ProjectKind,
+  DISTRICT_LABELS,
+  type HKDistrict, type Project, type ProjectPayload, type ProjectStatus, type ProjectKind,
 } from '@/api/projects'
 import { listNeedParties, type NeedParty } from '@/api/needParties'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
@@ -27,6 +28,7 @@ const form = reactive<ProjectPayload>({
   outsource_benchmark_amount: undefined, value_created_basis: undefined, value_created_note: '',
   status: 'drafting', code: '', planned_start_date: undefined, planned_end_date: undefined,
   actual_start_date: undefined, actual_end_date: undefined, description: '',
+  district: null, rework_count: 0, change_count: 0, renewal_of_project_id: null,
 })
 
 const drawerOpen = ref(false)
@@ -74,6 +76,7 @@ function openCreate() {
     planned_start_date: undefined, planned_end_date: undefined,
     actual_start_date: undefined, actual_end_date: undefined,
     description: '',
+    district: null, rework_count: 0, change_count: 0, renewal_of_project_id: null,
   })
   dialog.value = true
 }
@@ -96,6 +99,10 @@ function openEdit(p: Project) {
     actual_start_date: p.actual_start_date || undefined,
     actual_end_date: p.actual_end_date || undefined,
     description: p.description || '',
+    district: p.district || null,
+    rework_count: p.rework_count || 0,
+    change_count: p.change_count || 0,
+    renewal_of_project_id: p.renewal_of_project_id || null,
   })
   dialog.value = true
 }
@@ -287,6 +294,34 @@ onMounted(load)
         </el-row>
 
         <el-form-item label="描述"><el-input v-model="form.description" type="textarea" :rows="3" /></el-form-item>
+
+        <el-divider content-position="left">效率 / 续单 / 地区</el-divider>
+        <el-row :gutter="12">
+          <el-col :span="8">
+            <el-form-item label="地区">
+              <el-select v-model="form.district" clearable placeholder="未指定" style="width: 100%">
+                <el-option v-for="(label, code) in DISTRICT_LABELS" :key="code" :label="label" :value="code" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="返工次数">
+              <el-input-number v-model="form.rework_count" :min="0" :max="50" controls-position="right" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="变更次数">
+              <el-input-number v-model="form.change_count" :min="0" :max="50" controls-position="right" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="续单源项目">
+          <el-select v-model="form.renewal_of_project_id" clearable filterable
+                     placeholder="若本项目是某历史项目的续单，选择源项目" style="width: 100%">
+            <el-option v-for="p in rows.filter((q) => q.id !== editingId)"
+                       :key="p.id" :label="`${p.code || ''} ${p.name}`" :value="p.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialog = false">取消</el-button>

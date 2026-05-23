@@ -29,6 +29,12 @@ class ProjectBase(BaseModel):
     actual_end_date: date | None = None
     description: str | None = None
 
+    # Phase 3-next-ii
+    district: str | None = None  # HK_ISLAND/KOWLOON/NT_EAST/NT_WEST/OUTLYING
+    rework_count: int = 0
+    change_count: int = 0
+    renewal_of_project_id: int | None = None
+
 
 class ProjectCreate(ProjectBase):
     pass
@@ -50,6 +56,10 @@ class ProjectUpdate(BaseModel):
     actual_start_date: date | None = None
     actual_end_date: date | None = None
     description: str | None = None
+    district: str | None = None
+    rework_count: int | None = None
+    change_count: int | None = None
+    renewal_of_project_id: int | None = None
 
 
 class ProjectOut(ProjectBase):

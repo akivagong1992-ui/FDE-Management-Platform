@@ -1,9 +1,19 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+
+# Hong Kong administrative regions (macro)
+HK_DISTRICTS = [
+    ("HK_ISLAND", "港岛"),
+    ("KOWLOON", "九龙"),
+    ("NT_EAST", "新界东"),
+    ("NT_WEST", "新界西"),
+    ("OUTLYING", "离岛"),
+]
 
 
 # ─── Enums ─────────────────────────────────────────────────────────────
@@ -65,6 +75,14 @@ class Project(Base):
     planned_end_date: Mapped[date | None] = mapped_column(Date)
     actual_start_date: Mapped[date | None] = mapped_column(Date)
     actual_end_date: Mapped[date | None] = mapped_column(Date)
+
+    # 地区 + 效率 + 续单（Phase 3-next-ii）
+    district: Mapped[str | None] = mapped_column(String(16), index=True)  # HK_ISLAND/KOWLOON/...
+    rework_count: Mapped[int] = mapped_column(Integer, default=0)        # 返工次数
+    change_count: Mapped[int] = mapped_column(Integer, default=0)        # 变更单次数
+    renewal_of_project_id: Mapped[int | None] = mapped_column(            # 续单：上一单 FK
+        ForeignKey("projects.id"), index=True
+    )
 
     # 元
     description: Mapped[str | None] = mapped_column(Text)
