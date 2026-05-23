@@ -17,7 +17,8 @@ html, body, #app {
   overflow: hidden;
   background: var(--cockpit-bg);
   color: var(--cockpit-text);
-  font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  /* 统一字体：所有汉字优先用微软雅黑（无安装时回落到苹方 / 系统默认） */
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

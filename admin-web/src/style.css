@@ -2,8 +2,9 @@ html, body, #app {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  /* 统一字体：所有汉字优先用微软雅黑（无安装时回落到苹方 / 系统默认） */
+  font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Hiragino Sans GB',
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 a { color: inherit; text-decoration: none; }

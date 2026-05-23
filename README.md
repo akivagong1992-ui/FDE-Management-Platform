@@ -110,6 +110,7 @@
 - **共用后端**：一套 FastAPI + PostgreSQL，两个前端各取所需
 - **管理后台是数据源头**：所有指标在管理后台落库后，驾驶舱才有内容可展示
 - **驾驶舱是只读视图**：永远不在驾驶舱做任何写操作
+- **统一中文字体：微软雅黑（Microsoft YaHei / 微软雅黑）作为首选**，回落顺序为 PingFang SC → 系统默认。两端的全局 `font-family` 都在 `admin-web/src/style.css` 与 `cockpit-screen/src/assets/cockpit.css` 中定义，所有汉字按此渲染。
 
 ---
 
