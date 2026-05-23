@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
 import {
   createTraining, deleteTraining, listTrainings, updateTraining,
   type Training, type TrainingPayload,
 } from '@/api/trainings'
 import { listEngineers, type Engineer } from '@/api/engineers'
 
-const auth = useAuthStore()
-const canSeeCost = computed(() => ['lead', 'admin', 'finance'].includes(auth.role || ''))
-
+// 学费已迁移到「外部支出」→ 类型选「外部培训费」，此处只记录学习行为本身
 const rows = ref<Training[]>([])
 const engineers = ref<Engineer[]>([])
 const loading = ref(false)
@@ -21,7 +18,7 @@ const editingId = ref<number | null>(null)
 const form = reactive<TrainingPayload>({
   engineer_id: 0, course_name: '', provider: '', category: '内训',
   training_date: new Date().toISOString().slice(0, 10),
-  hours: 8, cost: undefined, passed: true, notes: '',
+  hours: 8, passed: true, notes: '',
 })
 
 async function load() {
@@ -40,7 +37,7 @@ function openCreate() {
     engineer_id: engineers.value[0]?.id || 0,
     course_name: '', provider: '', category: '内训',
     training_date: new Date().toISOString().slice(0, 10),
-    hours: 8, cost: undefined, passed: true, notes: '',
+    hours: 8, passed: true, notes: '',
   })
   dialog.value = true
 }
@@ -51,7 +48,6 @@ function openEdit(t: Training) {
     engineer_id: t.engineer_id,
     course_name: t.course_name, provider: t.provider || '', category: t.category || '内训',
     training_date: t.training_date, hours: Number(t.hours),
-    cost: t.cost == null ? undefined : Number(t.cost),
     passed: t.passed, notes: t.notes || '',
   })
   dialog.value = true
@@ -82,6 +78,9 @@ onMounted(load)
 
 <template>
   <div>
+    <el-alert type="info" :closable="false" style="margin-bottom: 12px">
+      培训学费请在「外部支出 → 类型 = 外部培训费」录入，此处只登记学习行为本身（课程、学时、是否通过）
+    </el-alert>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px">
       <el-select v-model="filter.engineer_id" placeholder="按工程师筛选" clearable filterable style="width: 220px" @change="load">
         <el-option v-for="e in engineers" :key="e.id" :label="e.full_name" :value="e.id" />
@@ -100,12 +99,6 @@ onMounted(load)
       </el-table-column>
       <el-table-column label="学时" width="80">
         <template #default="{ row }">{{ row.hours }}h</template>
-      </el-table-column>
-      <el-table-column v-if="canSeeCost" label="费用" width="100">
-        <template #default="{ row }">
-          <span v-if="row.cost">HK$ {{ row.cost }}</span>
-          <span v-else style="color: #909399">—</span>
-        </template>
       </el-table-column>
       <el-table-column label="通过" width="80">
         <template #default="{ row }">
@@ -146,10 +139,6 @@ onMounted(load)
             <el-form-item label="学时"><el-input-number v-model="form.hours" :min="0.5" :max="200" :step="1" :precision="1" controls-position="right" /></el-form-item>
           </el-col>
         </el-row>
-        <el-form-item v-if="canSeeCost" label="费用 (HKD)">
-          <el-input-number v-model="form.cost" :min="0" :precision="2" controls-position="right" style="width: 220px" />
-          <span style="margin-left: 8px; color: #909399; font-size: 12px">仅 lead/finance 可见</span>
-        </el-form-item>
         <el-form-item label="通过"><el-switch v-model="form.passed" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.notes" type="textarea" :rows="2" /></el-form-item>
       </el-form>

@@ -13,12 +13,14 @@ EXPENSE_STATUS_REJECTED = "rejected"
 EXPENSE_STATUS_PAID = "paid"
 
 # Seeded into DataDict on startup (category="expense_type"):
+# 新启动会增量补码，不会覆盖已有；training 是 Phase 3-next 新增（培训学费走外部支出）
 EXPENSE_TYPE_DEFAULTS = [
     ("material", "耗材"),
     ("subcontract", "对外分包高级服务"),
     ("temp_labor", "临时人力补充"),
     ("license", "第三方平台 / 许可证"),
     ("travel", "差旅 / 外勤"),
+    ("training", "外部培训费"),
     ("other", "其他（不在以上分类的开销）"),
 ]
 
