@@ -116,19 +116,32 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
         key=lambda x: -x["value_created"],
     )
 
-    # Vendor contribution — sum savings attributable via VendorServiceFee
+    # Vendor contribution — split each project's savings PROPORTIONAL to each
+    # vendor's actual service-fee share on that project. Avoids double-counting
+    # when multiple vendors collaborate on the same project.
     vendor_savings: dict[int, float] = defaultdict(float)
-    vendor_names: dict[int, str] = {}
-    vsf_to_project = (await db.execute(
-        select(VendorServiceFee.vendor_id, VendorServiceFee.project_id)
+    vsf_per_project = (await db.execute(
+        select(VendorServiceFee.vendor_id, VendorServiceFee.project_id,
+               func.sum(VendorServiceFee.amount))
         .where(VendorServiceFee.project_id.is_not(None))
+        .group_by(VendorServiceFee.vendor_id, VendorServiceFee.project_id)
     )).all()
+    project_vendor_amounts: dict[int, dict[int, float]] = defaultdict(dict)
+    for vid, pid, amt in vsf_per_project:
+        project_vendor_amounts[pid][vid] = float(amt)
+
     proj_savings_lookup = {p["project_id"]: p["savings"] for p in rev_with_savings}
-    for vid, pid in vsf_to_project:
-        if pid in proj_savings_lookup:
-            vendor_savings[vid] += proj_savings_lookup[pid]
-    for v in (await db.execute(select(Vendor))).scalars().all():
-        vendor_names[v.id] = v.name
+    for pid, vendor_amounts in project_vendor_amounts.items():
+        if pid not in proj_savings_lookup:
+            continue
+        total = sum(vendor_amounts.values())
+        if total <= 0:
+            continue
+        savings = proj_savings_lookup[pid]
+        for vid, amt in vendor_amounts.items():
+            vendor_savings[vid] += savings * (amt / total)
+
+    vendor_names = {v.id: v.name for v in (await db.execute(select(Vendor))).scalars().all()}
     vendor_rank = sorted(
         [{"vendor_id": vid, "name": vendor_names.get(vid, f"#{vid}"), "savings": amt}
          for vid, amt in vendor_savings.items() if amt > 0],
