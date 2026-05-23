@@ -132,18 +132,14 @@ export const getCapabilityStats = () => http.get<CapabilityStats>('/capability-s
 
 export interface RelationshipStats {
   total_retrospectives: number
+  closed_retrospectives: number
   average_satisfaction: number
   action_closure_rate: number
-  renewal_rate_proxy: number
-  true_renewal_rate?: number
-  renewed_project_count?: number
-  top_clients_by_project_count: { need_party_id: number; name: string; project_count: number }[]
-  // Renewal funnel (Phase 3-next-iii Round 2)
-  renewal_attempts_total?: number
-  renewal_won_count?: number
-  renewal_lost_count?: number
-  renewal_pending_count?: number
-  renewal_win_rate?: number
-  renewal_lost_reasons?: { code: string; label: string; count: number }[]
+  top_clients_by_satisfaction: {
+    need_party_id: number
+    name: string
+    retro_count: number
+    avg_satisfaction: number
+  }[]
 }
 export const getRelationshipStats = () => http.get<RelationshipStats>('/relationship-stats').then((r) => r.data)
