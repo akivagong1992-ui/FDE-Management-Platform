@@ -12,7 +12,24 @@ from app.core.database import Base, SessionLocal, engine
 from app.core.security import hash_password
 from app.models.data_dict import DataDict
 from app.models.expense import EXPENSE_TYPE_DEFAULTS
+from app.models.knowledge_asset import ASSET_CATEGORY_DEFAULTS
 from app.models.user import User
+
+
+async def _seed_dict_category(db, category: str, defaults: list[tuple[str, str]], log_label: str) -> None:
+    existing = {
+        r.code for r in (
+            await db.execute(select(DataDict).where(DataDict.category == category))
+        ).scalars().all()
+    }
+    added = False
+    for idx, (code, label) in enumerate(defaults):
+        if code not in existing:
+            db.add(DataDict(category=category, code=code, label=label, sort_order=idx))
+            added = True
+    if added:
+        await db.commit()
+        logger.info(f"Seeded {log_label} dictionary")
 
 
 async def init_db_and_seed() -> None:
@@ -36,18 +53,9 @@ async def init_db_and_seed() -> None:
             await db.commit()
             logger.info(f"Seeded default admin user: {settings.DEFAULT_ADMIN_USERNAME}")
 
-        # Seed expense_type dictionary (Phase 2a)
-        existing_types = {
-            r.code for r in (
-                await db.execute(select(DataDict).where(DataDict.category == "expense_type"))
-            ).scalars().all()
-        }
-        for idx, (code, label) in enumerate(EXPENSE_TYPE_DEFAULTS):
-            if code not in existing_types:
-                db.add(DataDict(category="expense_type", code=code, label=label, sort_order=idx))
-        if any(code not in existing_types for code, _ in EXPENSE_TYPE_DEFAULTS):
-            await db.commit()
-            logger.info("Seeded expense_type dictionary (Phase 2a)")
+        # Seed dictionary categories
+        await _seed_dict_category(db, "expense_type", EXPENSE_TYPE_DEFAULTS, "expense_type")
+        await _seed_dict_category(db, "asset_category", ASSET_CATEGORY_DEFAULTS, "asset_category")
 
 
 @asynccontextmanager

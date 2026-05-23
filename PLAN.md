@@ -512,10 +512,16 @@ Manpower-management-platform/
 - [x] 驾驶舱 Tab 1 总览接入真实 C 口径（"为公司创造的价值"大卡 + 节省/创造价值拆解）
 - [x] `/profit` 模块 4 个 Tab：A 团队总览 / B 按销售 / B 按客户 / 项目收入登记
 
-**2b-ii — 工时成本 + 知识资产**（待办）
-- [ ] 项目预算编制（ProjectBudget 表）
-- [ ] 工时 × 工程师单价 接入成本（与 VendorServiceFee 二选一或补充，待方案讨论）
-- [ ] **知识资产库基础**（4.7 铺底）：分类字典、上传/检索、保密分级
+**2b-ii — 知识资产铺底**（已完成 ✅）
+- [x] **KnowledgeAsset** model（分类 / 标签 / 摘要 / 正文 / 外链 / 附件 / 保密分级 public/internal/confidential）
+- [x] `asset_category` 字典自动 seed（设计文档 / 技术方案 / 代码片段 / 问题手册 / 工艺标准 / 最佳实践 / 其他）
+- [x] CRUD API + 关键词搜索（标题/摘要/标签）
+- [x] **保密分级权限**：confidential 仅 admin/lead/pm/finance 可见；engineer 角色看不到机密 + 单条 GET 403
+- [x] 驾驶舱 Tab 6 接入 `/api/cockpit/knowledge-stats`（累计/近 30 天/项目覆盖/分类分布）+ pytest 隔离测试
+
+**2b-iii — 工时成本 + 项目预算**（按需，已用户决议不做"工时×单价"）
+- ⏭️ ~~工时 × 工程师单价 接入成本~~ — 用户决议：成本由 VendorServiceFee 主导，不做（v0.3.7）
+- [ ] 项目预算编制 ProjectBudget（可选，Phase 3 一并做）
 
 **交付**：每个项目赚不赚钱、销售/客户层面是否欠款、节省/创造价值可算出来
 
@@ -602,3 +608,4 @@ Manpower-management-platform/
 - **v0.3.5**：支出分类追加第 6 类 `other`（其他 — 不在前 5 类的开销），覆盖 ExpenseType 字典 seed 列表。
 - **v0.3.6** (Phase 2b-i 完成后)：ProjectRevenue + 三口径 API（A/B/C）落地；pytest 强制断言驾驶舱接口不漏 A/B 字段（R14 闭环）；驾驶舱 Tab 1 接入真实 C 口径数据。`/profit` 模块 4 个 Tab。下一步 2b-ii（知识资产 + 项目预算）。
 - **v0.3.7**：Timesheet 单位由「小时」改为「**人天**」(`person_days`)，0.5 自然倍数步进 (0.5/1.0/1.5/...)，单日上限 3。前后端 + Excel 模板同步；用户拍板**不**接入"人天 × 工时单价"做成本（成本仍由 VendorServiceFee 主导）。
+- **v0.3.8** (Phase 2b-ii 完成后)：KnowledgeAsset 模型 + 7 类资产字典 seed + 三级保密分级（public/internal/confidential）+ 关键词搜索；engineer 角色看不到机密项；驾驶舱 Tab 6 接真数据（累计/近 30 天/项目覆盖/分类条形图 + 痛点叙事）。pytest 隔离测试覆盖到知识资产接口。下一步 Phase 3。

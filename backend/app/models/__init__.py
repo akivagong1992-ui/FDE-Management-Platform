@@ -2,6 +2,7 @@ from app.models.assignment import Assignment
 from app.models.data_dict import DataDict
 from app.models.engineer import Certificate, Engineer
 from app.models.expense import ExpenseRequest
+from app.models.knowledge_asset import KnowledgeAsset
 from app.models.need_party import NeedParty
 from app.models.project import Project, SalesTransferLog
 from app.models.project_revenue import ProjectRevenue
@@ -31,4 +32,5 @@ __all__ = [
     "ExpenseRequest",
     "VendorServiceFee",
     "ProjectRevenue",
+    "KnowledgeAsset",
 ]

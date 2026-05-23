@@ -62,6 +62,17 @@ def test_cockpit_overview_isolation() -> None:
         assert not hits, f"Cockpit /overview leaks A/B-tier fields: {hits}"
 
 
+def test_cockpit_knowledge_stats_isolation() -> None:
+    with TestClient(app) as c:
+        r = c.get("/api/cockpit/knowledge-stats", headers=COCKPIT_HEADERS)
+        assert r.status_code == 200
+        body = r.json()
+        assert "total_assets" in body
+        assert "by_category" in body
+        hits = _walk_for_forbidden(body)
+        assert not hits, f"Cockpit /knowledge-stats leaks A/B-tier fields: {hits}"
+
+
 def test_cockpit_savings_and_value_isolation() -> None:
     with TestClient(app) as c:
         r = c.get("/api/cockpit/savings-and-value", headers=COCKPIT_HEADERS)
