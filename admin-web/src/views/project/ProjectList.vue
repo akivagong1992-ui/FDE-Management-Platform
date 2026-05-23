@@ -256,7 +256,7 @@ onMounted(load)
             />
           </el-tooltip>
           <span style="margin-left: 12px; color: #909399; font-size: 13px">
-            勾选后：创造价值 = 外包估算（自动）；仅入驾驶舱 C 口径，不入 A/B
+            勾选后：项目状态改为收尾或归档时，创造价值 = 外包服务商报价（计入驾驶舱降本）
           </span>
         </el-form-item>
 
