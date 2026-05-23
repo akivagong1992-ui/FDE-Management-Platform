@@ -12,7 +12,7 @@ const tab = ref<Tab>('growth')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">⑦ 工程师能力建设 ⭐</span>
+        <span style="font-weight: 600">工程师能力建设 ⭐</span>
       </div>
     </template>
     <el-tabs v-model="tab">

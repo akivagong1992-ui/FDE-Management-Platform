@@ -41,14 +41,14 @@ function handleLogout() {
 
         <!-- 管理者视角（pm / lead / admin / finance）-->
         <template v-else>
-          <el-menu-item index="/project"><span>① 项目管理</span></el-menu-item>
-          <el-menu-item index="/engineer"><span>② 派单工时管理</span></el-menu-item>
-          <el-menu-item index="/profit"><span>③ 利润管理</span></el-menu-item>
-          <el-menu-item index="/expense"><span>④ 外部支出</span></el-menu-item>
-          <el-menu-item index="/efficiency"><span>⑤ 项目效率</span></el-menu-item>
-          <el-menu-item index="/knowledge"><span>⑥ 技术沉淀 ⭐</span></el-menu-item>
-          <el-menu-item index="/capability"><span>⑦ 能力建设 ⭐</span></el-menu-item>
-          <el-menu-item index="/relationship"><span>⑧ 需求方关系 ⭐</span></el-menu-item>
+          <el-menu-item index="/project"><span>项目管理</span></el-menu-item>
+          <el-menu-item index="/engineer"><span>派单工时管理</span></el-menu-item>
+          <el-menu-item index="/profit"><span>利润管理</span></el-menu-item>
+          <el-menu-item index="/expense"><span>外部支出</span></el-menu-item>
+          <el-menu-item index="/efficiency"><span>项目效率</span></el-menu-item>
+          <el-menu-item index="/knowledge"><span>技术沉淀 ⭐</span></el-menu-item>
+          <el-menu-item index="/capability"><span>能力建设 ⭐</span></el-menu-item>
+          <el-menu-item index="/relationship"><span>需求方关系 ⭐</span></el-menu-item>
           <el-menu-item index="/users"><span>系统设置 · 用户</span></el-menu-item>
         </template>
       </el-menu>

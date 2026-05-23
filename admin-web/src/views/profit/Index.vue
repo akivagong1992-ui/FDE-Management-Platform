@@ -13,7 +13,7 @@ const tab = ref<Tab>('overall')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">③ 利润管理 · 三种口径（A 团队总览 · B 销售/客户 · C 驾驶舱）</span>
+        <span style="font-weight: 600">利润管理 · 三种口径（A 团队总览 · B 销售/客户 · C 驾驶舱）</span>
       </div>
     </template>
     <el-tabs v-model="tab">
