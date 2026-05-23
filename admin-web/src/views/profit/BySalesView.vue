@@ -17,15 +17,16 @@ function fmt(n: number): string {
 
 function rowKey(r: BySalesRow): string { return String(r.sales_person_id) }
 
+const STATUS_LABEL: Record<string, string> = {
+  drafting: '立项', in_progress: '进行中', accepting: '验收',
+  closing: '收尾', archived: '归档',
+}
+
 onMounted(load)
 </script>
 
 <template>
   <div v-loading="loading">
-    <el-alert type="info" :closable="false" style="margin-bottom: 12px">
-      <strong>口径 B · 按销售人员汇总</strong>：单项目可正可负，按销售归集；红色 = 亏损（需催回款或重新议价）。
-    </el-alert>
-
     <el-table
       :data="rows" :row-key="rowKey" :expand-row-keys="expanded"
       @expand-change="(_r, exp) => expanded = (exp as BySalesRow[]).map(r => String(r.sales_person_id))"
@@ -37,7 +38,9 @@ onMounted(load)
             <el-table :data="row.projects" size="small">
               <el-table-column prop="project_code" label="编号" width="100" />
               <el-table-column prop="project_name" label="项目" min-width="200" />
-              <el-table-column prop="status" label="状态" width="100" />
+              <el-table-column label="状态" width="100">
+                <template #default="{ row: p }">{{ STATUS_LABEL[p.status] || p.status }}</template>
+              </el-table-column>
               <el-table-column label="收入" width="140" align="right">
                 <template #default="{ row: p }">HK$ {{ fmt(p.revenue) }}</template>
               </el-table-column>
