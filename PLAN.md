@@ -525,16 +525,24 @@ Manpower-management-platform/
 
 **交付**：每个项目赚不赚钱、销售/客户层面是否欠款、节省/创造价值可算出来
 
-### **Phase 3 — 效率 + 复盘 + 驾驶舱真数据** (2~3 周)
-- [ ] 工期/质量/人均产出 效率指标
-- [ ] **项目复盘 + 满意度评分 + 行动项闭环**（4.9 完整）
-- [ ] **续单跟踪**
-- [ ] **能力成长曲线 + 团队能力地图 + IDP**（4.8 完整）
-- [ ] **知识资产复用追踪 + 节省工时折算**（4.7 完整）
-- [ ] 驾驶舱接入真实数据，8 个 Tab 全部完成
+### **Phase 3 — 效率 + 复盘 + 驾驶舱真数据**
+
+**3 bulk — 6 Tab 接真数据 + 复盘域**（已完成 ✅）
+- [x] ProjectRetrospective model + admin CRUD（项目复盘 + 1-5 满意度 + 做对/要改/行动项 + 闭环开关）
+- [x] 5 个驾驶舱聚合接口：`project-board` / `profit-compare` / `engineer-stats` / `efficiency-stats` / `capability-stats` / `relationship-stats`
+- [x] 驾驶舱 Tab 2/3/4/5/7/8 全部从 placeholder 改为真数据组件
+- [x] pytest 隔离测试扩展覆盖全部 6 个新 endpoint
+- [x] 管理后台 `/relationship` 模块（项目复盘 CRUD + 满意度评分 + 闭环开关）
+- [x] 续单率代理指标（NeedParty 拥有 ≥2 项目 / 总客户）
+
+**3 next — 深化**（待办）
+- [ ] **效率指标深化**：人均交付、返工率、变更次数
+- [ ] **能力成长曲线**：EngineerSkillSnapshot 季度快照 + IDP 个人发展计划
+- [ ] **知识资产复用追踪**：AssetReference + 节省工时折算
+- [ ] 完整 RenewalTracking model（替代当前粗略代理）
 - [ ] 大屏动效打磨、自动轮播、4K 适配
 - [ ] **节省金额** brag 指标公式打磨（R6）
-- **交付**：领导可以投屏看，8 大维度全维展示
+- [ ] HK 地图组件（替代项目看板，需 geoJSON）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -609,3 +617,4 @@ Manpower-management-platform/
 - **v0.3.6** (Phase 2b-i 完成后)：ProjectRevenue + 三口径 API（A/B/C）落地；pytest 强制断言驾驶舱接口不漏 A/B 字段（R14 闭环）；驾驶舱 Tab 1 接入真实 C 口径数据。`/profit` 模块 4 个 Tab。下一步 2b-ii（知识资产 + 项目预算）。
 - **v0.3.7**：Timesheet 单位由「小时」改为「**人天**」(`person_days`)，0.5 自然倍数步进 (0.5/1.0/1.5/...)，单日上限 3。前后端 + Excel 模板同步；用户拍板**不**接入"人天 × 工时单价"做成本（成本仍由 VendorServiceFee 主导）。
 - **v0.3.8** (Phase 2b-ii 完成后)：KnowledgeAsset 模型 + 7 类资产字典 seed + 三级保密分级（public/internal/confidential）+ 关键词搜索；engineer 角色看不到机密项；驾驶舱 Tab 6 接真数据（累计/近 30 天/项目覆盖/分类条形图 + 痛点叙事）。pytest 隔离测试覆盖到知识资产接口。下一步 Phase 3。
+- **v0.3.9** (Phase 3 bulk 完成后)：ProjectRetrospective + 5 个驾驶舱聚合 endpoint + 管理后台 ⑧ 复盘模块；驾驶舱 Tab 2/3/4/5/7/8 全部从 placeholder 改为真数据组件（项目看板 / 利润对比 / 工程师视图 / 效率仪表盘 / 技能矩阵热力 / 客户满意度雷达）。pytest 隔离覆盖到 11 个 cockpit endpoint。8 Tab 真实数据全开。

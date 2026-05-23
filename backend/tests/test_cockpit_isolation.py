@@ -85,3 +85,27 @@ def test_cockpit_savings_and_value_isolation() -> None:
         # And NOT contain A/B-tier surface
         hits = _walk_for_forbidden(body)
         assert not hits, f"Cockpit /savings-and-value leaks A/B-tier fields: {hits}"
+
+
+# ── Phase 3 bulk · 5 new aggregation endpoints ─────────────────────────
+
+def _assert_isolation(client: TestClient, path: str) -> None:
+    r = client.get(path, headers=COCKPIT_HEADERS)
+    assert r.status_code == 200, f"{path} → {r.status_code}: {r.text[:200]}"
+    hits = _walk_for_forbidden(r.json())
+    assert not hits, f"{path} leaks A/B-tier fields: {hits}"
+
+
+def test_cockpit_aggregations_isolation() -> None:
+    """Tab 2 / 3 / 4 / 5 / 7 / 8 — none of the new endpoints may leak A/B numbers."""
+    paths = [
+        "/api/cockpit/project-board",
+        "/api/cockpit/profit-compare",
+        "/api/cockpit/engineer-stats",
+        "/api/cockpit/efficiency-stats",
+        "/api/cockpit/capability-stats",
+        "/api/cockpit/relationship-stats",
+    ]
+    with TestClient(app) as c:
+        for p in paths:
+            _assert_isolation(c, p)
