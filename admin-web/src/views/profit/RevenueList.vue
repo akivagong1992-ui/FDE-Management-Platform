@@ -102,7 +102,6 @@ onMounted(load)
       <el-table-column label="金额" width="140" align="right">
         <template #default="{ row }">HK$ {{ row.amount }}</template>
       </el-table-column>
-      <el-table-column prop="invoice_no" label="发票号" width="140" />
       <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-tag :type="STATUS_TYPE[row.status] as any">{{ STATUS_LABEL[row.status] }}</el-tag>
