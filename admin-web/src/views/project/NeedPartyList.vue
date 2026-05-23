@@ -82,8 +82,13 @@ async function onSubmit() {
     ElMessage.warning('开启「驾驶舱展示」需先上传 Logo')
     return
   }
-  if (editingId.value === null) await createNeedParty(form)
-  else await updateNeedParty(editingId.value, form)
+  // 空字符串归一为 null（后端 EmailStr 不接受 ""）
+  const payload: Partial<NeedPartyPayload> = { ...form }
+  for (const k of ['contact_person', 'contact_phone', 'contact_email', 'notes'] as const) {
+    if (payload[k] === '') payload[k] = null
+  }
+  if (editingId.value === null) await createNeedParty(payload)
+  else await updateNeedParty(editingId.value, payload)
   ElMessage.success('已保存')
   dialog.value = false
   await load()
