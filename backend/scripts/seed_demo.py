@@ -26,6 +26,7 @@ from app.models.knowledge_asset import ASSET_CATEGORY_DEFAULTS, KnowledgeAsset
 from app.models.need_party import NeedParty
 from app.models.project import HK_DISTRICTS, Project
 from app.models.project_revenue import ProjectRevenue
+from app.models.renewal_attempt import RenewalAttempt
 from app.models.retrospective import ProjectRetrospective
 from app.models.sales_person import SalesPerson
 from app.models.skill import EngineerSkill, Skill
@@ -632,6 +633,66 @@ async def main() -> None:
                 idp_count += 1
         await db.flush()
         print(f"  ✓ IDPs x{idp_count}")
+
+        # ── Renewal attempts (Phase 3-next-iii Round 2) ───────────────
+        # Projects with renewal_of_project_id are the "won" ones — log them.
+        # Plus generate a few "lost" + "pending" attempts for funnel realism.
+        renewal_attempt_count = 0
+        won_projects = [p for p in proj_objs if p.renewal_of_project_id]
+        for p in won_projects:
+            db.add(RenewalAttempt(
+                previous_project_id=p.renewal_of_project_id,
+                attempt_date=random_date_within(540, 90),
+                outcome="won",
+                won_project_id=p.id,
+                notes="按时续单成功",
+                created_by_user_id=admin.id,
+            ))
+            renewal_attempt_count += 1
+
+        # Lost attempts — pick random archived/closing projects that DON'T already
+        # have a successor; mark a "lost renewal attempt" with diverse reasons.
+        successor_sources = {p.renewal_of_project_id for p in won_projects}
+        finished_no_successor = [
+            p for p in proj_objs
+            if p.status in {"closing", "archived"}
+            and p.kind == "revenue"
+            and p.id not in successor_sources
+        ]
+        LOST_REASONS = [
+            ("lost_to_outsource", "客户最终选了传统外包供应商"),
+            ("price", "竞品报价低 15%"),
+            ("quality", "上次验收时有小瑕疵被记账"),
+            ("no_budget", "客户预算冻结"),
+            ("internal_hire", "客户决定自建团队"),
+            ("other", "需求范围未敲定"),
+        ]
+        for p in random.sample(finished_no_successor, min(7, len(finished_no_successor))):
+            reason_code, reason_note = random.choice(LOST_REASONS)
+            db.add(RenewalAttempt(
+                previous_project_id=p.id,
+                attempt_date=random_date_within(360, 30),
+                outcome="lost",
+                lost_reason=reason_code,
+                lost_reason_note=reason_note,
+                created_by_user_id=admin.id,
+            ))
+            renewal_attempt_count += 1
+
+        # Pending — a few in-flight pitches
+        pending_pool = [p for p in proj_objs if p.status == "archived" and p.kind == "revenue"]
+        for p in random.sample(pending_pool, min(3, len(pending_pool))):
+            db.add(RenewalAttempt(
+                previous_project_id=p.id,
+                attempt_date=random_date_within(60, 0),
+                outcome="pending",
+                notes="商务洽谈中",
+                created_by_user_id=admin.id,
+            ))
+            renewal_attempt_count += 1
+
+        await db.flush()
+        print(f"  ✓ renewal attempts x{renewal_attempt_count}")
 
         await db.commit()
 

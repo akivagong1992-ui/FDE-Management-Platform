@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getEfficiencyStats, type EfficiencyStats } from '@/api/cockpit'
 
 const data = ref<EfficiencyStats | null>(null)
@@ -40,20 +41,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">零失误交付（无返工 ≤1变更）</div>
-        <div class="kpi-value glow-text">{{ data?.clean_delivery_count ?? '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.clean_delivery_count ?? 0" /></div>
         <div class="kpi-sub">已归档项目中</div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">返工率</div>
-        <div class="big-pct">
-          {{ data?.rework_rate != null ? Math.round(data.rework_rate * 100) + '%' : '—' }}
-        </div>
-        <div class="kpi-sub">累计返工 {{ data?.total_rework_count ?? 0 }} 次</div>
+        <div class="big-pct"><CountNumber :value="(data?.rework_rate ?? 0) * 100" />%</div>
+        <div class="kpi-sub">累计返工 <CountNumber :value="data?.total_rework_count ?? 0" /> 次</div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">人均变更次数</div>
-        <div class="big-pct">{{ data?.avg_changes_per_project ?? '—' }}</div>
-        <div class="kpi-sub">累计 {{ data?.total_change_count ?? 0 }} 次变更</div>
+        <div class="big-pct"><CountNumber :value="data?.avg_changes_per_project ?? 0" :decimals="2" /></div>
+        <div class="kpi-sub">累计 <CountNumber :value="data?.total_change_count ?? 0" /> 次变更</div>
       </div>
     </div>
 

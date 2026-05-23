@@ -558,10 +558,16 @@ Manpower-management-platform/
 - [x] **R6 节省金额公式打磨**：Project 加 `benchmark_basis` 枚举（vendor_quote / historical_avg / industry_benchmark / manual_estimate）+ `benchmark_basis_note` 文本；项目表单按金额可见性条件展开，详情抽屉以彩色 tag 显示可信度
 - [x] 总览 Tab 用"数据健康"面板替换原占位（含数据隔离 + 三层成本透视 + 60s 刷新提示，含闪烁绿点）
 
-**3-next-iii Round 2（待办）**
+**3-next-iii Round 2（已完成 ✅）**
+- [x] **RenewalAttempt** 模型 + admin CRUD（outcome: pending/won/lost + 6 类输因枚举）
+- [x] `/api/cockpit/relationship-stats` 扩展加 funnel（won/lost/pending）+ win_rate + lost_reason 分布
+- [x] 管理后台 `/relationship` 改 2 Tab（复盘 / 续单跟踪），AttemptList 含 outcome 切换 + 条件字段
+- [x] 驾驶舱 Tab 8 4 个 KPI 重做（满意度雷达 / **续单胜率** / 闭环率 / 跟踪总数）+ 右下"续单输因分布"图
+- [x] CountNumber 推到 Tab 4 (engineer) / Tab 5 (efficiency) / Tab 7 (capability) / Tab 8 (relationship)
+- [x] seed 自动生成 12 次续单尝试（3 赢 / 6 输 / 3 待）= 33% 胜率
+
+**3-next-iii Round 3（剩余）**
 - [ ] 真 HK 地图（ECharts geo + 香港 geoJSON，替代当前 SVG schematic）
-- [ ] RenewalTracking 详表（赢/输/失败原因）
-- [ ] CountNumber 应用到所有剩余 cockpit tabs（Tab 4/5/7/8）
 
 ### **Phase 4 — 工程师端 + 集成 + 国际化**（按需）
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
@@ -641,3 +647,4 @@ Manpower-management-platform/
 - **v0.4.1** (Phase 3-next-i 完成后)：AssetReference + EngineerSkillSnapshot 两个新模型；管理后台 `/capability` 完整页（含 SVG 团队成长曲线 + 拍快照按钮）；`/knowledge` 详情抽屉加复用记录区块；驾驶舱 Tab 6 加复用 KPI、Tab 7 加成长曲线。seed_demo 生成 8 季度 × 30 工程师 = 240 快照 + 36 复用记录。
 - **v0.4.2** (Phase 3-next-ii 完成后)：Project 扩展 district / rework_count / change_count / renewal_of_project_id 四个字段；新建 TrainingRecord + IDP 两域 + admin CRUD（培训成本仅 lead/finance 可见）；`/capability` 模块改为 3 Tab（成长曲线 / 培训记录 / IDP）；驾驶舱 Tab 2 改为 SVG HK schematic 5 区热力图（可点击筛选项目）；Tab 5 加返工率/人均变更/零失误 3 个 KPI；Tab 8 加显式续单率（与粗略代理并列）。seed 自动分配 5 区、~45% revenue 项目挂续单源、生成 76 培训 + 19 IDP。
 - **v0.4.3** (Phase 3-next-iii Round 1 完成后)：大屏动效落地——CountNumber 组件（easeOutCubic 数字滚动）应用到 Overview/ProfitCompare/Knowledge 主 KPI；三类 brag 卡（粉/金/绿）循环脉冲发光；Tab 切换 fade-in 过渡；总览页"数据健康"面板（含跳动绿点 + 隔离守门提示）。R6 落地——Project 加 `benchmark_basis` (vendor_quote/historical/industry/manual) + note 字段；表单按金额可见性展开；详情抽屉以彩色 tag 显示可信度；seed 按 40/30/20/10 权重自动分配 basis。
+- **v0.4.4** (Phase 3-next-iii Round 2 完成后)：新建 RenewalAttempt 域（outcome=pending/won/lost + 6 类输因枚举）+ admin CRUD；管理后台 `/relationship` 改 2 Tab（复盘 / 续单跟踪），AttemptList 按 outcome 条件展开字段；驾驶舱 Tab 8 重做 4 KPI（满意度 ⭐ / 续单胜率 33% / 闭环率 / 跟踪总数）+ 右下"续单输因分布"水平条形图；CountNumber 推到 Tab 4/5/7/8 主 KPI。seed 12 次尝试（3 赢/6 输/3 待）+ 6 种输因覆盖。

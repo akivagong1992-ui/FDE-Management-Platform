@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getRelationshipStats, type RelationshipStats } from '@/api/cockpit'
 
 const data = ref<RelationshipStats | null>(null)
@@ -7,10 +8,17 @@ let timer: number | undefined
 
 async function load() { try { data.value = await getRelationshipStats() } catch { /* keep */ } }
 
-const satisfactionPct = computed(() => ((data.value?.average_satisfaction ?? 0) / 5) * 100)
+const avgScore = computed(() => data.value?.average_satisfaction ?? 0)
 const renewalPct = computed(() => Math.round((data.value?.renewal_rate_proxy ?? 0) * 100))
 const closurePct = computed(() => Math.round((data.value?.action_closure_rate ?? 0) * 100))
+const winRatePct = computed(() => Math.round((data.value?.renewal_win_rate ?? 0) * 100))
+const wonCount = computed(() => data.value?.renewal_won_count ?? 0)
+const lostCount = computed(() => data.value?.renewal_lost_count ?? 0)
+const pendingCount = computed(() => data.value?.renewal_pending_count ?? 0)
+const totalAttempts = computed(() => data.value?.renewal_attempts_total ?? 0)
+const retrospectivesCount = computed(() => data.value?.total_retrospectives ?? 0)
 const maxClientProj = computed(() => Math.max(1, ...(data.value?.top_clients_by_project_count || []).map((c) => c.project_count)))
+const maxReason = computed(() => Math.max(1, ...(data.value?.renewal_lost_reasons || []).map((r) => r.count)))
 
 onMounted(async () => { await load(); timer = window.setInterval(load, 60000) })
 onUnmounted(() => { if (timer) clearInterval(timer) })
@@ -24,29 +32,31 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="rating">
           <div class="stars">
             <span v-for="i in 5" :key="i" class="star"
-                  :class="i <= Math.round(data?.average_satisfaction ?? 0) ? 'on' : ''">★</span>
+                  :class="i <= Math.round(avgScore) ? 'on' : ''">★</span>
           </div>
-          <div class="rating-num">{{ data?.average_satisfaction?.toFixed(1) ?? '—' }}/5.0</div>
+          <div class="rating-num"><CountNumber :value="avgScore" :decimals="1" />/5.0</div>
         </div>
       </div>
       <div class="panel kpi-card brag-2">
-        <div class="kpi-label">续单率（显式标记）</div>
-        <div class="big-pct">
-          {{ data?.true_renewal_rate != null ? Math.round(data.true_renewal_rate * 100) + '%' : '—' }}
+        <div class="kpi-label">续单胜率</div>
+        <div class="big-pct"><CountNumber :value="winRatePct" /><span class="unit-small">%</span></div>
+        <div class="kpi-sub">
+          <span class="ok"><CountNumber :value="wonCount" />赢</span>
+          /
+          <span class="ng"><CountNumber :value="lostCount" />输</span>
+          /
+          <span class="dim"><CountNumber :value="pendingCount" />洽谈</span>
         </div>
-        <div class="kpi-sub">{{ data?.renewed_project_count ?? 0 }} 个续单项目 ÷ 总项目</div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">行动项闭环率</div>
-        <div class="big-pct">{{ closurePct }}%</div>
-        <div class="kpi-sub">{{ data?.total_retrospectives ?? 0 }} 条复盘</div>
+        <div class="big-pct"><CountNumber :value="closurePct" /><span class="unit-small">%</span></div>
+        <div class="kpi-sub"><CountNumber :value="retrospectivesCount" /> 条复盘</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">满意度分布</div>
-        <div class="sat-bar">
-          <div class="sat-fill" :style="{ width: `${satisfactionPct}%` }"></div>
-        </div>
-        <div class="kpi-sub">5 分制</div>
+        <div class="kpi-label">续单跟踪总数</div>
+        <div class="big-pct"><CountNumber :value="totalAttempts" /></div>
+        <div class="kpi-sub">显式登记的续单尝试</div>
       </div>
     </div>
 
@@ -67,17 +77,19 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </div>
 
       <div class="panel">
-        <div class="panel-title">直击需求方关系</div>
-        <div class="hint-block">
-          <div class="hint-title">续单 = 团队不可替代的硬证据</div>
-          <div class="hint-body">
-            目前 <strong class="hl">{{ renewalPct }}%</strong> 的客户已重复合作（粗略代理）。<br />
-            显式标记续单 <strong class="hl">{{ data?.renewed_project_count ?? 0 }}</strong> 个项目，
-            占比 <strong class="hl">{{ data?.true_renewal_rate != null ? Math.round(data.true_renewal_rate * 100) : 0 }}%</strong>。<br />
-            行动项闭环率 <strong class="hl">{{ closurePct }}%</strong>，
-            来自 <strong class="hl">{{ data?.total_retrospectives ?? 0 }}</strong> 条复盘。
+        <div class="panel-title">续单输因分布</div>
+        <div v-if="!data?.renewal_lost_reasons?.length" class="empty">暂无输单记录</div>
+        <div v-else class="bar-list">
+          <div v-for="r in data.renewal_lost_reasons" :key="r.code" class="bar-row reason-row">
+            <div class="bar-label">{{ r.label }}</div>
+            <div class="bar-track">
+              <div class="bar-fill lost-fill" :style="{ width: `${(r.count / maxReason) * 100}%` }" />
+            </div>
+            <div class="bar-num lost-num">{{ r.count }}</div>
           </div>
-          <div class="hint-meta">数据来源：管理后台 ⑧ 需求方关系 / 项目复盘</div>
+        </div>
+        <div class="hint-meta" v-if="data?.renewal_lost_reasons?.length">
+          管理后台 ⑧ 需求方关系 → 续单跟踪 维护
         </div>
       </div>
     </div>
@@ -121,6 +133,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .bar-track { height: 12px; background: rgba(0,229,255,.08); border: 1px solid var(--cockpit-border); border-radius: 2px; overflow: hidden; }
 .bar-fill { height: 100%; background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2)); box-shadow: 0 0 6px var(--cockpit-accent); }
 .bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; font-size: 12px; }
+.reason-row { grid-template-columns: 140px 1fr 50px; }
+.lost-fill { background: linear-gradient(90deg, var(--cockpit-accent-3), #ff8e00); box-shadow: 0 0 6px var(--cockpit-accent-3); }
+.lost-num { color: var(--cockpit-accent-3); }
+.unit-small { font-size: 0.5em; margin-left: 4px; color: var(--cockpit-text-dim); font-weight: normal; }
+.ok { color: #67ff8a; font-family: 'Courier New', monospace; font-weight: 600; }
+.ng { color: var(--cockpit-accent-3); font-family: 'Courier New', monospace; font-weight: 600; }
+.dim { color: var(--cockpit-text-dim); font-family: 'Courier New', monospace; }
 
 .hint-block { padding: 16px 8px; }
 .hint-title { font-size: 18px; color: var(--cockpit-accent-3); letter-spacing: 3px; margin-bottom: 16px; text-shadow: 0 0 6px var(--cockpit-accent-3); }

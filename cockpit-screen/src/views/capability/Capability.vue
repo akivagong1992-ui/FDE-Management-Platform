@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getCapabilityStats, getGrowthTrend, type CapabilityStats, type GrowthTrend } from '@/api/cockpit'
 
 const data = ref<CapabilityStats | null>(null)
@@ -64,11 +65,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="kpi-row">
       <div class="panel kpi-card brag">
         <div class="kpi-label">累计外部证书</div>
-        <div class="kpi-value glow-text">{{ data?.total_certificates ?? '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">技能分类数</div>
-        <div class="kpi-value glow-text">{{ heatmap.cats.length || '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="heatmap.cats.length || 0" /></div>
       </div>
       <div class="panel kpi-card brag-growth">
         <div class="kpi-label">人均技能数（最新）</div>

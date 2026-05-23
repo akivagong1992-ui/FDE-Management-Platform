@@ -118,5 +118,12 @@ export interface RelationshipStats {
   true_renewal_rate?: number
   renewed_project_count?: number
   top_clients_by_project_count: { need_party_id: number; name: string; project_count: number }[]
+  // Renewal funnel (Phase 3-next-iii Round 2)
+  renewal_attempts_total?: number
+  renewal_won_count?: number
+  renewal_lost_count?: number
+  renewal_pending_count?: number
+  renewal_win_rate?: number
+  renewal_lost_reasons?: { code: string; label: string; count: number }[]
 }
 export const getRelationshipStats = () => http.get<RelationshipStats>('/relationship-stats').then((r) => r.data)

@@ -2,9 +2,9 @@ from fastapi import APIRouter
 
 from app.api.admin import (
     asset_references, assignments, auth, data_dict, engineers, expenses, files, idps,
-    knowledge_assets, need_parties, profit, project_revenues, projects, retrospectives,
-    sales_persons, skill_snapshots, skills, suppliers, timesheets, trainings, users,
-    vendor_service_fees, vendors,
+    knowledge_assets, need_parties, profit, project_revenues, projects, renewal_attempts,
+    retrospectives, sales_persons, skill_snapshots, skills, suppliers, timesheets, trainings,
+    users, vendor_service_fees, vendors,
 )
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -31,3 +31,4 @@ admin_router.include_router(asset_references.router)
 admin_router.include_router(skill_snapshots.router)
 admin_router.include_router(trainings.router)
 admin_router.include_router(idps.router)
+admin_router.include_router(renewal_attempts.router)

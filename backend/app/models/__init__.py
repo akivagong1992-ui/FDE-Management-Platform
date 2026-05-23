@@ -8,6 +8,7 @@ from app.models.knowledge_asset import KnowledgeAsset
 from app.models.need_party import NeedParty
 from app.models.project import Project, SalesTransferLog
 from app.models.project_revenue import ProjectRevenue
+from app.models.renewal_attempt import RenewalAttempt
 from app.models.retrospective import ProjectRetrospective
 from app.models.sales_person import SalesPerson
 from app.models.skill import EngineerSkill, Skill
@@ -43,4 +44,5 @@ __all__ = [
     "EngineerSkillSnapshot",
     "TrainingRecord",
     "IDP",
+    "RenewalAttempt",
 ]

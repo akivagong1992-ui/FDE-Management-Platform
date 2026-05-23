@@ -24,6 +24,12 @@ from app.models.project import (
     PROJECT_STATUS_CLOSING,
     Project,
 )
+from app.models.renewal_attempt import (
+    RENEWAL_OUTCOME_LOST,
+    RENEWAL_OUTCOME_PENDING,
+    RENEWAL_OUTCOME_WON,
+    RenewalAttempt,
+)
 from app.models.retrospective import ProjectRetrospective
 from app.models.skill import EngineerSkill, Skill
 from app.models.vendor import Vendor
@@ -371,6 +377,32 @@ async def relationship_stats(db: AsyncSession = Depends(get_db)) -> dict:
     )).scalar_one() or 0
     true_renewal_rate = round(renewed_count / total_proj_count, 4) if total_proj_count else 0.0
 
+    # Renewal-attempt funnel (Phase 3-next-iii Round 2)
+    attempts = (await db.execute(select(RenewalAttempt))).scalars().all()
+    won_count = sum(1 for a in attempts if a.outcome == RENEWAL_OUTCOME_WON)
+    lost_count = sum(1 for a in attempts if a.outcome == RENEWAL_OUTCOME_LOST)
+    pending_count = sum(1 for a in attempts if a.outcome == RENEWAL_OUTCOME_PENDING)
+    win_denominator = won_count + lost_count
+    win_rate = (won_count / win_denominator) if win_denominator > 0 else 0.0
+
+    LOST_REASON_LABELS = {
+        "lost_to_outsource": "输给传统外包",
+        "price": "价格因素",
+        "quality": "质量 / 满意度",
+        "no_budget": "客户无预算",
+        "internal_hire": "客户自建团队",
+        "other": "其他",
+    }
+    reason_counts: dict[str, int] = defaultdict(int)
+    for a in attempts:
+        if a.outcome == RENEWAL_OUTCOME_LOST and a.lost_reason:
+            reason_counts[a.lost_reason] += 1
+    lost_reasons = sorted(
+        [{"code": k, "label": LOST_REASON_LABELS.get(k, k), "count": v}
+         for k, v in reason_counts.items()],
+        key=lambda x: -x["count"],
+    )
+
     return {
         "total_retrospectives": len(retros),
         "average_satisfaction": avg_score,
@@ -379,7 +411,14 @@ async def relationship_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "true_renewal_rate": true_renewal_rate,
         "renewed_project_count": int(renewed_count),
         "top_clients_by_project_count": top_clients,
-        "_renewal_note": "renewal_rate_proxy = 拥有 ≥2 项目的客户 / 总客户；true_renewal_rate = 显式标记 renewal_of_project_id 的项目 / 总项目",
+        # Renewal funnel
+        "renewal_attempts_total": len(attempts),
+        "renewal_won_count": won_count,
+        "renewal_lost_count": lost_count,
+        "renewal_pending_count": pending_count,
+        "renewal_win_rate": round(win_rate, 4),
+        "renewal_lost_reasons": lost_reasons,
+        "_renewal_note": "renewal_rate_proxy = ≥2 项目客户/总客户；true_renewal_rate = 显式标记/总项目；win_rate = 赢/(赢+输)",
     }
 
 

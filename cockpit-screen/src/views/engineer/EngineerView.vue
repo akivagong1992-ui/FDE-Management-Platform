@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import CountNumber from '@/components/CountNumber.vue'
 import { getEngineerStats, type EngineerStats } from '@/api/cockpit'
 
 const data = ref<EngineerStats | null>(null)
@@ -19,15 +20,15 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     <div class="kpi-row">
       <div class="panel kpi-card brag">
         <div class="kpi-label">团队规模</div>
-        <div class="kpi-value glow-text">{{ data?.total ?? '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.total ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">在场工程师</div>
-        <div class="kpi-value glow-text">{{ data?.active ?? '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.active ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">合作 Vendor 数</div>
-        <div class="kpi-value glow-text">{{ data?.by_vendor.length ?? '—' }}</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.by_vendor.length ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">技能等级分布</div>
