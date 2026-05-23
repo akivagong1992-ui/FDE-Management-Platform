@@ -8,7 +8,7 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const activeMenu = computed(() => route.path)
-const currentTitle = computed(() => (route.meta?.title as string) || '人力管理平台')
+const currentTitle = computed(() => (route.meta?.title as string) || 'FDE管理系统')
 const isEngineer = computed(() => auth.role === 'engineer')
 
 function handleLogout() {
@@ -21,7 +21,7 @@ function handleLogout() {
   <el-container style="height: 100vh">
     <el-aside width="220px" style="background: #001428">
       <div style="color: #fff; padding: 20px; font-size: 16px; font-weight: 600">
-        人力管理平台
+        FDE管理系统
       </div>
       <el-menu
         :default-active="activeMenu"

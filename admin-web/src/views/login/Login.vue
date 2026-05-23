@@ -29,8 +29,8 @@ async function onSubmit() {
 <template>
   <div class="login-wrap">
     <el-card class="login-card">
-      <div class="title">人力管理平台</div>
-      <div class="subtitle">中国电信国际香港分公司 · 工程师团队</div>
+      <div class="title">FDE管理系统</div>
+      <div class="subtitle">电信国际香港事业部</div>
       <el-form @submit.prevent="onSubmit" :model="form" label-position="top" style="margin-top: 24px">
         <el-form-item label="用户名">
           <el-input v-model="form.username" autocomplete="username" />
