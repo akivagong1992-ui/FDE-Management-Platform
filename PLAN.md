@@ -476,13 +476,18 @@ Manpower-management-platform/
 - [ ] 项目文档暂存
 - [ ] 培训记录 CRUD（4.8 基础）
 
-**1c — 桥**
-- [ ] 派单 Assignment + 档期视图 + **利用率指标**
-- [ ] 工时录入（手填 + Excel 导入）
+**1c — 桥**（已完成 ✅）
+- [x] 派单 Assignment CRUD（工程师 × 项目 × 时段 × 角色 × 工时占比 + 状态机）
+- [x] 派单"结束"按钮（一键填实际结束日）
+- [x] 工时录入（单条 + bulk + Excel 导入 + 模板下载）
+- [x] 工时唯一约束 (engineer × project × work_date)
+- [x] 工时审核字段铺底（approve API 已就绪，UI 在 Phase 1d 加）
 
-**1d — 收尾**
-- [ ] 项目看板/列表
-- [ ] 利用率指标完善
+**1d — 收尾**（待办）
+- [ ] 档期视图（工程师月度负载占比可视化）
+- [ ] 利用率指标（闲置率、满负荷预警）
+- [ ] 项目看板 / 甘特图
+- [ ] 工时审核 UI
 
 **交付**：能"建一个 Vendor、登记工程师、立一个项目（带销售/客户/类型）、派人、记工时"
 
@@ -580,3 +585,4 @@ Manpower-management-platform/
 
 - **v0.3.1** (Phase 1a 完成后)：补入"三种利润口径并存"+ 项目分类（revenue/no_revenue）+ SalesPerson 实体。详见 §4.3 / §4.10 / §5 / §8 Phase 1b / R13-R15。驾驶舱新增硬约束：**永不展示口径 A**。
 - **v0.3.2** (Phase 1b-i 完成后)：R13/R15 已解决。NeedParty + SalesPerson + Project + SalesTransferLog 落地；"无收入项目"勾选 + value_created 自动 = 外包估算；转移销售按钮 + 审计日志。下一步 1b-ii（里程碑 / 风险 / 合规）。
+- **v0.3.3** (Phase 1c 完成后)：Assignment + Timesheet 落地，含 Excel 模板下载 + 批量导入（openpyxl）。`/engineer` 模块现有 5 个 Tab：派单（默认）/ 工时记录 / 工程师档案 / Vendor / 技能字典。工时审核 API 就绪但 UI 在 1d。

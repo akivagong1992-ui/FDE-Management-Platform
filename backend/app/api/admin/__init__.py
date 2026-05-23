@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.admin import (
-    auth, data_dict, engineers, files, need_parties, projects, sales_persons, skills, users, vendors,
+    assignments, auth, data_dict, engineers, files, need_parties, projects, sales_persons,
+    skills, timesheets, users, vendors,
 )
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -15,3 +16,5 @@ admin_router.include_router(engineers.router)
 admin_router.include_router(need_parties.router)
 admin_router.include_router(sales_persons.router)
 admin_router.include_router(projects.router)
+admin_router.include_router(assignments.router)
+admin_router.include_router(timesheets.router)
