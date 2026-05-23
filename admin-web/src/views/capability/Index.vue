@@ -10,11 +10,6 @@ const tab = ref<Tab>('growth')
 
 <template>
   <el-card>
-    <template #header>
-      <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">培训管理</span>
-      </div>
-    </template>
     <el-tabs v-model="tab">
       <el-tab-pane label="成长曲线 / 季度快照" name="growth"><GrowthView v-if="tab === 'growth'" /></el-tab-pane>
       <el-tab-pane label="培训记录" name="trainings"><TrainingList v-if="tab === 'trainings'" /></el-tab-pane>

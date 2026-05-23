@@ -11,11 +11,6 @@ const tab = ref<Tab>('overall')
 
 <template>
   <el-card>
-    <template #header>
-      <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">利润管理 · 三种口径（A 团队总览 · B 销售/客户 · C 驾驶舱）</span>
-      </div>
-    </template>
     <el-tabs v-model="tab">
       <el-tab-pane label="口径 A · 团队总览" name="overall"><OverallView v-if="tab === 'overall'" /></el-tab-pane>
       <el-tab-pane label="口径 B · 按销售人员" name="by_sales"><BySalesView v-if="tab === 'by_sales'" /></el-tab-pane>

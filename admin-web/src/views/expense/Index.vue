@@ -11,11 +11,6 @@ const tab = ref<Tab>('vendor_fees')
 
 <template>
   <el-card>
-    <template #header>
-      <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">成本和支出管理</span>
-      </div>
-    </template>
     <el-tabs v-model="tab">
       <el-tab-pane label="Vendor 服务费" name="vendor_fees"><VendorFeeList v-if="tab === 'vendor_fees'" /></el-tab-pane>
       <el-tab-pane label="其他支出管理" name="expenses"><ExpenseList v-if="tab === 'expenses'" /></el-tab-pane>

@@ -11,11 +11,6 @@ const tab = ref<Tab>('assignments')
 
 <template>
   <el-card>
-    <template #header>
-      <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">派单和工时管理</span>
-      </div>
-    </template>
     <el-tabs v-model="tab">
       <el-tab-pane label="派单管理" name="assignments"><AssignmentList v-if="tab === 'assignments'" /></el-tab-pane>
       <el-tab-pane label="工时管理" name="timesheets"><TimesheetEntry v-if="tab === 'timesheets'" /></el-tab-pane>

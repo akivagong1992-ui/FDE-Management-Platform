@@ -127,12 +127,6 @@ onMounted(load)
 
 <template>
   <el-card>
-    <template #header>
-      <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">FDE知识库</span>
-      </div>
-    </template>
-
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
       <el-input
         v-model="filter.keyword" placeholder="关键词搜索（标题/摘要/标签）"
