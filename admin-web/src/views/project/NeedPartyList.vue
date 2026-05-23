@@ -52,11 +52,8 @@ onMounted(load)
 
 <template>
   <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
-      <div style="color: #606266; font-size: 13px">
-        需求方 = 项目的甲方接收人（电信内部部门 / 外部合同方）。利润口径 B 的"按客户汇总"维度。
-      </div>
-      <el-button type="primary" @click="openCreate">新增需求方</el-button>
+    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px">
+      <el-button type="primary" @click="openCreate">新增客户</el-button>
     </div>
 
     <el-table :data="rows" v-loading="loading" stripe>
@@ -80,7 +77,7 @@ onMounted(load)
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialog" :title="editingId === null ? '新增需求方' : '编辑需求方'" width="520px">
+    <el-dialog v-model="dialog" :title="editingId === null ? '新增客户' : '编辑客户'" width="520px">
       <el-form :model="form" label-width="100px">
         <el-form-item label="名称" required><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类型">
