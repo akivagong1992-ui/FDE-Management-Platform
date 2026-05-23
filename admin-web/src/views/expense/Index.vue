@@ -17,7 +17,7 @@ const tab = ref<Tab>('expenses')
       </div>
     </template>
     <el-tabs v-model="tab">
-      <el-tab-pane label="外部支出（5 类）" name="expenses"><ExpenseList v-if="tab === 'expenses'" /></el-tab-pane>
+      <el-tab-pane label="外部支出（6 类）" name="expenses"><ExpenseList v-if="tab === 'expenses'" /></el-tab-pane>
       <el-tab-pane label="Vendor 服务费" name="vendor_fees"><VendorFeeList v-if="tab === 'vendor_fees'" /></el-tab-pane>
       <el-tab-pane label="供应商档案" name="suppliers"><SupplierList v-if="tab === 'suppliers'" /></el-tab-pane>
     </el-tabs>

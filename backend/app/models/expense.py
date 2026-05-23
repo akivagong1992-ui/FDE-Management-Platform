@@ -19,6 +19,7 @@ EXPENSE_TYPE_DEFAULTS = [
     ("temp_labor", "临时人力补充"),
     ("license", "第三方平台 / 许可证"),
     ("travel", "差旅 / 外勤"),
+    ("other", "其他（不在以上分类的开销）"),
 ]
 
 
