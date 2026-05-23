@@ -27,7 +27,7 @@ const routes: RouteRecordRaw[] = [
       },
       // 管理者侧（pm / lead / admin / finance）
       { path: 'project', component: () => import('@/views/project/Index.vue'), meta: { title: '项目管理', pmSide: true } },
-      { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '员工派单', pmSide: true } },
+      { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '派单工时管理', pmSide: true } },
       { path: 'profit', component: () => import('@/views/profit/Index.vue'), meta: { title: '利润管理', pmSide: true } },
       { path: 'expense', component: () => import('@/views/expense/Index.vue'), meta: { title: '外部支出管理', pmSide: true } },
       { path: 'efficiency', component: () => import('@/views/efficiency/Index.vue'), meta: { title: '项目完成效率', pmSide: true } },

@@ -57,7 +57,7 @@ onMounted(load)
   <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px">
       <div style="color: #606266; font-size: 13px">
-        技能字典 — 工程师档案中"技能矩阵"的选项来源（PLAN §4.2 / §4.8）
+        能力矩阵管理 — 工程师档案中「技能清单」的选项来源
       </div>
       <el-button type="primary" @click="openCreate">新增技能</el-button>
     </div>

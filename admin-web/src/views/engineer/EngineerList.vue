@@ -234,7 +234,7 @@ onMounted(load)
           <el-select
             v-model="form.initial_skill_ids" multiple filterable
             collapse-tags collapse-tags-tooltip
-            placeholder="从技能字典中勾选（可空，后续在工程师详情抽屉补充）"
+            placeholder="从能力矩阵中勾选（可空，后续在工程师详情抽屉补充）"
             style="width: 100%"
           >
             <el-option
@@ -243,7 +243,7 @@ onMounted(load)
             />
           </el-select>
           <div style="color: #909399; font-size: 12px; margin-top: 4px">
-            来自「员工派单 → 技能字典」。仅记录会/不会，水平由抽屉的厂商认证体现
+            来自「派单工时管理 → 能力矩阵管理」。仅记录会/不会，水平由抽屉的厂商认证体现
           </div>
         </el-form-item>
 

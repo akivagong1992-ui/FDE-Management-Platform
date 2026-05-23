@@ -13,14 +13,14 @@ const tab = ref<Tab>('assignments')
   <el-card>
     <template #header>
       <div style="display: flex; align-items: center; justify-content: space-between">
-        <span style="font-weight: 600">② 员工派单</span>
+        <span style="font-weight: 600">② 派单工时管理</span>
       </div>
     </template>
     <el-tabs v-model="tab">
       <el-tab-pane label="派单管理" name="assignments"><AssignmentList v-if="tab === 'assignments'" /></el-tab-pane>
-      <el-tab-pane label="工时记录" name="timesheets"><TimesheetEntry v-if="tab === 'timesheets'" /></el-tab-pane>
-      <el-tab-pane label="工程师档案" name="engineers"><EngineerList v-if="tab === 'engineers'" /></el-tab-pane>
-      <el-tab-pane label="技能字典" name="skills"><SkillCatalog v-if="tab === 'skills'" /></el-tab-pane>
+      <el-tab-pane label="工时管理" name="timesheets"><TimesheetEntry v-if="tab === 'timesheets'" /></el-tab-pane>
+      <el-tab-pane label="工程师管理" name="engineers"><EngineerList v-if="tab === 'engineers'" /></el-tab-pane>
+      <el-tab-pane label="能力矩阵管理" name="skills"><SkillCatalog v-if="tab === 'skills'" /></el-tab-pane>
     </el-tabs>
   </el-card>
 </template>

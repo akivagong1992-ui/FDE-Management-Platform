@@ -42,7 +42,7 @@ function handleLogout() {
         <!-- 管理者视角（pm / lead / admin / finance）-->
         <template v-else>
           <el-menu-item index="/project"><span>① 项目管理</span></el-menu-item>
-          <el-menu-item index="/engineer"><span>② 员工派单</span></el-menu-item>
+          <el-menu-item index="/engineer"><span>② 派单工时管理</span></el-menu-item>
           <el-menu-item index="/profit"><span>③ 利润管理</span></el-menu-item>
           <el-menu-item index="/expense"><span>④ 外部支出</span></el-menu-item>
           <el-menu-item index="/efficiency"><span>⑤ 项目效率</span></el-menu-item>
