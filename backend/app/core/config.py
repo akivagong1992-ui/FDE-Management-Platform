@@ -10,14 +10,17 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://manpower:manpower@localhost:5432/manpower",
-        description="Async SQLAlchemy DSN",
+        default="sqlite+aiosqlite:///./manpower.db",
+        description="Async SQLAlchemy DSN. Defaults to SQLite for local demo; use Postgres in prod.",
     )
     REDIS_URL: str = "redis://localhost:6379/0"
 
     JWT_SECRET: str = "change-me-in-prod"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 8
+
+    # AES-GCM key (base64-urlsafe-encoded 32 bytes). Dev default; CHANGE in prod.
+    FIELD_ENCRYPTION_KEY: str = "dev-only-32byte-secret-replace-meXXXXXXXXX="
 
     UPLOAD_DIR: str = "./uploads"
     UPLOAD_MAX_MB: int = 32
