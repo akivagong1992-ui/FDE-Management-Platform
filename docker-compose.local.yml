@@ -1,0 +1,96 @@
+# 本地"装一下看看"用的 compose — 整套前后端 + 数据库 + 演示数据一键起
+#
+# 用法：
+#   docker compose -f docker-compose.local.yml up --build
+#
+# 首次启动会自动 seed 演示数据（约 30 秒）。后续启动只跑 alembic upgrade，
+# 数据保留在 docker volume `pg_data_local` 中。
+#
+# 访问：
+#   - 管理后台:  http://localhost:5173      (admin / admin123)
+#   - 驾驶舱:    http://localhost:5174      (默认带 X-Cockpit-Token)
+#   - 后端 API:  http://localhost:8000/docs (FastAPI Swagger)
+#
+# 完全重置（删数据 + 重新 seed）：
+#   docker compose -f docker-compose.local.yml down -v
+#   docker compose -f docker-compose.local.yml up --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: manpower-pg-local
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: manpower
+      POSTGRES_PASSWORD: manpower
+      POSTGRES_DB: manpower
+    volumes:
+      - pg_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U manpower"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: manpower-backend-local
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://manpower:manpower@postgres:5432/manpower
+      JWT_SECRET: local-dev-secret
+      FIELD_ENCRYPTION_KEY: local-dev-encryption-key-32bytes-padding
+      UPLOAD_DIR: /app/uploads
+      COCKPIT_ALLOWED_IPS: 127.0.0.1,::1
+      COCKPIT_TOKEN: cockpit-dev-token
+      DEFAULT_ADMIN_USERNAME: admin
+      DEFAULT_ADMIN_PASSWORD: admin123
+      CORS_ORIGINS: http://localhost:5173,http://localhost:5174
+      DEBUG: "true"
+      PYTHONPATH: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_uploads_local:/app/uploads
+    # 首次启动: seed_demo + alembic stamp head
+    # 后续启动: alembic upgrade head
+    # marker 文件放 uploads volume (持久化) 避免重启重复 seed
+    command: >
+      sh -c "
+        if [ ! -f /app/uploads/.seeded ]; then
+          echo '🌱 first start — seeding demo data...' &&
+          python /app/scripts/seed_demo.py &&
+          alembic stamp head &&
+          touch /app/uploads/.seeded ;
+        else
+          echo '✓ already seeded — running alembic upgrade head' &&
+          alembic upgrade head ;
+        fi &&
+        echo '🚀 starting uvicorn...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+
+  admin-web:
+    build: ./admin-web
+    container_name: manpower-admin-local
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  cockpit-screen:
+    build: ./cockpit-screen
+    container_name: manpower-cockpit-local
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5174:80"
+
+volumes:
+  pg_data_local:
+  backend_uploads_local:
