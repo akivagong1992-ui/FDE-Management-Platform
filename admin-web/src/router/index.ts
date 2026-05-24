@@ -51,6 +51,10 @@ router.beforeEach((to) => {
   if (role === 'engineer') {
     // engineer 只能进首页 + 我的派单
     if (to.meta.pmSide) return { path: '/my-assignments' }
+    if (to.path === '/' || to.path === '/dashboard') return true
+  } else if (role === 'vendor') {
+    // vendor 只能进「成本和支出管理」一页；其它路径全部跳转过去
+    if (to.path !== '/expense') return { path: '/expense' }
   } else {
     // 非 engineer 角色访问 engineer-only 页面 → 退回首页
     if (to.meta.engineerOnly) return { path: '/dashboard' }

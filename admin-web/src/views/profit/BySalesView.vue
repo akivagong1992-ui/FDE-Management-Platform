@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getBySalesPerson, type BySalesRow } from '@/api/profit'
+import { fmt2 as fmt } from '@/utils/format'
 
 const rows = ref<BySalesRow[]>([])
 const loading = ref(false)
@@ -9,10 +10,6 @@ const expanded = ref<string[]>([])
 async function load() {
   loading.value = true
   try { rows.value = await getBySalesPerson() } finally { loading.value = false }
-}
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2 }).format(n)
 }
 
 function rowKey(r: BySalesRow): string { return String(r.sales_person_id) }

@@ -10,6 +10,8 @@ import {
 } from '@/api/timesheets'
 import { listEngineers, type Engineer } from '@/api/engineers'
 import { listProjects, type Project } from '@/api/projects'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 const rows = ref<Timesheet[]>([])
 const engineers = ref<Engineer[]>([])
@@ -148,6 +150,48 @@ async function onPickFile(ev: Event) {
   }
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'work_date', label: '日期' },
+  { key: 'is_workday', label: '工作日' },
+  { key: 'engineer_name', label: '工程师' },
+  { key: 'project_name', label: '项目' },
+  { key: 'slots', label: '时段' },
+  { key: 'natural_days', label: '自然人天' },
+  { key: 'weighted_days', label: '加权人天' },
+  { key: 'description', label: '描述' },
+  { key: 'approval_status', label: '状态' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['is_workday', 'engineer_name', 'project_name', 'approval_status']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: Timesheet, key: string): string {
+  switch (key) {
+    case 'is_workday': return r.is_workday ? '工作日' : '非工作日'
+    case 'approval_status': return APPROVAL_LABEL[r.approval_status as ApprovalStatus] || r.approval_status
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 function slotBadges(t: Timesheet): { label: string; type: 'primary' | 'warning' | 'danger' }[] {
   const out: { label: string; type: 'primary' | 'warning' | 'danger' }[] = []
   if (t.has_morning) out.push({ label: '上午', type: 'primary' })
@@ -162,12 +206,6 @@ onMounted(load)
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.engineer_id" placeholder="按工程师" clearable filterable style="width: 180px" @change="load">
-        <el-option v-for="e in engineers" :key="e.id" :label="e.full_name" :value="e.id" />
-      </el-select>
-      <el-select v-model="filter.project_id" placeholder="按项目" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
       <el-date-picker
         v-model="filter.date_from" type="date" placeholder="起始日" value-format="YYYY-MM-DD"
         style="width: 140px" @change="load"
@@ -176,29 +214,41 @@ onMounted(load)
         v-model="filter.date_to" type="date" placeholder="截止日" value-format="YYYY-MM-DD"
         style="width: 140px" @change="load"
       />
-      <el-select v-model="filter.approval_filter" placeholder="审批状态" clearable style="width: 130px" @change="load">
-        <el-option label="待审" value="pending" />
-        <el-option label="已审" value="approved" />
-        <el-option label="已拒" value="rejected" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button @click="onDownloadTemplate">下载 Excel 模板</el-button>
       <el-button type="warning" @click="openImport">Excel 批量导入</el-button>
       <el-button type="primary" @click="openCreate">录入工时</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="work_date" label="日期" width="110" sortable />
-      <el-table-column label="工作日" width="80">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('work_date')" prop="work_date" label="日期" width="110" sortable />
+      <el-table-column v-if="visibleCols.has('is_workday')" label="工作日" width="100">
+        <template #header>
+          工作日
+          <ColumnFilterMenu :options="distinctValues('is_workday')" v-model="filters.is_workday" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="row.is_workday ? 'info' : 'warning'" size="small" effect="plain">
             {{ row.is_workday ? '工作日' : '非工作日' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="engineer_name" label="工程师" width="100" />
-      <el-table-column prop="project_name" label="项目" min-width="180" />
-      <el-table-column label="时段" width="160">
+      <el-table-column v-if="visibleCols.has('engineer_name')" label="工程师" width="120">
+        <template #header>
+          工程师
+          <ColumnFilterMenu :options="distinctValues('engineer_name')" v-model="filters.engineer_name" />
+        </template>
+        <template #default="{ row }">{{ row.engineer_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('project_name')" label="项目" min-width="200">
+        <template #header>
+          项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.project_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('slots')" label="时段" width="160">
         <template #default="{ row }">
           <el-tag v-for="b in slotBadges(row)" :key="b.label"
                   :type="b.type" size="small" style="margin-right: 4px">
@@ -206,18 +256,22 @@ onMounted(load)
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="自然人天" width="90">
+      <el-table-column v-if="visibleCols.has('natural_days')" label="自然人天" width="90">
         <template #default="{ row }">{{ row.natural_days }}</template>
       </el-table-column>
-      <el-table-column label="加权人天" width="100">
+      <el-table-column v-if="visibleCols.has('weighted_days')" label="加权人天" width="100">
         <template #default="{ row }">
           <span :style="{ color: Number(row.weighted_days) > Number(row.natural_days) ? '#e6a23c' : '#303133', fontWeight: 600 }">
             {{ row.weighted_days }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" min-width="160" />
-      <el-table-column label="状态" width="170">
+      <el-table-column v-if="visibleCols.has('description')" prop="description" label="描述" min-width="160" />
+      <el-table-column v-if="visibleCols.has('approval_status')" label="状态" width="170">
+        <template #header>
+          状态
+          <ColumnFilterMenu :options="distinctValues('approval_status')" v-model="filters.approval_status" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="APPROVAL_TAG_TYPE[row.approval_status as ApprovalStatus]" size="small">
             {{ APPROVAL_LABEL[row.approval_status as ApprovalStatus] }}

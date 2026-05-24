@@ -24,7 +24,7 @@ from app.models.expense import EXPENSE_TYPE_DEFAULTS, ExpenseRequest
 from app.models.idp import IDP
 from app.models.knowledge_asset import ASSET_CATEGORY_DEFAULTS, KnowledgeAsset
 from app.models.need_party import NeedParty
-from app.models.project import HK_DISTRICTS, Project
+from app.models.project import HK_DISTRICTS, Project, ProjectComment
 from app.models.project_revenue import ProjectRevenue
 from app.models.renewal_attempt import RenewalAttempt
 from app.models.retrospective import ProjectRetrospective
@@ -80,27 +80,41 @@ ENGINEER_NAMES = [
     "唐丽琴", "范俊宇", "彭瑞祺", "苏文豪", "蒋家俊", "贾敏",
 ]
 
-# 团队能力分类（6 类）：网络 / 安全 / 弱电 / 云 / 数据 / AI
+# 技能 / 认证目录（2026-05-25 重构）：每条 = (认证名称, 分类, 厂商, 等级 L1/L2/L3)
+# 工程师挂技能即引用此目录某一条
 SKILLS = [
     # 网络能力
-    ("BGP/MPLS", "网络能力"), ("SDN", "网络能力"),
-    ("CCIE 路由交换", "网络能力"), ("5G NR 无线", "网络能力"),
-    ("SD-WAN", "网络能力"),
+    ("CCIE 路由交换", "网络能力", "Cisco", "L3"),
+    ("华为 HCIE-数通", "网络能力", "华为", "L3"),
+    ("CCNP 企业网络", "网络能力", "Cisco", "L2"),
+    ("华为 HCIP-数通", "网络能力", "华为", "L2"),
+    ("CCNA", "网络能力", "Cisco", "L1"),
+    ("5G NR 无线", "网络能力", "中国移动", "L2"),
     # 安全能力
-    ("渗透测试", "安全能力"), ("零信任架构", "安全能力"),
-    ("CISSP 域", "安全能力"), ("SOC 运营", "安全能力"),
+    ("CISSP", "安全能力", "ISC2", "L3"),
+    ("CISA", "安全能力", "ISACA", "L3"),
+    ("OSCP 攻防", "安全能力", "Offensive Security", "L3"),
+    ("CCNP 安全", "安全能力", "Cisco", "L2"),
+    ("CompTIA Security+", "安全能力", "CompTIA", "L1"),
     # 弱电能力
-    ("光纤施工", "弱电能力"), ("综合布线", "弱电能力"),
-    ("机房工程", "弱电能力"), ("视频监控系统", "弱电能力"),
+    ("RCDD 综合布线设计师", "弱电能力", "BICSI", "L2"),
+    ("综合布线工程师初级", "弱电能力", "中国建筑学会", "L1"),
+    ("机房工程认证", "弱电能力", "TIA", "L2"),
     # 云能力
-    ("Kubernetes", "云能力"), ("AWS / Azure", "云能力"),
-    ("阿里云 / 腾讯云", "云能力"), ("容器化部署", "云能力"),
+    ("AWS Solutions Architect Professional", "云能力", "AWS", "L3"),
+    ("Google Cloud Architect", "云能力", "Google", "L3"),
+    ("AWS Solutions Architect Associate", "云能力", "AWS", "L2"),
+    ("CKA Kubernetes", "云能力", "CNCF", "L2"),
+    ("华为 HCIA-Cloud", "云能力", "华为", "L1"),
+    ("AWS Cloud Practitioner", "云能力", "AWS", "L1"),
     # 数据能力
-    ("PostgreSQL", "数据能力"), ("Spark / Flink", "数据能力"),
-    ("数据中台", "数据能力"), ("BI 报表", "数据能力"),
+    ("Cloudera CCP Data Engineer", "数据能力", "Cloudera", "L3"),
+    ("华为 HCIP-大数据", "数据能力", "华为", "L2"),
+    ("华为 HCIA-大数据", "数据能力", "华为", "L1"),
     # AI 能力
-    ("机器学习", "AI 能力"), ("大语言模型 / LLM", "AI 能力"),
-    ("计算机视觉", "AI 能力"), ("推荐系统", "AI 能力"),
+    ("AWS Machine Learning Specialty", "AI 能力", "AWS", "L3"),
+    ("TensorFlow Developer", "AI 能力", "Google", "L2"),
+    ("NVIDIA DLI 入门认证", "AI 能力", "NVIDIA", "L1"),
 ]
 
 # 厂商认证：(name, issuer, cert_category, cert_level)
@@ -231,6 +245,20 @@ async def main() -> None:
         await db.flush()
         print(f"  ✓ vendors x{len(vendor_objs)}")
 
+        # ── Vendor users ──────────────────────────────────────────────
+        # 每个 vendor 公司预装一个登录账号 (用户名 v1..vN / 密码 demo123)
+        # role=vendor，只能看 / 提交自己 vendor 名下的 ExpenseRequest
+        vendor_users = []
+        for idx, v in enumerate(vendor_objs, start=1):
+            vu = User(
+                username=f"v{idx}", full_name=f"{v.short_name} 联系人",
+                role="vendor", vendor_id=v.id,
+                hashed_password=hash_password("demo123"),
+            )
+            db.add(vu); vendor_users.append(vu)
+        await db.flush()
+        print(f"  ✓ vendor 登录账号 x{len(vendor_users)} (v1..v{len(vendor_users)} / demo123)")
+
         # ── NeedParties ───────────────────────────────────────────────
         np_objs = []
         for name, ptype, contact in NEED_PARTIES:
@@ -251,8 +279,8 @@ async def main() -> None:
 
         # ── Skills ────────────────────────────────────────────────────
         skill_objs = []
-        for name, cat in SKILLS:
-            s = Skill(name=name, category=cat, is_active=True)
+        for name, cat, issuer, level in SKILLS:
+            s = Skill(name=name, category=cat, issuer=issuer, level=level, is_active=True)
             db.add(s); skill_objs.append(s)
         await db.flush()
         print(f"  ✓ skills x{len(skill_objs)}")
@@ -263,7 +291,6 @@ async def main() -> None:
         for name in ENGINEER_NAMES:
             vendor = random.choice(vendor_objs)
             monthly_cost = Decimal(random.randint(18, 65)) * 1000  # 18K-65K
-            real_cost = monthly_cost * Decimal("0.65")  # Vendor takes ~35% margin
             e = Engineer(
                 vendor_id=vendor.id,
                 employment_form=random.choice(["vendor_direct", "vendor_via_labor"]),
@@ -277,7 +304,6 @@ async def main() -> None:
                 status=random.choices(["active", "departed"], weights=[90, 10])[0],
                 entry_date=random_date_within(540, 30),
                 monthly_cost_to_telecom=monthly_cost,
-                monthly_real_cost=real_cost,
             )
             db.add(e); eng_objs.append(e)
         await db.flush()
@@ -344,14 +370,25 @@ async def main() -> None:
                             if bid_outcome in {"won", "escaped"} else None)
             actual_end = (planned_end + timedelta(days=random.randint(-15, 30))
                           if status in {"closing", "archived"} else None)
+            # 70% 的项目随机派一个对接工程师
+            contact_eng = random.choice(eng_objs) if random.random() < 0.7 else None
+            summary_text = random.choice([
+                "现场实施进入收尾阶段，本周完成验收",
+                "客户提了一个变更，需评估工期影响",
+                "硬件已到货，等待网络割接窗口",
+                "Vendor 报价已审，等 PM 确认 SOW",
+                None,
+            ])
             p = Project(
                 code=f"P-2026-{i+1:03d}", name=name,
                 need_party_id=need.id, sales_person_id=sales.id,
+                contact_engineer_id=contact_eng.id if contact_eng else None,
                 kind="revenue", outsource_benchmark_amount=benchmark,
                 status=status, bid_outcome=bid_outcome,
                 planned_start_date=planned_start, planned_end_date=planned_end,
                 actual_start_date=actual_start,
                 actual_end_date=actual_end,
+                summary=summary_text,
                 description=f"项目 {name} — 自动 seed 生成",
                 district=random.choices(
                     [c for c, _ in HK_DISTRICTS],
@@ -415,6 +452,31 @@ async def main() -> None:
               f"({sum(1 for p in proj_objs if p.kind=='revenue')} revenue / "
               f"{sum(1 for p in proj_objs if p.kind=='no_revenue')} no_revenue, "
               f"{renewal_marked} 续单)")
+
+        # 给约 40% 在管项目添加 1-3 条 demo 评论（admin ↔ engineer 互动）
+        in_progress_projs = [
+            p for p in proj_objs
+            if p.status in {"drafting", "in_progress", "accepting"}
+        ]
+        cmt_pool = [
+            ("lead", admin.id, "请本周内同步一下现场进度"),
+            ("pm", pm.id, "客户已确认变更，请评估工期"),
+            ("engineer", engineer_user.id, "本周五前可完成核心配置"),
+            ("engineer", engineer_user.id, "需协调甲方机房进场时间"),
+            ("lead", admin.id, "记得发周报"),
+        ]
+        n_cmts = 0
+        for p in in_progress_projs:
+            if random.random() > 0.4:
+                continue
+            for role, uid, body in random.sample(cmt_pool, random.randint(1, 3)):
+                db.add(ProjectComment(
+                    project_id=p.id, author_user_id=uid,
+                    author_role=role, body=body,
+                ))
+                n_cmts += 1
+        await db.flush()
+        print(f"  ✓ project_comments x{n_cmts}")
 
         revenue_projects = [p for p in proj_objs if p.kind == "revenue"]
 
@@ -518,6 +580,7 @@ async def main() -> None:
         print(f"  ✓ vendor service fees x{vsf_count} (项目驱动，合计 ≈ Σ team_revenue)")
 
         # ── External Expenses ─────────────────────────────────────────
+        # 用户 2026-05-25 新模型：vendor 提交申请；vendor_id 是哪家 vendor 提交的
         exp_count = 0
         for _ in range(60):
             project = random.choice(proj_objs)
@@ -526,11 +589,14 @@ async def main() -> None:
             amount = Decimal(random.randint(1, 80)) * 1000
             status = random.choices(["paid", "approved", "pending", "rejected"],
                                      weights=[55, 25, 15, 5])[0]
+            vendor = random.choice(vendor_objs)
+            vendor_user = vendor_users[vendor_objs.index(vendor)]
             db.add(ExpenseRequest(
                 project_id=project.id, supplier_id=random.choice(sup_objs).id,
+                vendor_id=vendor.id,
                 expense_type=etype, title=title, amount=amount,
                 expense_date=random_date_within(180), status=status,
-                requested_by_user_id=pm.id,
+                requested_by_user_id=vendor_user.id,
                 approved_by_user_id=admin.id if status != "pending" else None,
                 approved_at=datetime.utcnow() if status != "pending" else None,
                 paid_at=datetime.utcnow() if status == "paid" else None,

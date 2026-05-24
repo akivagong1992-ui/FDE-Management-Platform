@@ -44,7 +44,6 @@ class EngineerBase(BaseModel):
 class EngineerCreate(EngineerBase):
     id_doc_number: str | None = None  # plaintext input; service layer encrypts
     monthly_cost_to_telecom: Decimal | None = None
-    monthly_real_cost: Decimal | None = None  # ignored if caller is not lead/finance
     initial_skill_ids: list[int] = []  # 新增时可选附带技能字典 id
 
 
@@ -65,7 +64,6 @@ class EngineerUpdate(BaseModel):
     exit_date: date | None = None
     notes: str | None = None
     monthly_cost_to_telecom: Decimal | None = None
-    monthly_real_cost: Decimal | None = None
 
 
 class EngineerOut(EngineerBase):
@@ -76,9 +74,8 @@ class EngineerOut(EngineerBase):
     vendor_name: str | None = None
     id_doc_number_masked: str = ""
 
-    # Cost fields — for privileged roles only; otherwise None
+    # Cost field — for privileged roles only; otherwise None
     monthly_cost_to_telecom: Decimal | None = None
-    monthly_real_cost: Decimal | None = None
 
     skills: list[EngineerSkillOut] = []
     certificates: list[CertificateOut] = []

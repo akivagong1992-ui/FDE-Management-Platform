@@ -8,6 +8,7 @@ import {
   type BidOutcome, type Project, type TransferLog, type TransferReason,
 } from '@/api/projects'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
+import { fmt2 } from '@/utils/format'
 
 const props = defineProps<{ modelValue: boolean; projectId: number | null }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean]; refresh: [] }>()
@@ -30,11 +31,6 @@ const STATUS_LABEL: Record<string, string> = {
 const BASIS_LABEL: Record<string, string> = {
   outsource_equiv: '等同外包服务所抵消的成本（默认）',
   other: '其他（备注必填）',
-}
-
-function fmt2(n: number | string | null | undefined): string {
-  if (n == null) return '—'
-  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
 }
 
 async function refresh() {

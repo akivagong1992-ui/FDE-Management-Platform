@@ -43,6 +43,8 @@ export interface Project {
   sales_person_name?: string | null
   sales_person_active?: boolean | null
   pm_user_id?: number | null
+  contact_engineer_id?: number | null
+  contact_engineer_name?: string | null
   kind: ProjectKind
   outsource_benchmark_amount?: number | string | null
   value_created_basis?: ValueBasis | null
@@ -54,6 +56,7 @@ export interface Project {
   planned_end_date?: string | null
   actual_start_date?: string | null
   actual_end_date?: string | null
+  summary?: string | null
   description?: string | null
   district?: HKDistrict | null
   rework_count?: number
@@ -71,6 +74,7 @@ export interface ProjectPayload {
   need_party_id: number
   sales_person_id: number
   pm_user_id?: number | null
+  contact_engineer_id?: number | null
   kind: ProjectKind
   outsource_benchmark_amount?: number | null
   value_created_basis?: ValueBasis | null
@@ -81,6 +85,7 @@ export interface ProjectPayload {
   planned_end_date?: string | null
   actual_start_date?: string | null
   actual_end_date?: string | null
+  summary?: string | null
   description?: string | null
   district?: HKDistrict | null
   rework_count?: number
@@ -88,6 +93,16 @@ export interface ProjectPayload {
   renewal_of_project_id?: number | null
   benchmark_basis?: BenchmarkBasis | null
   benchmark_basis_note?: string | null
+}
+
+export interface ProjectComment {
+  id: number
+  project_id: number
+  author_user_id: number
+  author_role: string
+  author_name?: string | null
+  body: string
+  created_at: string
 }
 
 export interface TransferLog {
@@ -115,3 +130,10 @@ export const transferSales = (
 ) => http.post<Project>(`/projects/${id}/transfer-sales`, payload).then((r) => r.data)
 export const listTransferLogs = (id: number) =>
   http.get<TransferLog[]>(`/projects/${id}/transfer-logs`).then((r) => r.data)
+
+export const listProjectComments = (id: number) =>
+  http.get<ProjectComment[]>(`/projects/${id}/comments`).then((r) => r.data)
+export const createProjectComment = (id: number, body: string) =>
+  http.post<ProjectComment>(`/projects/${id}/comments`, { body }).then((r) => r.data)
+export const deleteProjectComment = (projectId: number, commentId: number) =>
+  http.delete(`/projects/${projectId}/comments/${commentId}`)

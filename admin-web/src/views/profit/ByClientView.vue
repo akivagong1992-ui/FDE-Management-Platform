@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getByNeedParty, type ByNeedPartyRow } from '@/api/profit'
+import { fmt2 as fmt } from '@/utils/format'
 
 const rows = ref<ByNeedPartyRow[]>([])
 const loading = ref(false)
@@ -9,10 +10,6 @@ const expanded = ref<string[]>([])
 async function load() {
   loading.value = true
   try { rows.value = await getByNeedParty() } finally { loading.value = false }
-}
-
-function fmt(n: number): string {
-  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2 }).format(n)
 }
 
 function rowKey(r: ByNeedPartyRow): string { return String(r.need_party_id) }

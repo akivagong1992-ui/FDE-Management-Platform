@@ -41,6 +41,8 @@ class ExpenseRequestOut(ExpenseRequestBase):
     id: int
     project_name: str | None = None
     supplier_name: str | None = None
+    vendor_id: int | None = None
+    vendor_name: str | None = None
     expense_type_label: str | None = None  # resolved from DataDict on output
     status: str
     requested_by_user_id: int | None = None

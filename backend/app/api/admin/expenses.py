@@ -17,6 +17,7 @@ from app.models.expense import (
 from app.models.project import Project
 from app.models.supplier import Supplier
 from app.models.user import User
+from app.models.vendor import Vendor
 from app.schemas.expense import (
     ApprovalAction,
     ExpenseRequestCreate,
@@ -26,8 +27,16 @@ from app.schemas.expense import (
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
-PM_ROLES = {"admin", "lead", "pm", "finance"}
+PM_ROLES = {"admin", "lead", "pm", "finance"}  # 看全部 + 审批
 ENGINEER_ROLE = "engineer"
+VENDOR_ROLE = "vendor"  # 仅可提交 + 看自己 vendor 公司名下的
+
+
+async def _vendor_name(db: AsyncSession, vid: int | None) -> str | None:
+    if vid is None:
+        return None
+    v = await db.get(Vendor, vid)
+    return v.name if v else None
 
 
 async def _label_for_type(db: AsyncSession, code: str) -> str | None:
@@ -54,6 +63,8 @@ async def _to_out(db: AsyncSession, e: ExpenseRequest) -> ExpenseRequestOut:
         project_name=e.project.name if e.project else None,
         supplier_id=e.supplier_id,
         supplier_name=e.supplier.name if e.supplier else None,
+        vendor_id=e.vendor_id,
+        vendor_name=await _vendor_name(db, e.vendor_id),
         expense_type=e.expense_type,
         expense_type_label=await _label_for_type(db, e.expense_type),
         title=e.title,
@@ -82,13 +93,20 @@ async def list_expenses(
 ) -> list[ExpenseRequestOut]:
     stmt = select(ExpenseRequest).order_by(ExpenseRequest.id.desc())
 
-    # engineer 角色：只看自己提交的支出申请
-    if user.get("role") == ENGINEER_ROLE:
+    role = user.get("role")
+    if role == ENGINEER_ROLE:
+        # engineer 角色：只看自己提交的支出申请
         uid = user.get("user_id")
         if not uid:
             return []
         stmt = stmt.where(ExpenseRequest.requested_by_user_id == uid)
-    elif user.get("role") not in PM_ROLES:
+    elif role == VENDOR_ROLE:
+        # vendor 角色：只看自己 vendor 公司提交的
+        vid = user.get("vendor_id")
+        if not vid:
+            return []
+        stmt = stmt.where(ExpenseRequest.vendor_id == vid)
+    elif role not in PM_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     if project_id is not None:
@@ -107,8 +125,14 @@ async def create_expense(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
 ) -> ExpenseRequestOut:
-    if user.get("role") not in PM_ROLES and user.get("role") != ENGINEER_ROLE:
-        raise HTTPException(status_code=403, detail="Forbidden")
+    # 用户 2026-05-25 策略：只有 vendor 角色可以提交支出申请
+    # admin/lead/pm/finance 只做审批，不再自己提交
+    role = user.get("role")
+    if role != VENDOR_ROLE:
+        raise HTTPException(status_code=403, detail="只有 vendor 角色可以提交支出申请")
+    vendor_id = user.get("vendor_id")
+    if not vendor_id:
+        raise HTTPException(status_code=400, detail="vendor 账号未挂 vendor 公司，无法提交")
     if not await db.get(Project, payload.project_id):
         raise HTTPException(status_code=400, detail="项目不存在")
     if payload.supplier_id is not None and not await db.get(Supplier, payload.supplier_id):
@@ -118,6 +142,7 @@ async def create_expense(
 
     e = ExpenseRequest(**payload.model_dump(), status=EXPENSE_STATUS_PENDING)
     e.requested_by_user_id = await _user_id_from_jwt(db, user)
+    e.vendor_id = vendor_id  # 自动绑定提交方的 vendor 公司
     db.add(e)
     await db.commit()
     await db.refresh(e)

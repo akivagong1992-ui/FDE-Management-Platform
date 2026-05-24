@@ -35,6 +35,8 @@ def _to_out(e: Engineer, *, include_cost: bool) -> EngineerOut:
             skill_id=es.skill_id,
             skill_name=es.skill.name if es.skill else "",
             skill_category=es.skill.category if es.skill else "",
+            skill_issuer=es.skill.issuer if es.skill else None,
+            skill_level=es.skill.level if es.skill else None,
             level=es.level,
             notes=es.notes,
         )
@@ -60,7 +62,6 @@ def _to_out(e: Engineer, *, include_cost: bool) -> EngineerOut:
         exit_date=e.exit_date,
         notes=e.notes,
         monthly_cost_to_telecom=e.monthly_cost_to_telecom if include_cost else None,
-        monthly_real_cost=e.monthly_real_cost if include_cost else None,
         skills=skills,
         certificates=certs,
         created_at=e.created_at,
@@ -121,11 +122,9 @@ async def create_engineer(
     if payload.employment_form == "vendor_via_labor" and not payload.labor_company:
         raise HTTPException(status_code=400, detail="vendor_via_labor 需填写劳务公司")
 
-    data = payload.model_dump(exclude={"id_doc_number", "monthly_real_cost", "initial_skill_ids"})
+    data = payload.model_dump(exclude={"id_doc_number", "initial_skill_ids"})
     e = Engineer(**data)
     e.id_doc_number_enc = encrypt_field(payload.id_doc_number)
-    if _can_view_cost(user):
-        e.monthly_real_cost = payload.monthly_real_cost
     db.add(e)
     await db.flush()  # 拿到 e.id 再挂技能
 
@@ -159,8 +158,6 @@ async def update_engineer(
     new_id = data.pop("id_doc_number", None)
     if new_id is not None:
         e.id_doc_number_enc = encrypt_field(new_id)
-    if "monthly_real_cost" in data and not _can_view_cost(user):
-        data.pop("monthly_real_cost")
     for k, v in data.items():
         setattr(e, k, v)
     await db.commit()

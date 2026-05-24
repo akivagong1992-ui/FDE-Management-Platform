@@ -65,6 +65,8 @@ class Project(Base):
     need_party_id: Mapped[int] = mapped_column(ForeignKey("need_parties.id"), index=True)
     sales_person_id: Mapped[int] = mapped_column(ForeignKey("sales_persons.id"), index=True)
     pm_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    # 对接工程师：派工到工程师团队的人（区别于 pm_user — pm 是项目经理 user，对接工程师是 engineers 表里的派工人员）
+    contact_engineer_id: Mapped[int | None] = mapped_column(ForeignKey("engineers.id"))
 
     # 分类（README §1.6） — 影响 C 口径计算
     kind: Mapped[str] = mapped_column(String(16), default=PROJECT_KIND_REVENUE, index=True)
@@ -101,7 +103,8 @@ class Project(Base):
     )
 
     # 元
-    description: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)        # 一句话项目摘要（/efficiency 表显示）
+    description: Mapped[str | None] = mapped_column(Text)    # 详细说明
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -110,6 +113,21 @@ class Project(Base):
     # Relationships
     need_party: Mapped["NeedParty"] = relationship(lazy="selectin")  # noqa: F821
     sales_person: Mapped["SalesPerson"] = relationship(lazy="selectin")  # noqa: F821
+
+
+class ProjectComment(Base):
+    """项目评论流 — admin/lead/pm 与 engineer 之间的互动动作（催办、回复、备注）。"""
+
+    __tablename__ = "project_comments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), index=True
+    )
+    author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    author_role: Mapped[str] = mapped_column(String(16))   # 冗余存当时的 role 便于审计
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class SalesTransferLog(Base):

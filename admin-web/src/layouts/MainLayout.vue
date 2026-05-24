@@ -10,6 +10,7 @@ const auth = useAuthStore()
 const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => (route.meta?.title as string) || 'FDE管理系统')
 const isEngineer = computed(() => auth.role === 'engineer')
+const isVendor = computed(() => auth.role === 'vendor')
 
 function handleLogout() {
   auth.logout()
@@ -30,10 +31,14 @@ function handleLogout() {
         active-text-color="#409eff"
         router
       >
-        <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
+        <!-- vendor 视角：只看「成本和支出管理」一项；进去默认到 Vendor 支出 tab -->
+        <template v-if="isVendor">
+          <el-menu-item index="/expense"><span>成本和支出管理</span></el-menu-item>
+        </template>
 
         <!-- 工程师视角：只看自己的派单 / 工时 / 支出 -->
-        <template v-if="isEngineer">
+        <template v-else-if="isEngineer">
+          <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
           <el-menu-item index="/my-assignments"><span>📥 我的派单</span></el-menu-item>
           <el-menu-item index="/my-timesheets"><span>⏱ 我的工时</span></el-menu-item>
           <el-menu-item index="/my-expenses"><span>💰 我的支出申请</span></el-menu-item>
@@ -41,6 +46,7 @@ function handleLogout() {
 
         <!-- 管理者视角（pm / lead / admin / finance）-->
         <template v-else>
+          <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
           <el-menu-item index="/project"><span>项目和客户管理</span></el-menu-item>
           <el-menu-item index="/engineer"><span>派单和工时管理</span></el-menu-item>
           <el-menu-item index="/profit"><span>利润管理</span></el-menu-item>

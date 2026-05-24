@@ -7,14 +7,18 @@ from app.core.database import Base
 
 
 class Skill(Base):
-    """技能字典项 — e.g. Python / Java / 网络 / 通信 / 安全 / Kubernetes."""
+    """技能 / 认证字典项 — 用户 2026-05-25 重构：
+    每条记录是一个「认证 + 等级」组合，e.g. (CCIE 路由交换, Cisco, 网络能力, L3)。
+    工程师挂技能 = 引用这里某一条 → 自动带出 厂商 + 等级。
+    """
 
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True, index=True)  # 认证名称 e.g. CCIE 路由交换
     category: Mapped[str] = mapped_column(String(32))  # 网络能力/安全能力/弱电能力/云能力/数据能力/AI 能力
-    description: Mapped[str | None] = mapped_column(String(255))
+    issuer: Mapped[str | None] = mapped_column(String(64))  # 厂商 e.g. Cisco / 华为 / CNCF
+    level: Mapped[str | None] = mapped_column(String(4))    # L1 / L2 / L3
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

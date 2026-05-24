@@ -150,25 +150,34 @@ async function onDeleteCert(id: number) {
         <el-descriptions-item label="离职日">{{ engineer.exit_date || '—' }}</el-descriptions-item>
       </el-descriptions>
 
-      <el-descriptions v-if="isLead" :column="2" border title="成本（仅 lead/finance 可见）" style="margin-top: 16px">
+      <el-descriptions v-if="isLead" :column="1" border title="成本（仅 lead/finance 可见）" style="margin-top: 16px">
         <el-descriptions-item label="月服务费 (HK$)">
           {{ engineer.monthly_cost_to_telecom ?? '—' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="Vendor 真实人工成本 (HK$)">
-          <span style="color: #e6a23c">{{ engineer.monthly_real_cost ?? '—' }}</span>
         </el-descriptions-item>
       </el-descriptions>
 
       <div style="margin-top: 24px">
         <div style="font-weight: 600; margin-bottom: 8px">
-          技能清单
+          技能等级
           <span style="color: #909399; font-size: 12px; font-weight: normal; margin-left: 8px">
-            仅记录会/不会，水平由下方厂商认证体现
+            认证名称 + 厂商 + 等级（来自能力矩阵）
           </span>
         </div>
         <el-table :data="engineer.skills" size="small">
           <el-table-column prop="skill_category" label="分类" width="110" />
-          <el-table-column prop="skill_name" label="技能" />
+          <el-table-column prop="skill_name" label="认证名称" min-width="180" />
+          <el-table-column prop="skill_issuer" label="厂商" width="120">
+            <template #default="{ row }">{{ row.skill_issuer || '—' }}</template>
+          </el-table-column>
+          <el-table-column prop="skill_level" label="等级" width="80">
+            <template #default="{ row }">
+              <el-tag v-if="row.skill_level" size="small"
+                      :type="row.skill_level === 'L3' ? 'success' : row.skill_level === 'L2' ? 'warning' : 'info'">
+                {{ row.skill_level }}
+              </el-tag>
+              <span v-else style="color: #c0c4cc">—</span>
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="80">
             <template #default="{ row }">
               <el-button link type="danger" size="small" @click="onDetachSkill(row.id)">移除</el-button>
@@ -176,8 +185,12 @@ async function onDeleteCert(id: number) {
           </el-table-column>
         </el-table>
         <div style="display: flex; gap: 8px; margin-top: 8px">
-          <el-select v-model="newSkill.skill_id" placeholder="选择技能" filterable style="flex: 1">
-            <el-option v-for="s in allSkills" :key="s.id" :label="`[${s.category}] ${s.name}`" :value="s.id" />
+          <el-select v-model="newSkill.skill_id" placeholder="选择认证" filterable style="flex: 1">
+            <el-option
+              v-for="s in allSkills" :key="s.id"
+              :label="`[${s.category}] ${s.name}${s.level ? ' · ' + s.level : ''}${s.issuer ? ' — ' + s.issuer : ''}`"
+              :value="s.id"
+            />
           </el-select>
           <el-button type="primary" @click="onAttachSkill">添加</el-button>
         </div>

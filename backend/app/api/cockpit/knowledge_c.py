@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.asset_reference import AssetReference
 from app.models.data_dict import DataDict
 from app.models.knowledge_asset import KnowledgeAsset
+from app.models.project import Project
 
 router = APIRouter(prefix="/knowledge-stats", tags=["cockpit-knowledge"])
 
@@ -57,6 +58,28 @@ async def knowledge_stats(db: AsyncSession = Depends(get_db)) -> dict:
         select(func.count(distinct(AssetReference.asset_id)))
     )).scalar_one() or 0
 
+    # 最近沉淀的资产（滚动播放用）— title + category + 来源项目 + 时间
+    recent_rows = (await db.execute(
+        select(
+            KnowledgeAsset.id, KnowledgeAsset.title, KnowledgeAsset.category,
+            KnowledgeAsset.created_at, Project.name,
+        )
+        .outerjoin(Project, Project.id == KnowledgeAsset.project_id)
+        .order_by(KnowledgeAsset.created_at.desc())
+        .limit(10)
+    )).all()
+    recent_assets = [
+        {
+            "id": rid,
+            "title": title,
+            "category_code": code,
+            "category_label": cat_labels.get(code, code),
+            "project_name": pname,
+            "created_at": created_at.isoformat() if created_at else None,
+        }
+        for rid, title, code, created_at, pname in recent_rows
+    ]
+
     return {
         "total_assets": int(total),
         "by_category": by_category,
@@ -65,5 +88,6 @@ async def knowledge_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "total_references": int(reuse_count),
         "distinct_reused_assets": int(distinct_reused_assets),
         "total_hours_saved": float(total_hours_saved or 0),
+        "recent_assets": recent_assets,
         # No money fields by design — keeps cockpit isolation invariant
     }

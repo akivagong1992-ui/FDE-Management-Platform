@@ -2,8 +2,10 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listUsers, createUser, updateUser, deleteUser, type User, type UserPayload } from '@/api/users'
+import { listVendors, type Vendor } from '@/api/vendors'
 
 const users = ref<User[]>([])
+const vendors = ref<Vendor[]>([])
 const loading = ref(false)
 
 const dialogVisible = ref(false)
@@ -15,12 +17,14 @@ const form = reactive<UserPayload>({
   email: '',
   role: 'pm',
   is_active: true,
+  vendor_id: null,
 })
 
 async function load() {
   loading.value = true
   try {
     users.value = await listUsers()
+    if (vendors.value.length === 0) vendors.value = await listVendors()
   } finally {
     loading.value = false
   }
@@ -28,7 +32,10 @@ async function load() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { username: '', password: '', full_name: '', email: '', role: 'pm', is_active: true })
+  Object.assign(form, {
+    username: '', password: '', full_name: '', email: '',
+    role: 'pm', is_active: true, vendor_id: null,
+  })
   dialogVisible.value = true
 }
 
@@ -41,16 +48,29 @@ function openEdit(u: User) {
     email: u.email || '',
     role: u.role,
     is_active: u.is_active,
+    vendor_id: u.vendor_id ?? null,
   })
   dialogVisible.value = true
 }
 
+function vendorName(vid: number | null | undefined): string {
+  if (vid == null) return '—'
+  const v = vendors.value.find((x) => x.id === vid)
+  return v ? v.name : `#${vid}`
+}
+
 async function onSubmit() {
+  if (form.role === 'vendor' && !form.vendor_id) {
+    ElMessage.warning('vendor 角色必须挂一个 Vendor 公司')
+    return
+  }
+  // 非 vendor 角色清掉 vendor_id 防止误带
+  const payload: Partial<UserPayload> = { ...form }
+  if (payload.role !== 'vendor') payload.vendor_id = null
   if (editingId.value === null) {
-    await createUser(form)
+    await createUser(payload as UserPayload)
     ElMessage.success('已创建')
   } else {
-    const payload: Partial<UserPayload> = { ...form }
     if (!payload.password) delete payload.password
     await updateUser(editingId.value, payload)
     ElMessage.success('已更新')
@@ -85,7 +105,13 @@ onMounted(load)
       <el-table-column prop="email" label="邮箱" />
       <el-table-column prop="role" label="角色" width="100">
         <template #default="{ row }">
-          <el-tag>{{ row.role }}</el-tag>
+          <el-tag :type="row.role === 'vendor' ? 'warning' : 'primary'" effect="plain">{{ row.role }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="挂 Vendor" width="160">
+        <template #default="{ row }">
+          <span v-if="row.role === 'vendor'">{{ vendorName(row.vendor_id) }}</span>
+          <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
       <el-table-column prop="is_active" label="启用" width="80">
@@ -103,8 +129,8 @@ onMounted(load)
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="dialogVisible" :title="editingId === null ? '新增用户' : '编辑用户'" width="480px">
-      <el-form :model="form" label-width="80px">
+    <el-dialog v-model="dialogVisible" :title="editingId === null ? '新增用户' : '编辑用户'" width="520px">
+      <el-form :model="form" label-width="100px">
         <el-form-item label="用户名">
           <el-input v-model="form.username" :disabled="editingId !== null" />
         </el-form-item>
@@ -121,7 +147,16 @@ onMounted(load)
             <el-option label="财务 (finance)" value="finance" />
             <el-option label="工程师 (engineer)" value="engineer" />
             <el-option label="管理员 (admin)" value="admin" />
+            <el-option label="Vendor 联系人 (vendor)" value="vendor" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="form.role === 'vendor'" label="挂 Vendor 公司" required>
+          <el-select v-model="form.vendor_id" filterable placeholder="选一个 Vendor 公司" style="width: 100%">
+            <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            该用户登录后只能看/提交此 vendor 名下的支出申请
+          </div>
         </el-form-item>
         <el-form-item label="密码">
           <el-input

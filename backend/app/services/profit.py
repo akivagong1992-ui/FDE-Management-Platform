@@ -96,12 +96,15 @@ async def _project_revenues(db: AsyncSession) -> dict[int, Decimal]:
 # ── 口径 A — team overall ──────────────────────────────────────────────
 
 async def compute_overall(db: AsyncSession) -> dict:
-    """口径 A：团队整体利润 = Σ 团队入账 − Σ VSF。
+    """口径 A：团队真实利润 = Σ VSF − Σ 全部支出（含外包工程师支出）。
 
-    业务模型（用户确认）：VSF 已包含 6 类支出（vendor 用团队入账的钱内部消化），
-    所以 margin 公式里只减 VSF，不再单独减 6 类——否则双重扣减。
-    `total_external_expenses` 字段保留供 UI 作为参考信息展示（vendor 端支出明细快照），
-    但**不参与 team_margin 计算**。
+    业务模型（用户 2026-05-25 重构）：
+      - 团队入账 100% pass-through 给 vendor → revenue ≈ VSF（pass-through 表面账面 ≈ 0）
+      - vendor 用收到的 VSF 付：全部支出（含「外包工程师支出」新类目）
+      - vendor 自留的 markup 就是团队真实利润（从财务实质看，vendor 是受控壳）
+      - 公式：team_margin = VSF − Σ 全部支出
+      - 「外包工程师支出」是 vendor 给工程师/劳务公司的钱，由 admin 手动录入
+        （没录则 team_margin 看起来偏高，需录全后才反映真实 markup）
     """
     revenue = (await db.execute(
         select(func.coalesce(func.sum(ProjectRevenue.amount), 0))
@@ -119,11 +122,11 @@ async def compute_overall(db: AsyncSession) -> dict:
     revenue_d = _dec(revenue)
     fees_d = _dec(vendor_fees)
     exp_d = _dec(expenses)
-    margin = revenue_d - fees_d
+    margin = fees_d - exp_d  # = vendor markup = 团队真实利润
     return {
         "total_revenue": float(revenue_d),
         "total_vendor_service_fees": float(fees_d),
-        "total_external_expenses": float(exp_d),  # 仅展示 / vendor 端支出快照
+        "total_external_expenses": float(exp_d),  # vendor 端全部支出（含外包工程师）
         "team_margin": float(margin),
         "currency": "HKD",
     }

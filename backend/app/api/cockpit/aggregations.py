@@ -25,6 +25,7 @@ from app.models.project import (
     PROJECT_STATUS_CLOSING,
     PROJECT_STATUS_IN_PROGRESS,
     Project,
+    ProjectComment,
 )
 from app.models.project_revenue import ProjectRevenue
 from app.models.skill import EngineerSkill, Skill
@@ -294,6 +295,24 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         key=lambda x: x["days_to_due"],
     )
 
+    # 对接工程师 name 表 + 项目评论数
+    active_ids = [p.id for p in active_pool]
+    eng_ids = {p.contact_engineer_id for p in active_pool if p.contact_engineer_id}
+    eng_name_by_id: dict[int, str] = {}
+    if eng_ids:
+        eng_rows = (await db.execute(
+            select(Engineer.id, Engineer.full_name).where(Engineer.id.in_(eng_ids))
+        )).all()
+        eng_name_by_id = {eid: name for eid, name in eng_rows}
+    comment_count_by_pid: dict[int, int] = {}
+    if active_ids:
+        cnt_rows = (await db.execute(
+            select(ProjectComment.project_id, func.count(ProjectComment.id))
+            .where(ProjectComment.project_id.in_(active_ids))
+            .group_by(ProjectComment.project_id)
+        )).all()
+        comment_count_by_pid = {pid: cnt for pid, cnt in cnt_rows}
+
     in_progress_list = sorted(
         [
             {
@@ -303,6 +322,10 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
                 "planned_end": str(p.planned_end_date) if p.planned_end_date else None,
                 "overdue": bool(p.planned_end_date and p.planned_end_date < today
                                 and p.status != PROJECT_STATUS_ARCHIVED),
+                "contact_engineer_id": p.contact_engineer_id,
+                "contact_engineer_name": eng_name_by_id.get(p.contact_engineer_id) if p.contact_engineer_id else None,
+                "summary": p.summary,
+                "comment_count": comment_count_by_pid.get(p.id, 0),
             }
             for p in active_pool
         ],

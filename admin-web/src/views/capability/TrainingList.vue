@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createTraining, deleteTraining, listTrainings, updateTraining,
   type Training, type TrainingPayload,
 } from '@/api/trainings'
 import { listEngineers, type Engineer } from '@/api/engineers'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 // 学费已迁移到「其他支出」→ 类型选「外部培训费」，此处只记录学习行为本身
 const rows = ref<Training[]>([])
@@ -73,6 +75,41 @@ async function onDelete(t: Training) {
   await load()
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'training_date', label: '日期' },
+  { key: 'engineer_name', label: '工程师' },
+  { key: 'course_name', label: '课程' },
+  { key: 'provider', label: '机构 / 讲师' },
+  { key: 'category', label: '类别' },
+  { key: 'hours', label: '学时' },
+  { key: 'passed', label: '通过' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['engineer_name', 'course_name', 'provider', 'category', 'passed']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: Training, key: string): string {
+  if (key === 'passed') return r.passed ? '是' : '否'
+  const v = (r as unknown as Record<string, unknown>)[key]
+  return v == null ? '' : String(v)
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
@@ -82,25 +119,49 @@ onMounted(load)
       培训学费请在「其他支出 → 类型 = 外部培训费」录入，此处只登记学习行为本身（课程、学时、是否通过）
     </el-alert>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px">
-      <el-select v-model="filter.engineer_id" placeholder="按工程师筛选" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="e in engineers" :key="e.id" :label="e.full_name" :value="e.id" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增培训记录</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="training_date" label="日期" width="110" sortable />
-      <el-table-column prop="engineer_name" label="工程师" width="100" />
-      <el-table-column prop="course_name" label="课程" min-width="180" />
-      <el-table-column prop="provider" label="机构 / 讲师" width="140" />
-      <el-table-column prop="category" label="类别" width="80">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('training_date')" prop="training_date" label="日期" width="110" sortable />
+      <el-table-column v-if="visibleCols.has('engineer_name')" label="工程师" width="120">
+        <template #header>
+          工程师
+          <ColumnFilterMenu :options="distinctValues('engineer_name')" v-model="filters.engineer_name" />
+        </template>
+        <template #default="{ row }">{{ row.engineer_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('course_name')" label="课程" min-width="200">
+        <template #header>
+          课程
+          <ColumnFilterMenu :options="distinctValues('course_name')" v-model="filters.course_name" :width="280" />
+        </template>
+        <template #default="{ row }">{{ row.course_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('provider')" label="机构 / 讲师" width="160">
+        <template #header>
+          机构 / 讲师
+          <ColumnFilterMenu :options="distinctValues('provider')" v-model="filters.provider" />
+        </template>
+        <template #default="{ row }">{{ row.provider }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('category')" label="类别" width="110">
+        <template #header>
+          类别
+          <ColumnFilterMenu :options="distinctValues('category')" v-model="filters.category" />
+        </template>
         <template #default="{ row }"><el-tag>{{ row.category || '—' }}</el-tag></template>
       </el-table-column>
-      <el-table-column label="学时" width="80">
+      <el-table-column v-if="visibleCols.has('hours')" label="学时" width="80">
         <template #default="{ row }">{{ row.hours }}h</template>
       </el-table-column>
-      <el-table-column label="通过" width="80">
+      <el-table-column v-if="visibleCols.has('passed')" label="通过" width="100">
+        <template #header>
+          通过
+          <ColumnFilterMenu :options="distinctValues('passed')" v-model="filters.passed" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="row.passed ? 'success' : 'danger'">{{ row.passed ? '是' : '否' }}</el-tag>
         </template>

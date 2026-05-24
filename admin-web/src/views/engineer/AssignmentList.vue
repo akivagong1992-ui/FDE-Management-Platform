@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   APPROVAL_LABEL, APPROVAL_TAG_TYPE,
@@ -9,6 +9,8 @@ import {
 import { listEngineers, type Engineer } from '@/api/engineers'
 import { listProjects, type Project } from '@/api/projects'
 import AssignmentDrawer from './AssignmentDrawer.vue'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 const rows = ref<Assignment[]>([])
 const engineers = ref<Engineer[]>([])
@@ -117,54 +119,106 @@ function openDrawer(a: Assignment) {
   drawerOpen.value = true
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'engineer_name', label: '工程师' },
+  { key: 'project_name', label: '项目' },
+  { key: 'role', label: '角色' },
+  { key: 'status', label: '阶段' },
+  { key: 'approval_status', label: '工程师确认' },
+  { key: 'planned_start_date', label: '计划起' },
+  { key: 'planned_end_date', label: '计划止' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['engineer_name', 'project_name', 'role', 'status', 'approval_status']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: Assignment, key: string): string {
+  switch (key) {
+    case 'status': return STATUS_LABEL[r.status] || r.status
+    case 'approval_status': return APPROVAL_LABEL[r.approval_status as ApprovalStatus] || r.approval_status
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.engineer_id" placeholder="按工程师筛选" clearable filterable style="width: 200px" @change="load">
-        <el-option v-for="e in engineers" :key="e.id" :label="e.full_name" :value="e.id" />
-      </el-select>
-      <el-select v-model="filter.project_id" placeholder="按项目筛选" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
-      <el-select v-model="filter.status_filter" placeholder="阶段" clearable style="width: 120px" @change="load">
-        <el-option v-for="o in STATUS_OPTS" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
-      <el-select v-model="filter.approval_filter" placeholder="工程师确认" clearable style="width: 140px" @change="load">
-        <el-option label="待确认" value="pending" />
-        <el-option label="已接单" value="accepted" />
-        <el-option label="已拒单" value="rejected" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增派单</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="engineer_name" label="工程师" width="100" />
-      <el-table-column label="项目" min-width="200">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('engineer_name')" label="工程师" width="120">
+        <template #header>
+          工程师
+          <ColumnFilterMenu :options="distinctValues('engineer_name')" v-model="filters.engineer_name" />
+        </template>
+        <template #default="{ row }">{{ row.engineer_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('project_name')" label="项目" min-width="200">
+        <template #header>
+          项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
         <template #default="{ row }">
           <span v-if="row.project_code" style="color: #909399">[{{ row.project_code }}]</span>
           {{ row.project_name }}
         </template>
       </el-table-column>
-      <el-table-column prop="role" label="角色" width="110" />
-      <el-table-column label="阶段" width="90">
+      <el-table-column v-if="visibleCols.has('role')" label="角色" width="130">
+        <template #header>
+          角色
+          <ColumnFilterMenu :options="distinctValues('role')" v-model="filters.role" />
+        </template>
+        <template #default="{ row }">{{ row.role }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('status')" label="阶段" width="110">
+        <template #header>
+          阶段
+          <ColumnFilterMenu :options="distinctValues('status')" v-model="filters.status" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="STATUS_TYPE[row.status]" size="small">{{ STATUS_LABEL[row.status] }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="工程师确认" width="130">
+      <el-table-column v-if="visibleCols.has('approval_status')" label="工程师确认" width="140">
+        <template #header>
+          工程师确认
+          <ColumnFilterMenu :options="distinctValues('approval_status')" v-model="filters.approval_status" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="APPROVAL_TAG_TYPE[row.approval_status as ApprovalStatus]" size="small">
             {{ APPROVAL_LABEL[row.approval_status as ApprovalStatus] }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="planned_start_date" label="计划起" width="115" />
-      <el-table-column prop="planned_end_date" label="计划止" width="115" />
+      <el-table-column v-if="visibleCols.has('planned_start_date')" prop="planned_start_date" label="计划起" width="115" />
+      <el-table-column v-if="visibleCols.has('planned_end_date')" prop="planned_end_date" label="计划止" width="115" />
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="openDrawer(row)">

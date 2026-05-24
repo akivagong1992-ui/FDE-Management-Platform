@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.models.skill import Skill
-from app.schemas.skill import SkillCreate, SkillOut, SkillUpdate
+from app.schemas.skill import (
+    SkillBulkImport, SkillBulkResult,
+    SkillCreate, SkillOut, SkillUpdate,
+)
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
@@ -49,6 +52,36 @@ async def update_skill(
     await db.commit()
     await db.refresh(s)
     return SkillOut.model_validate(s)
+
+
+@router.post("/bulk-import", response_model=SkillBulkResult)
+async def bulk_import_skills(
+    payload: SkillBulkImport,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_role("admin", "lead", "pm")),
+) -> SkillBulkResult:
+    """批量导入认证目录：整批共用 category，每行含 issuer + name + level。
+    遇到重名（name 已存在）跳过，不报错。"""
+    existing = {
+        s.name for s in (await db.execute(select(Skill.name))).scalars().all()
+    } if False else set(
+        (await db.execute(select(Skill.name))).scalars().all()
+    )
+    created = 0
+    skipped: list[str] = []
+    for it in payload.items:
+        if it.name in existing:
+            skipped.append(it.name)
+            continue
+        s = Skill(
+            name=it.name, category=payload.category,
+            issuer=it.issuer, level=it.level, is_active=True,
+        )
+        db.add(s)
+        existing.add(it.name)
+        created += 1
+    await db.commit()
+    return SkillBulkResult(created=created, skipped=len(skipped), skipped_names=skipped)
 
 
 @router.delete("/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)

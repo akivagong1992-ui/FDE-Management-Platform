@@ -22,6 +22,27 @@ const coverage = computed(() => stats.value?.project_coverage ?? 0)
 
 const maxCount = computed(() => Math.max(1, ...(stats.value?.by_category || []).map((c) => c.count)))
 
+// 最新沉淀滚动播放：超过 4 条就走 CSS 无缝循环（拼一份副本）
+const tickerList = computed(() => {
+  const list = stats.value?.recent_assets || []
+  return list.length > 4 ? [...list, ...list] : list
+})
+const isScrolling = computed(() => (stats.value?.recent_assets.length || 0) > 4)
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return '—'
+  const t = new Date(iso).getTime()
+  const diff = Date.now() - t
+  const d = Math.floor(diff / 86400000)
+  if (d < 1) {
+    const h = Math.floor(diff / 3600000)
+    return h < 1 ? '刚刚' : `${h} 小时前`
+  }
+  if (d < 30) return `${d} 天前`
+  const m = Math.floor(d / 30)
+  return `${m} 个月前`
+}
+
 onMounted(async () => {
   await load()
   timer = window.setInterval(load, 60000)
@@ -66,15 +87,28 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         </div>
       </div>
       <div class="panel">
-        <div class="panel-title">直击痛点</div>
-        <div class="hint-block">
-          <div class="hint-title">无技术沉淀 → 沉淀在内部</div>
-          <div class="hint-body">
-            过去项目结束 = 知识丢失。<br />
-            内化后已累计 <strong class="hl">{{ fmtInt(stats?.total_assets) }}</strong>
-            条资产，覆盖 <strong class="hl">{{ fmtInt(stats?.project_coverage) }}</strong> 个项目。
+        <div class="panel-title">
+          最新沉淀
+          <span class="panel-sub">
+            最近 30 天 <strong class="hl-mini">{{ fmtInt(stats?.recent_30d) }}</strong> 条
+          </span>
+        </div>
+        <div v-if="!stats?.recent_assets.length" class="placeholder">暂无沉淀</div>
+        <div v-else class="ticker" :class="{ 'is-scrolling': isScrolling }">
+          <div class="ticker-track">
+            <div v-for="(a, i) in tickerList" :key="`${a.id}-${i}`" class="ticker-row">
+              <div class="ticker-cat">{{ a.category_label }}</div>
+              <div class="ticker-main">
+                <div class="ticker-title">{{ a.title }}</div>
+                <div class="ticker-meta">
+                  <span v-if="a.project_name">📁 {{ a.project_name }}</span>
+                  <span v-else class="dim">未归属项目</span>
+                  <span class="dim">·</span>
+                  <span class="dim">{{ timeAgo(a.created_at) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="hint-meta">数据来源：管理后台 ⑥ 技术沉淀模块</div>
         </div>
       </div>
     </div>
@@ -97,10 +131,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   text-shadow: 0 0 8px var(--cockpit-accent-3), 0 0 16px rgba(255, 64, 129, 0.5);
 }
 .kpi-card.brag-2 {
-  border-color: #ffe082;
+  border-color: var(--cockpit-accent-gold);
   box-shadow: 0 0 18px rgba(255, 224, 130, 0.3);
 }
-.kpi-card.brag-2 .kpi-value { color: #ffe082; text-shadow: 0 0 8px #ffe082; }
+.kpi-card.brag-2 .kpi-value { color: var(--cockpit-accent-gold); text-shadow: 0 0 8px var(--cockpit-accent-gold); }
 .unit { font-size: 0.4em; color: var(--cockpit-text-dim); font-weight: normal; }
 .kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .lower { flex: 1; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; min-height: 0; }
@@ -127,15 +161,48 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   text-align: right;
 }
 
-.hint-block { padding: 16px 8px; }
-.hint-title {
-  font-size: 18px; color: var(--cockpit-accent-3); letter-spacing: 3px;
-  margin-bottom: 16px; text-shadow: 0 0 6px var(--cockpit-accent-3);
+.panel-sub {
+  font-size: 11px; color: var(--cockpit-text-dim); letter-spacing: 1px; margin-left: 8px;
+  font-weight: normal;
 }
-.hint-body { font-size: 15px; line-height: 1.9; color: var(--cockpit-text); }
-.hl {
-  color: var(--cockpit-accent); font-family: 'Courier New', monospace;
-  font-size: 22px; padding: 0 4px;
+.hl-mini { color: var(--cockpit-accent-3); font-family: 'Courier New', monospace; padding: 0 2px; }
+
+.ticker {
+  margin-top: 12px; overflow: hidden;
+  height: calc(100% - 40px);
+  position: relative;
+  mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 88%, transparent 100%);
 }
-.hint-meta { margin-top: 20px; color: var(--cockpit-text-dim); font-size: 12px; letter-spacing: 1px; }
+.ticker-track {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ticker.is-scrolling .ticker-track {
+  animation: ticker-scroll 30s linear infinite;
+}
+@keyframes ticker-scroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.ticker-row {
+  display: grid; grid-template-columns: 80px 1fr; gap: 12px;
+  align-items: center; padding: 8px 10px;
+  border: 1px solid var(--cockpit-border); border-radius: 8px;
+  background: rgba(0, 229, 255, 0.04);
+}
+.ticker-cat {
+  color: var(--cockpit-accent); font-size: 11px; letter-spacing: 1px;
+  text-align: center; padding: 4px 0;
+  border-right: 1px solid var(--cockpit-border);
+}
+.ticker-main { min-width: 0; }
+.ticker-title {
+  color: var(--cockpit-text); font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ticker-meta {
+  color: var(--cockpit-text); font-size: 11px; margin-top: 3px;
+  display: flex; gap: 6px; align-items: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ticker-meta .dim { color: var(--cockpit-text-dim); }
 </style>

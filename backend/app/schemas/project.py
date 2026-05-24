@@ -17,6 +17,7 @@ class ProjectBase(BaseModel):
     need_party_id: int
     sales_person_id: int
     pm_user_id: int | None = None
+    contact_engineer_id: int | None = None
     kind: str = Field(default="revenue", pattern=PROJECT_KIND_PATTERN)
     outsource_benchmark_amount: Decimal | None = None
     value_created_basis: str | None = Field(default=None, pattern=f"({VALUE_BASIS_PATTERN})?")
@@ -27,6 +28,7 @@ class ProjectBase(BaseModel):
     planned_end_date: date | None = None
     actual_start_date: date | None = None
     actual_end_date: date | None = None
+    summary: str | None = None
     description: str | None = None
 
     # Phase 3-next-ii
@@ -53,6 +55,7 @@ class ProjectUpdate(BaseModel):
     need_party_id: int | None = None
     # sales_person_id is NOT directly updatable — use POST /transfer-sales instead
     pm_user_id: int | None = None
+    contact_engineer_id: int | None = None
     kind: str | None = Field(default=None, pattern=PROJECT_KIND_PATTERN)  # change requires lead role
     outsource_benchmark_amount: Decimal | None = None
     value_created_basis: str | None = None
@@ -63,6 +66,7 @@ class ProjectUpdate(BaseModel):
     planned_end_date: date | None = None
     actual_start_date: date | None = None
     actual_end_date: date | None = None
+    summary: str | None = None
     description: str | None = None
     district: str | None = None
     rework_count: int | None = None
@@ -79,10 +83,26 @@ class ProjectOut(ProjectBase):
     need_party_name: str | None = None
     sales_person_name: str | None = None
     sales_person_active: bool | None = None
+    contact_engineer_name: str | None = None
     # Computed: for no_revenue projects, value_created = outsource_benchmark_amount (R13 auto-calc)
     value_created_computed: Decimal | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ProjectCommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class ProjectCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    project_id: int
+    author_user_id: int
+    author_role: str
+    author_name: str | None = None
+    body: str
+    created_at: datetime
 
 
 class TransferSalesRequest(BaseModel):

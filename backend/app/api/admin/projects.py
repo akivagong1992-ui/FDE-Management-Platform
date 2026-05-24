@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
+from app.models.engineer import Engineer
 from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
 from app.models.need_party import NeedParty
 from app.models.project import (
@@ -15,6 +16,7 @@ from app.models.project import (
     PROJECT_STATUS_CLOSING,
     VALUE_BASIS_OUTSOURCE_EQUIV,
     Project,
+    ProjectComment,
     SalesTransferLog,
 )
 from app.models.project_revenue import ProjectRevenue
@@ -22,6 +24,8 @@ from app.models.sales_person import SalesPerson
 from app.models.user import User
 from app.models.vendor_service_fee import VendorServiceFee
 from app.schemas.project import (
+    ProjectCommentCreate,
+    ProjectCommentOut,
     ProjectCreate,
     ProjectOut,
     ProjectUpdate,
@@ -32,7 +36,7 @@ from app.schemas.project import (
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-def _to_out(p: Project, *, team_revenue: float = 0.0) -> ProjectOut:
+def _to_out(p: Project, *, team_revenue: float = 0.0, contact_engineer_name: str | None = None) -> ProjectOut:
     """与驾驶舱口径 C 一致的 value_created_computed：
     - no_revenue：仅 status ∈ {closing, archived} 时 = outsource_benchmark
     - revenue：仅 bid_outcome == 'won'（已中标，默认团队拿到）时
@@ -60,6 +64,8 @@ def _to_out(p: Project, *, team_revenue: float = 0.0) -> ProjectOut:
         sales_person_name=p.sales_person.name if p.sales_person else None,
         sales_person_active=p.sales_person.is_active if p.sales_person else None,
         pm_user_id=p.pm_user_id,
+        contact_engineer_id=p.contact_engineer_id,
+        contact_engineer_name=contact_engineer_name,
         kind=p.kind,
         outsource_benchmark_amount=p.outsource_benchmark_amount,
         value_created_basis=p.value_created_basis,
@@ -71,6 +77,7 @@ def _to_out(p: Project, *, team_revenue: float = 0.0) -> ProjectOut:
         planned_end_date=p.planned_end_date,
         actual_start_date=p.actual_start_date,
         actual_end_date=p.actual_end_date,
+        summary=p.summary,
         description=p.description,
         district=p.district,
         rework_count=p.rework_count or 0,
@@ -111,6 +118,11 @@ async def _bulk_team_revenue(db: AsyncSession) -> dict[int, float]:
     return {pid: float(amt) for pid, amt in rows}
 
 
+async def _bulk_contact_engineer_names(db: AsyncSession) -> dict[int, str]:
+    rows = (await db.execute(select(Engineer.id, Engineer.full_name))).all()
+    return {eid: name for eid, name in rows}
+
+
 @router.get("", response_model=list[ProjectOut])
 async def list_projects(
     kind: str | None = None,
@@ -131,8 +143,13 @@ async def list_projects(
         stmt = stmt.where(Project.need_party_id == need_party_id)
     rows = (await db.execute(stmt)).scalars().all()
     team_rev_by_pid = await _bulk_team_revenue(db)
+    eng_name_by_id = await _bulk_contact_engineer_names(db)
     return [
-        _to_out(p, team_revenue=team_rev_by_pid.get(p.id, 0.0))
+        _to_out(
+            p,
+            team_revenue=team_rev_by_pid.get(p.id, 0.0),
+            contact_engineer_name=eng_name_by_id.get(p.contact_engineer_id) if p.contact_engineer_id else None,
+        )
         for p in rows
     ]
 
@@ -147,7 +164,11 @@ async def get_project(
     if not p:
         raise HTTPException(status_code=404, detail="项目不存在")
     team_rev_by_pid = await _bulk_team_revenue(db)
-    return _to_out(p, team_revenue=team_rev_by_pid.get(p.id, 0.0))
+    contact_name = None
+    if p.contact_engineer_id:
+        eng = await db.get(Engineer, p.contact_engineer_id)
+        contact_name = eng.full_name if eng else None
+    return _to_out(p, team_revenue=team_rev_by_pid.get(p.id, 0.0), contact_engineer_name=contact_name)
 
 
 @router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
@@ -169,6 +190,8 @@ async def create_project(
         raise HTTPException(status_code=400, detail="销售人员已停用，请选其他人")
     if payload.pm_user_id is not None and not await db.get(User, payload.pm_user_id):
         raise HTTPException(status_code=400, detail="PM 用户不存在")
+    if payload.contact_engineer_id is not None and not await db.get(Engineer, payload.contact_engineer_id):
+        raise HTTPException(status_code=400, detail="对接工程师不存在")
 
     data = payload.model_dump()
     if payload.kind == PROJECT_KIND_NO_REVENUE and not data.get("value_created_basis"):
@@ -180,7 +203,11 @@ async def create_project(
     await db.commit()
     await db.refresh(p)
     team_revenue = await _single_team_revenue(db, p.id)
-    return _to_out(p, team_revenue=team_revenue)
+    contact_name = None
+    if p.contact_engineer_id:
+        eng = await db.get(Engineer, p.contact_engineer_id)
+        contact_name = eng.full_name if eng else None
+    return _to_out(p, team_revenue=team_revenue, contact_engineer_name=contact_name)
 
 
 @router.patch("/{project_id}", response_model=ProjectOut)
@@ -208,12 +235,20 @@ async def update_project(
         new_basis = VALUE_BASIS_OUTSOURCE_EQUIV
     _validate_no_revenue_fields(new_kind, new_basis, new_note)
 
+    if "contact_engineer_id" in data and data["contact_engineer_id"] is not None:
+        if not await db.get(Engineer, data["contact_engineer_id"]):
+            raise HTTPException(status_code=400, detail="对接工程师不存在")
+
     for k, v in data.items():
         setattr(p, k, v)
     await db.commit()
     await db.refresh(p)
     team_revenue = await _single_team_revenue(db, p.id)
-    return _to_out(p, team_revenue=team_revenue)
+    contact_name = None
+    if p.contact_engineer_id:
+        eng = await db.get(Engineer, p.contact_engineer_id)
+        contact_name = eng.full_name if eng else None
+    return _to_out(p, team_revenue=team_revenue, contact_engineer_name=contact_name)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -262,7 +297,11 @@ async def transfer_sales(
     await db.commit()
     await db.refresh(p)
     team_revenue = await _single_team_revenue(db, p.id)
-    return _to_out(p, team_revenue=team_revenue)
+    contact_name = None
+    if p.contact_engineer_id:
+        eng = await db.get(Engineer, p.contact_engineer_id)
+        contact_name = eng.full_name if eng else None
+    return _to_out(p, team_revenue=team_revenue, contact_engineer_name=contact_name)
 
 
 @router.get("/{project_id}/cost-breakdown")
@@ -328,3 +367,83 @@ async def list_transfer_logs(
     )
     rows = (await db.execute(stmt)).scalars().all()
     return [SalesTransferLogOut.model_validate(r) for r in rows]
+
+
+# ─── Project comments (admin ↔ engineer 互动) ──────────────────────────
+
+@router.get("/{project_id}/comments", response_model=list[ProjectCommentOut])
+async def list_project_comments(
+    project_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(get_current_user),
+) -> list[ProjectCommentOut]:
+    if not await db.get(Project, project_id):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    rows = (await db.execute(
+        select(ProjectComment).where(ProjectComment.project_id == project_id)
+        .order_by(ProjectComment.id.asc())
+    )).scalars().all()
+    if not rows:
+        return []
+    user_ids = {r.author_user_id for r in rows}
+    user_rows = (await db.execute(
+        select(User.id, User.username).where(User.id.in_(user_ids))
+    )).all()
+    name_by_id = {uid: uname for uid, uname in user_rows}
+    return [
+        ProjectCommentOut(
+            id=r.id, project_id=r.project_id,
+            author_user_id=r.author_user_id, author_role=r.author_role,
+            author_name=name_by_id.get(r.author_user_id),
+            body=r.body, created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.post("/{project_id}/comments", response_model=ProjectCommentOut, status_code=status.HTTP_201_CREATED)
+async def create_project_comment(
+    project_id: int,
+    payload: ProjectCommentCreate,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+) -> ProjectCommentOut:
+    if not await db.get(Project, project_id):
+        raise HTTPException(status_code=404, detail="项目不存在")
+    uid = user.get("user_id")
+    if uid is None:
+        raise HTTPException(status_code=401, detail="用户身份解析失败")
+    c = ProjectComment(
+        project_id=project_id,
+        author_user_id=uid,
+        author_role=user.get("role") or "unknown",
+        body=payload.body.strip(),
+    )
+    db.add(c)
+    await db.commit()
+    await db.refresh(c)
+    u = await db.get(User, uid)
+    return ProjectCommentOut(
+        id=c.id, project_id=c.project_id,
+        author_user_id=c.author_user_id, author_role=c.author_role,
+        author_name=u.username if u else None,
+        body=c.body, created_at=c.created_at,
+    )
+
+
+@router.delete("/{project_id}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project_comment(
+    project_id: int,
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+) -> None:
+    c = await db.get(ProjectComment, comment_id)
+    if not c or c.project_id != project_id:
+        raise HTTPException(status_code=404, detail="评论不存在")
+    role = user.get("role")
+    uid = user.get("user_id")
+    if role not in {"admin", "lead"} and c.author_user_id != uid:
+        raise HTTPException(status_code=403, detail="只能删除自己的评论")
+    await db.delete(c)
+    await db.commit()

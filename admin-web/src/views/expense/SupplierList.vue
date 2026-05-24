@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createSupplier, deleteSupplier, listSuppliers, updateSupplier,
   type Supplier, type SupplierPayload,
 } from '@/api/suppliers'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 const rows = ref<Supplier[]>([])
 const loading = ref(false)
@@ -50,6 +52,41 @@ async function onDelete(s: Supplier) {
   await load()
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: '名称' },
+  { key: 'category', label: '类别' },
+  { key: 'contact_person', label: '联系人' },
+  { key: 'contact_phone', label: '电话' },
+  { key: 'payment_terms', label: '结算条件' },
+  { key: 'is_active', label: '状态' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['name', 'category', 'contact_person', 'payment_terms', 'is_active']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: Supplier, key: string): string {
+  if (key === 'is_active') return r.is_active ? '启用' : '停用'
+  const v = (r as unknown as Record<string, unknown>)[key]
+  return v == null ? '' : String(v)
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
@@ -59,19 +96,48 @@ onMounted(load)
       <div style="color: #606266; font-size: 13px">
         其他支出供应商（耗材 / 分包 / 临时人力 / 许可 / 差旅）。<strong>与 Vendor 区分</strong>——Vendor 是供人公司。
       </div>
-      <el-button type="primary" @click="openCreate">新增供应商</el-button>
+      <div style="display: flex; gap: 8px">
+        <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
+        <el-button type="primary" @click="openCreate">新增供应商</el-button>
+      </div>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="name" label="名称" min-width="200" />
-      <el-table-column label="类别" width="100">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('name')" label="名称" min-width="200">
+        <template #header>
+          名称
+          <ColumnFilterMenu :options="distinctValues('name')" v-model="filters.name" :width="240" />
+        </template>
+        <template #default="{ row }">{{ row.name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('category')" label="类别" width="120">
+        <template #header>
+          类别
+          <ColumnFilterMenu :options="distinctValues('category')" v-model="filters.category" />
+        </template>
         <template #default="{ row }"><el-tag>{{ row.category || '—' }}</el-tag></template>
       </el-table-column>
-      <el-table-column prop="contact_person" label="联系人" width="120" />
-      <el-table-column prop="contact_phone" label="电话" width="140" />
-      <el-table-column prop="payment_terms" label="结算条件" width="120" />
-      <el-table-column label="状态" width="80">
+      <el-table-column v-if="visibleCols.has('contact_person')" label="联系人" width="130">
+        <template #header>
+          联系人
+          <ColumnFilterMenu :options="distinctValues('contact_person')" v-model="filters.contact_person" />
+        </template>
+        <template #default="{ row }">{{ row.contact_person }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('contact_phone')" prop="contact_phone" label="电话" width="140" />
+      <el-table-column v-if="visibleCols.has('payment_terms')" label="结算条件" width="130">
+        <template #header>
+          结算条件
+          <ColumnFilterMenu :options="distinctValues('payment_terms')" v-model="filters.payment_terms" />
+        </template>
+        <template #default="{ row }">{{ row.payment_terms }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('is_active')" label="状态" width="100">
+        <template #header>
+          状态
+          <ColumnFilterMenu :options="distinctValues('is_active')" v-model="filters.is_active" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="row.is_active ? 'success' : 'info'">{{ row.is_active ? '启用' : '停用' }}</el-tag>
         </template>

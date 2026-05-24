@@ -46,7 +46,6 @@ export interface Engineer {
   entry_date?: string | null
   exit_date?: string | null
   monthly_cost_to_telecom?: number | string | null
-  monthly_real_cost?: number | string | null
   notes?: string | null
   skills: EngineerSkillRow[]
   certificates: Certificate[]
@@ -69,7 +68,6 @@ export interface EngineerPayload {
   entry_date?: string | null
   exit_date?: string | null
   monthly_cost_to_telecom?: number | null
-  monthly_real_cost?: number | null
   notes?: string | null
   initial_skill_ids?: number[]  // 新增工程师时可附带技能字典 id
 }

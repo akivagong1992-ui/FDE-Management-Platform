@@ -14,6 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
   const role = ref<string | null>(localStorage.getItem('mp_role'))
   const userId = ref<number | null>(parseNullableInt(localStorage.getItem('mp_user_id')))
   const engineerId = ref<number | null>(parseNullableInt(localStorage.getItem('mp_engineer_id')))
+  const vendorId = ref<number | null>(parseNullableInt(localStorage.getItem('mp_vendor_id')))
 
   async function login(u: string, p: string) {
     const resp = await authApi.login(u, p)
@@ -22,12 +23,15 @@ export const useAuthStore = defineStore('auth', () => {
     role.value = resp.role
     userId.value = resp.user_id
     engineerId.value = resp.engineer_id ?? null
+    vendorId.value = resp.vendor_id ?? null
     localStorage.setItem('mp_token', resp.access_token)
     localStorage.setItem('mp_username', resp.username)
     localStorage.setItem('mp_role', resp.role)
     localStorage.setItem('mp_user_id', String(resp.user_id))
     if (resp.engineer_id != null) localStorage.setItem('mp_engineer_id', String(resp.engineer_id))
     else localStorage.removeItem('mp_engineer_id')
+    if (resp.vendor_id != null) localStorage.setItem('mp_vendor_id', String(resp.vendor_id))
+    else localStorage.removeItem('mp_vendor_id')
   }
 
   function logout() {
@@ -36,12 +40,14 @@ export const useAuthStore = defineStore('auth', () => {
     role.value = null
     userId.value = null
     engineerId.value = null
+    vendorId.value = null
     localStorage.removeItem('mp_token')
     localStorage.removeItem('mp_username')
     localStorage.removeItem('mp_role')
     localStorage.removeItem('mp_user_id')
     localStorage.removeItem('mp_engineer_id')
+    localStorage.removeItem('mp_vendor_id')
   }
 
-  return { token, username, role, userId, engineerId, login, logout }
+  return { token, username, role, userId, engineerId, vendorId, login, logout }
 })

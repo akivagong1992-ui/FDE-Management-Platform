@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createRevenue, deleteRevenue, listRevenues, updateRevenue,
@@ -9,6 +9,9 @@ import {
   listProjects, updateProject, BENCHMARK_BASIS_LABELS,
   type BenchmarkBasis, type Project,
 } from '@/api/projects'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
+import { fmt2 } from '@/utils/format'
 
 const rows = ref<ProjectRevenue[]>([])
 const projects = ref<Project[]>([])
@@ -21,7 +24,7 @@ const editingId = ref<number | null>(null)
 const form = reactive<RevenuePayload>({
   project_id: 0, amount: 0, gross_amount: undefined, non_service_expense: undefined,
   recognized_date: new Date().toISOString().slice(0, 10),
-  invoice_no: '', description: '',
+  description: '',
 })
 // 报价相关字段直接读写 Project；保存时单独 PATCH project（不属于 ProjectRevenue 数据）
 const benchmarkForm = reactive<{ amount: number | undefined; basis: BenchmarkBasis | undefined }>({
@@ -57,7 +60,7 @@ function openCreate() {
     project_id: revenueProjects.value[0]?.id || 0,
     amount: 0, gross_amount: undefined, non_service_expense: undefined,
     recognized_date: new Date().toISOString().slice(0, 10),
-    invoice_no: '', description: '',
+    description: '',
   })
   syncBenchmarkFromProject(form.project_id)
   dialog.value = true
@@ -70,7 +73,7 @@ function openEdit(r: ProjectRevenue) {
     amount: Number(r.amount),
     gross_amount: r.gross_amount == null ? undefined : Number(r.gross_amount),
     non_service_expense: r.non_service_expense == null ? undefined : Number(r.non_service_expense),
-    recognized_date: r.recognized_date, invoice_no: r.invoice_no || '',
+    recognized_date: r.recognized_date,
     description: r.description || '',
   })
   syncBenchmarkFromProject(r.project_id)
@@ -134,6 +137,48 @@ function projectMeta(projectId: number): { need_party: string; sales_person: str
   }
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'recognized_date', label: '确认日期' },
+  { key: 'project_name', label: '项目' },
+  { key: 'need_party_name', label: '客户名称' },
+  { key: 'sales_person_name', label: '销售' },
+  { key: 'gross_amount', label: '客户付款总额' },
+  { key: 'non_service_expense', label: '非服务开销' },
+  { key: 'amount', label: '团队入账' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['project_name', 'need_party_name', 'sales_person_name']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: ProjectRevenue, key: string): string {
+  switch (key) {
+    case 'need_party_name': return projectMeta(r.project_id).need_party
+    case 'sales_person_name': return projectMeta(r.project_id).sales_person
+    case 'project_name': return r.project_name || ''
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 async function onDelete(r: ProjectRevenue) {
   await ElMessageBox.confirm(`删除收入记录 #${r.id} (HK$ ${r.amount})？`, '提示', { type: 'warning' })
   await deleteRevenue(r.id)
@@ -147,37 +192,49 @@ onMounted(load)
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.project_id" placeholder="按项目筛选" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="p in revenueProjects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增收入记录</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="recognized_date" label="确认日期" width="120" sortable />
-      <el-table-column prop="project_name" label="项目" min-width="160" />
-      <el-table-column label="客户名称" min-width="140">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('recognized_date')" prop="recognized_date" label="确认日期" width="120" sortable />
+      <el-table-column v-if="visibleCols.has('project_name')" label="项目" min-width="160">
+        <template #header>
+          项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.project_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('need_party_name')" label="客户名称" min-width="140">
+        <template #header>
+          客户名称
+          <ColumnFilterMenu :options="distinctValues('need_party_name')" v-model="filters.need_party_name" :width="240" />
+        </template>
         <template #default="{ row }">{{ projectMeta(row.project_id).need_party }}</template>
       </el-table-column>
-      <el-table-column label="销售" width="110">
+      <el-table-column v-if="visibleCols.has('sales_person_name')" label="销售" width="130">
+        <template #header>
+          销售
+          <ColumnFilterMenu :options="distinctValues('sales_person_name')" v-model="filters.sales_person_name" />
+        </template>
         <template #default="{ row }">{{ projectMeta(row.project_id).sales_person }}</template>
       </el-table-column>
-      <el-table-column label="客户付款总额" width="140" align="right">
+      <el-table-column v-if="visibleCols.has('gross_amount')" label="客户付款总额" width="140" align="right">
         <template #default="{ row }">
-          <span v-if="row.gross_amount != null">HK$ {{ row.gross_amount }}</span>
+          <span v-if="row.gross_amount != null">HK$ {{ fmt2(row.gross_amount) }}</span>
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="非服务开销" width="140" align="right">
+      <el-table-column v-if="visibleCols.has('non_service_expense')" label="非服务开销" width="140" align="right">
         <template #default="{ row }">
-          <span v-if="row.non_service_expense != null">HK$ {{ row.non_service_expense }}</span>
+          <span v-if="row.non_service_expense != null">HK$ {{ fmt2(row.non_service_expense) }}</span>
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="团队入账" width="140" align="right">
-        <template #default="{ row }">HK$ {{ row.amount }}</template>
+      <el-table-column v-if="visibleCols.has('amount')" label="团队入账" width="140" align="right">
+        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -232,7 +289,6 @@ onMounted(load)
         <el-form-item label="确认日期" required>
           <el-date-picker v-model="form.recognized_date" type="date" value-format="YYYY-MM-DD" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="发票号"><el-input v-model="form.invoice_no" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>

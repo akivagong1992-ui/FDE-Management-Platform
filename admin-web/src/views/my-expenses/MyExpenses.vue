@@ -7,6 +7,7 @@ import {
 } from '@/api/expenses'
 import { listProjects, type Project } from '@/api/projects'
 import { listDict, type DictItem } from '@/api/dataDict'
+import { fmt2 } from '@/utils/format'
 
 const STATUS_LABEL: Record<ExpenseStatus, string> = {
   pending: '待审', approved: '已批准', rejected: '已拒', paid: '已支付',
@@ -48,10 +49,11 @@ const pendingCount = computed(() => rows.value.filter((r) => r.status === 'pendi
 const rejectedCount = computed(() => rows.value.filter((r) => r.status === 'rejected').length)
 const approvedCount = computed(() => rows.value.filter((r) => r.status === 'approved').length)
 const totalApproved = computed(() =>
-  rows.value
-    .filter((r) => r.status === 'approved' || r.status === 'paid')
-    .reduce((acc, r) => acc + Number(r.amount), 0)
-    .toLocaleString('zh-CN', { maximumFractionDigits: 2 }),
+  fmt2(
+    rows.value
+      .filter((r) => r.status === 'approved' || r.status === 'paid')
+      .reduce((acc, r) => acc + Number(r.amount), 0),
+  ),
 )
 
 function openCreate() {
@@ -128,7 +130,7 @@ onMounted(load)
       <el-table-column prop="title" label="标题" min-width="180" />
       <el-table-column label="金额" width="120" align="right">
         <template #default="{ row }">
-          <strong>HK$ {{ Number(row.amount).toLocaleString('zh-CN', { maximumFractionDigits: 2 }) }}</strong>
+          <strong>HK$ {{ fmt2(row.amount) }}</strong>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="90">

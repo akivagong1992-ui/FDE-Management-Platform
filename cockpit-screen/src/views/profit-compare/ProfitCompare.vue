@@ -117,7 +117,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   box-shadow: 0 0 8px var(--cockpit-accent);
 }
 .brag-fill {
-  background: linear-gradient(90deg, var(--cockpit-accent-3), #ffe082);
+  background: linear-gradient(90deg, var(--cockpit-accent-3), var(--cockpit-accent-gold));
   box-shadow: 0 0 8px var(--cockpit-accent-3);
 }
 .bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; font-size: 12px; text-align: right; }
@@ -129,7 +129,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   font-family: 'Courier New', monospace; font-weight: 700; font-size: 16px;
   text-align: center; color: var(--cockpit-text-dim);
 }
-.rank-1 { color: #ffe082; }
+.rank-1 { color: var(--cockpit-accent-gold); }
 .rank-2 { color: #cfe3ff; }
 .rank-3 { color: #ff8e00; }
 .rank-name { color: var(--cockpit-text); }

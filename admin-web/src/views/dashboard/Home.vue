@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getOverall, type OverallProfit } from '@/api/profit'
 import { listProjects, type BidOutcome, type Project } from '@/api/projects'
 import { listRevenues, type ProjectRevenue } from '@/api/projectRevenues'
+import { fmtWan } from '@/utils/format'
 
 const cockpit = axios.create({ baseURL: '/api/cockpit', timeout: 10000 })
 const router = useRouter()
@@ -67,8 +68,7 @@ async function load() {
 
 onMounted(load)
 
-const wan = (n: number | null | undefined) =>
-  n == null ? '—' : (n / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 1 })
+const wan = (n: number | null | undefined) => fmtWan(n)
 
 // ─ Section 1 KPIs ───────────────────────────────────────────
 const wonInProgress = computed(() =>
@@ -163,11 +163,24 @@ const topCustomers = computed(() => {
       <el-col :span="4">
         <el-card shadow="hover" class="kpi-card">
           <div class="kpi-label">
-            团队累计毛利 (HKD 万)
+            团队真实利润 (HKD 万)
+            <el-tooltip v-if="canSeeMargin" placement="top">
+              <template #content>
+                <div style="max-width: 320px; line-height: 1.6">
+                  <strong>= VSF − 全部支出</strong>（vendor markup 视角）<br /><br />
+                  vendor 是受控壳，它从 VSF 自留的 markup = 团队真实利润。<br /><br />
+                  <span style="color: #e6a23c">⚠</span> 依赖「外包工程师支出」录入完整度；未录全 → 数字偏高。
+                </div>
+              </template>
+              <span style="cursor: help; color: #c0c4cc; font-size: 11px; margin-left: 2px">ⓘ</span>
+            </el-tooltip>
             <el-tag v-if="!canSeeMargin" size="small" type="info" style="margin-left: 4px">无权限</el-tag>
           </div>
-          <div class="kpi-value">{{ canSeeMargin ? wan(profit?.team_margin) : '—' }}</div>
-          <div class="kpi-sub">A 口径 · lead/finance/admin</div>
+          <div class="kpi-value"
+               :style="canSeeMargin && (profit?.team_margin ?? 0) < 0 ? { color: '#f56c6c' } : { color: '#67c23a' }">
+            {{ canSeeMargin ? wan(profit?.team_margin) : '—' }}
+          </div>
+          <div class="kpi-sub">vendor markup · lead/finance/admin</div>
         </el-card>
       </el-col>
       <el-col :span="4">

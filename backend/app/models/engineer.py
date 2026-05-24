@@ -52,7 +52,6 @@ class Engineer(Base):
 
     # 成本（仅财务/负责人可见 — API 层按角色过滤）
     monthly_cost_to_telecom: Mapped[float | None] = mapped_column(Numeric(12, 2))  # 电信付给 Vendor 的月服务费
-    monthly_real_cost: Mapped[float | None] = mapped_column(Numeric(12, 2))        # Vendor 真实人工成本（三层透视第二层）
 
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

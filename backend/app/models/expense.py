@@ -22,6 +22,9 @@ EXPENSE_TYPE_DEFAULTS = [
     ("travel", "差旅 / 外勤"),
     ("training", "外部培训费"),
     ("other", "其他（不在以上分类的开销）"),
+    # 用户 2026-05-25 加入：vendor 用 VSF 钱付给工程师/劳务公司的部分，
+    # 是 vendor 端最大开销项；进入团队真实利润公式：team_margin = VSF − Σ 全部支出
+    ("outsource_engineer", "外包工程师支出"),
 ]
 
 
@@ -33,6 +36,9 @@ class ExpenseRequest(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
+    # 用户 2026-05-25 加入：vendor 角色提交时填的发起方公司
+    # admin 看全部；vendor 用户列表时 filter where vendor_id == current_user.vendor_id
+    vendor_id: Mapped[int | None] = mapped_column(ForeignKey("vendors.id"), index=True)
 
     # Type code from DataDict(category=expense_type)
     expense_type: Mapped[str] = mapped_column(String(32), index=True)

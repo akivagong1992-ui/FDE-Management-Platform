@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createFee, deleteFee, listFees, updateFee,
@@ -8,6 +8,9 @@ import {
 import { listVendors, type Vendor } from '@/api/vendors'
 import { listEngineers, type Engineer } from '@/api/engineers'
 import { listProjects, type Project } from '@/api/projects'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
+import { fmt2 } from '@/utils/format'
 
 const rows = ref<VendorServiceFee[]>([])
 const vendors = ref<Vendor[]>([])
@@ -20,7 +23,7 @@ const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<VsfPayload>({
   vendor_id: 0, engineer_id: null, project_id: null, fee_type: 'monthly_per_engineer',
-  period_start: '', period_end: '', amount: 0, invoice_no: '', description: '', status: 'draft',
+  period_start: '', period_end: '', amount: 0, description: '', status: 'draft',
 })
 
 const STATUS_LABEL: Record<string, string> = { draft: '草稿', billed: '已开票', paid: '已支付' }
@@ -43,7 +46,7 @@ function openCreate() {
   Object.assign(form, {
     vendor_id: vendors.value[0]?.id || 0, engineer_id: null, project_id: null,
     fee_type: 'monthly_per_engineer', period_start: '', period_end: '',
-    amount: 0, invoice_no: '', description: '', status: 'draft',
+    amount: 0, description: '', status: 'draft',
   })
   dialog.value = true
 }
@@ -53,7 +56,7 @@ function openEdit(v: VendorServiceFee) {
   Object.assign(form, {
     vendor_id: v.vendor_id, engineer_id: v.engineer_id, project_id: v.project_id,
     fee_type: v.fee_type, period_start: v.period_start, period_end: v.period_end,
-    amount: Number(v.amount), invoice_no: v.invoice_no || '',
+    amount: Number(v.amount),
     description: v.description || '', status: v.status,
   })
   dialog.value = true
@@ -82,38 +85,86 @@ async function onDelete(v: VendorServiceFee) {
   await load()
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'vendor_name', label: 'Vendor' },
+  { key: 'engineer_name', label: '工程师' },
+  { key: 'project_name', label: '项目' },
+  { key: 'period', label: '期间' },
+  { key: 'amount', label: '金额' },
+  { key: 'status', label: '状态' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['vendor_name', 'engineer_name', 'project_name', 'status']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: VendorServiceFee, key: string): string {
+  if (key === 'status') return STATUS_LABEL[r.status] || r.status
+  const v = (r as unknown as Record<string, unknown>)[key]
+  return v == null ? '' : String(v)
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.vendor_id" placeholder="按 Vendor 筛选" clearable style="width: 200px" @change="load">
-        <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
-      </el-select>
-      <el-select v-model="filter.project_id" placeholder="按项目筛选" clearable filterable style="width: 200px" @change="load">
-        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
-      <el-select v-model="filter.status_filter" placeholder="按状态" clearable style="width: 130px" @change="load">
-        <el-option v-for="(v, k) in STATUS_LABEL" :key="k" :label="v" :value="k" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增服务费记录</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="vendor_name" label="Vendor" width="140" />
-      <el-table-column prop="engineer_name" label="工程师" width="100" />
-      <el-table-column prop="project_name" label="项目" min-width="160" />
-      <el-table-column label="期间" width="220">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('vendor_name')" label="Vendor" width="160">
+        <template #header>
+          Vendor
+          <ColumnFilterMenu :options="distinctValues('vendor_name')" v-model="filters.vendor_name" />
+        </template>
+        <template #default="{ row }">{{ row.vendor_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('engineer_name')" label="工程师" width="120">
+        <template #header>
+          工程师
+          <ColumnFilterMenu :options="distinctValues('engineer_name')" v-model="filters.engineer_name" />
+        </template>
+        <template #default="{ row }">{{ row.engineer_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('project_name')" label="项目" min-width="180">
+        <template #header>
+          项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.project_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('period')" label="期间" width="220">
         <template #default="{ row }">{{ row.period_start }} ~ {{ row.period_end }}</template>
       </el-table-column>
-      <el-table-column label="金额" width="120">
-        <template #default="{ row }">HK$ {{ row.amount }}</template>
+      <el-table-column v-if="visibleCols.has('amount')" label="金额" width="120">
+        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
       </el-table-column>
-      <el-table-column prop="invoice_no" label="发票号" width="140" />
-      <el-table-column label="状态" width="90">
+      <el-table-column v-if="visibleCols.has('status')" label="状态" width="120">
+        <template #header>
+          状态
+          <ColumnFilterMenu :options="distinctValues('status')" v-model="filters.status" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="STATUS_TYPE[row.status] as any">{{ STATUS_LABEL[row.status] }}</el-tag>
         </template>
@@ -192,7 +243,6 @@ onMounted(load)
           </el-col>
         </el-row>
 
-        <el-form-item label="发票号"><el-input v-model="form.invoice_no" /></el-form-item>
         <el-form-item label="备注"><el-input v-model="form.description" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <template #footer>

@@ -9,9 +9,13 @@ import {
 import { listSuppliers, type Supplier } from '@/api/suppliers'
 import { listProjects, type Project } from '@/api/projects'
 import { listDict, type DictItem } from '@/api/dataDict'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
+import { fmt2 } from '@/utils/format'
 
 const auth = useAuthStore()
 const isApprover = computed(() => ['admin', 'lead', 'finance'].includes(auth.role || ''))
+const isVendor = computed(() => auth.role === 'vendor')
 
 const rows = ref<ExpenseRequest[]>([])
 const suppliers = ref<Supplier[]>([])
@@ -105,53 +109,115 @@ async function onDelete(e: ExpenseRequest) {
   await load()
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'expense_type', label: '类型' },
+  { key: 'title', label: '标题' },
+  { key: 'project_name', label: '项目' },
+  { key: 'supplier_name', label: '供应商' },
+  { key: 'amount', label: '金额' },
+  { key: 'expense_date', label: '发生日' },
+  { key: 'status', label: '状态' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['expense_type', 'title', 'project_name', 'supplier_name', 'status']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: ExpenseRequest, key: string): string {
+  switch (key) {
+    case 'expense_type': return r.expense_type_label || r.expense_type || ''
+    case 'status': return STATUS_LABEL[r.status] || r.status
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.project_id" placeholder="按项目筛选" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
-      <el-select v-model="filter.expense_type" placeholder="按类型筛选" clearable style="width: 200px" @change="load">
-        <el-option v-for="t in types" :key="t.code" :label="t.label" :value="t.code" />
-      </el-select>
-      <el-select v-model="filter.status_filter" placeholder="按状态筛选" clearable style="width: 140px" @change="load">
-        <el-option v-for="(v, k) in STATUS_LABEL" :key="k" :label="v" :value="k" />
-      </el-select>
       <div style="flex: 1" />
-      <el-button type="primary" @click="openCreate">新增支出申请</el-button>
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
+      <el-button v-if="isVendor" type="primary" @click="openCreate">新增支出申请</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column label="类型" width="140">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('expense_type')" label="类型" width="160">
+        <template #header>
+          类型
+          <ColumnFilterMenu :options="distinctValues('expense_type')" v-model="filters.expense_type" />
+        </template>
         <template #default="{ row }">
           <el-tag>{{ row.expense_type_label || row.expense_type }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="title" label="标题" min-width="180" />
-      <el-table-column prop="project_name" label="项目" min-width="160" />
-      <el-table-column prop="supplier_name" label="供应商" width="140" />
-      <el-table-column label="金额" width="120">
-        <template #default="{ row }">HK$ {{ row.amount }}</template>
+      <el-table-column v-if="visibleCols.has('title')" label="标题" min-width="180">
+        <template #header>
+          标题
+          <ColumnFilterMenu :options="distinctValues('title')" v-model="filters.title" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.title }}</template>
       </el-table-column>
-      <el-table-column prop="expense_date" label="发生日" width="110" />
-      <el-table-column label="状态" width="100">
+      <el-table-column v-if="visibleCols.has('project_name')" label="项目" min-width="160">
+        <template #header>
+          项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.project_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('supplier_name')" label="供应商" width="150">
+        <template #header>
+          供应商
+          <ColumnFilterMenu :options="distinctValues('supplier_name')" v-model="filters.supplier_name" />
+        </template>
+        <template #default="{ row }">{{ row.supplier_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('amount')" label="金额" width="120">
+        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('expense_date')" prop="expense_date" label="发生日" width="110" />
+      <el-table-column v-if="visibleCols.has('status')" label="状态" width="120">
+        <template #header>
+          状态
+          <ColumnFilterMenu :options="distinctValues('status')" v-model="filters.status" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="STATUS_TYPE[row.status] as any">{{ STATUS_LABEL[row.status] }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
-          <el-button v-if="row.status === 'pending'" link size="small" @click="openEdit(row)">编辑</el-button>
+          <!-- vendor 可编辑/删除自己 pending 的；不能审批 -->
+          <el-button v-if="isVendor && row.status === 'pending'" link size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="isVendor && row.status === 'pending'" link type="danger" size="small" @click="onDelete(row)">撤回</el-button>
+          <!-- approver 看见审批按钮 -->
           <template v-if="isApprover && row.status === 'pending'">
             <el-button link type="success" size="small" @click="onApprove(row)">批准</el-button>
             <el-button link type="warning" size="small" @click="onReject(row)">驳回</el-button>
           </template>
           <el-button v-if="isApprover && row.status === 'approved'" link type="primary" size="small" @click="onMarkPaid(row)">标记已付</el-button>
-          <el-button link type="danger" size="small" @click="onDelete(row)">删除</el-button>
+          <el-button v-if="isApprover" link type="danger" size="small" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

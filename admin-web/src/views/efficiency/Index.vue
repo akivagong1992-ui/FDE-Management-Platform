@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { updateProject } from '@/api/projects'
+import { listEngineers, type Engineer } from '@/api/engineers'
+import ProjectInteractionDrawer from './ProjectInteractionDrawer.vue'
 
 const cockpit = axios.create({ baseURL: '/api/cockpit', timeout: 10000 })
 
@@ -11,6 +15,10 @@ interface InProgressProject {
   planned_start: string | null
   planned_end: string | null
   overdue: boolean
+  contact_engineer_id: number | null
+  contact_engineer_name: string | null
+  summary: string | null
+  comment_count: number
 }
 interface EfficiencyStats {
   active_count: number
@@ -33,12 +41,27 @@ const STATUS_TYPE: Record<string, 'primary' | 'success' | 'info' | 'warning' | '
 const stats = ref<EfficiencyStats | null>(null)
 const loading = ref(true)
 const filter = ref<'all' | 'overdue' | 'due_soon'>('all')
+const engineers = ref<Engineer[]>([])
+
+// 内联编辑状态
+const editingSummaryId = ref<number | null>(null)
+const editingSummaryText = ref('')
+const editingEngineerId = ref<number | null>(null)
+
+// 互动 drawer
+const drawerOpen = ref(false)
+const drawerProjectId = ref<number | null>(null)
+const drawerProjectName = ref('')
 
 async function load() {
   loading.value = true
   try {
-    const r = await cockpit.get<EfficiencyStats>('/efficiency-stats')
+    const [r, engs] = await Promise.all([
+      cockpit.get<EfficiencyStats>('/efficiency-stats'),
+      listEngineers({ status_filter: 'active' }),
+    ])
     stats.value = r.data
+    engineers.value = engs
   } finally {
     loading.value = false
   }
@@ -50,15 +73,6 @@ function daysToDue(p: InProgressProject): number | null {
   const end = new Date(p.planned_end).getTime()
   const today = new Date(stats.value.today).getTime()
   return Math.round((end - today) / 86400000)
-}
-
-function progressPct(p: InProgressProject): number {
-  if (!p.planned_start || !p.planned_end || !stats.value) return 0
-  const start = new Date(p.planned_start).getTime()
-  const end = new Date(p.planned_end).getTime()
-  const today = new Date(stats.value.today).getTime()
-  if (end <= start) return 100
-  return Math.max(0, Math.min(100, Math.round(((today - start) / (end - start)) * 100)))
 }
 
 const overdueCount = computed(() =>
@@ -96,6 +110,52 @@ const dueTagType = (p: InProgressProject) => {
   if (d < 0) return 'danger'
   if (d <= 14) return 'warning'
   return 'success'
+}
+
+// 摘要内联编辑
+function startEditSummary(p: InProgressProject) {
+  editingSummaryId.value = p.project_id
+  editingSummaryText.value = p.summary || ''
+}
+async function saveSummary(p: InProgressProject) {
+  const text = editingSummaryText.value.trim()
+  try {
+    await updateProject(p.project_id, { summary: text || null })
+    p.summary = text || null
+    ElMessage.success('摘要已保存')
+  } finally {
+    editingSummaryId.value = null
+  }
+}
+function cancelEditSummary() {
+  editingSummaryId.value = null
+}
+
+// 对接工程师内联编辑
+function startEditEngineer(p: InProgressProject) {
+  editingEngineerId.value = p.project_id
+}
+async function saveEngineer(p: InProgressProject, engId: number | null) {
+  try {
+    await updateProject(p.project_id, { contact_engineer_id: engId })
+    p.contact_engineer_id = engId
+    p.contact_engineer_name = engId
+      ? (engineers.value.find((e) => e.id === engId)?.full_name || null)
+      : null
+    ElMessage.success('对接工程师已保存')
+  } finally {
+    editingEngineerId.value = null
+  }
+}
+
+function openInteraction(p: InProgressProject) {
+  drawerProjectId.value = p.project_id
+  drawerProjectName.value = p.name
+  drawerOpen.value = true
+}
+async function onDrawerRefreshed() {
+  // 刷新表格中的 comment_count
+  await load()
 }
 </script>
 
@@ -149,32 +209,82 @@ const dueTagType = (p: InProgressProject) => {
       </template>
 
       <el-table :data="filteredProjects" stripe>
-        <el-table-column prop="name" label="项目名" min-width="240" sortable />
-        <el-table-column label="状态" width="100" sortable :sort-method="(a, b) => a.status.localeCompare(b.status)">
+        <el-table-column prop="name" label="项目名" min-width="200" sortable />
+        <el-table-column label="状态" width="90" sortable :sort-method="(a, b) => a.status.localeCompare(b.status)">
           <template #default="{ row }">
             <el-tag :type="STATUS_TYPE[row.status] || 'primary'" size="small">
               {{ STATUS_LABEL[row.status] || row.status }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="planned_start" label="计划起" width="120" sortable />
-        <el-table-column prop="planned_end" label="计划止" width="120" sortable />
-        <el-table-column label="时间进度" min-width="200">
+        <el-table-column label="对接工程师" width="160">
           <template #default="{ row }">
-            <el-progress
-              :percentage="progressPct(row)"
-              :status="row.overdue ? 'exception' : (progressPct(row) >= 100 ? 'warning' : '')"
-              :stroke-width="14"
-            />
+            <el-select
+              v-if="editingEngineerId === row.project_id"
+              :model-value="row.contact_engineer_id"
+              filterable clearable size="small"
+              placeholder="选择工程师"
+              style="width: 100%"
+              @change="(v: number | null) => saveEngineer(row, v ?? null)"
+              @blur="editingEngineerId = null"
+            >
+              <el-option
+                v-for="e in engineers" :key="e.id"
+                :label="e.full_name" :value="e.id"
+              />
+            </el-select>
+            <span v-else style="cursor: pointer" @click="startEditEngineer(row)">
+              <span v-if="row.contact_engineer_name">{{ row.contact_engineer_name }}</span>
+              <span v-else style="color: #c0c4cc">点击指定</span>
+            </span>
           </template>
         </el-table-column>
-        <el-table-column label="到期" width="130">
+        <el-table-column label="项目摘要" min-width="240">
+          <template #default="{ row }">
+            <div v-if="editingSummaryId === row.project_id" style="display: flex; gap: 4px">
+              <el-input
+                v-model="editingSummaryText" type="textarea" :rows="2" size="small"
+                placeholder="一句话描述项目"
+                @keydown.enter.prevent.ctrl="saveSummary(row)"
+              />
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <el-button size="small" type="primary" @click="saveSummary(row)">存</el-button>
+                <el-button size="small" @click="cancelEditSummary">×</el-button>
+              </div>
+            </div>
+            <span v-else style="cursor: pointer; white-space: pre-wrap" @click="startEditSummary(row)">
+              <span v-if="row.summary">{{ row.summary }}</span>
+              <span v-else style="color: #c0c4cc">点击录入摘要…</span>
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="planned_end" label="计划止" width="110" sortable />
+        <el-table-column label="到期" width="120">
           <template #default="{ row }">
             <el-tag :type="dueTagType(row)" size="small" effect="plain">{{ dueLabel(row) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="互动" width="120" align="center">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" plain @click="openInteraction(row)">
+              留言
+              <el-badge
+                v-if="row.comment_count > 0"
+                :value="row.comment_count" type="warning"
+                style="margin-left: 6px"
+              />
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
+
+    <ProjectInteractionDrawer
+      v-model="drawerOpen"
+      :project-id="drawerProjectId"
+      :project-name="drawerProjectName"
+      @refreshed="onDrawerRefreshed"
+    />
   </el-card>
 </template>
 

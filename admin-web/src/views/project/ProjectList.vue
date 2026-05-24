@@ -11,6 +11,9 @@ import {
 import { listNeedParties, type NeedParty } from '@/api/needParties'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
 import ProjectDrawer from './ProjectDrawer.vue'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
+import { fmt2 } from '@/utils/format'
 
 const auth = useAuthStore()
 const isLead = computed(() => auth.role === 'lead' || auth.role === 'admin')
@@ -22,10 +25,60 @@ const loading = ref(false)
 
 const filter = reactive<{ kind?: ProjectKind; status_filter?: ProjectStatus; sales_person_id?: number; need_party_id?: number }>({})
 
-function fmt2(n: number | string | null | undefined): string {
-  if (n == null) return ''
-  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
+// ─ Column visibility + per-column filter (Excel-style) ──────────────
+const COL_DEFS: { key: string; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'code', label: '编号' },
+  { key: 'name', label: '项目名称' },
+  { key: 'kind', label: '类型' },
+  { key: 'status', label: '状态' },
+  { key: 'bid_outcome', label: '投标结果' },
+  { key: 'need_party_name', label: '客户名称' },
+  { key: 'sales_person_name', label: '销售' },
+  { key: 'outsource_benchmark_amount', label: '服务商价格' },
+  { key: 'value_created_computed', label: '效益金额' },
+  { key: 'planned_end_date', label: '计划完成' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+
+// 仅枚举/字符串列支持 ▾ 过滤；金额/日期不处理
+const FILTERABLE_KEYS = ['code', 'name', 'kind', 'status', 'bid_outcome', 'need_party_name', 'sales_person_name']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+
+// 把行的原始值格式化成显示文本（filter / 过滤都用这个文本）
+function cellText(r: Project, key: string): string {
+  switch (key) {
+    case 'kind': return r.kind === 'revenue' ? '有收入' : '无收入'
+    case 'status': return STATUS_LABEL[r.status] || r.status
+    case 'bid_outcome':
+      return r.kind === 'no_revenue' ? 'NA' : (BID_OUTCOME_LABELS[r.bid_outcome as BidOutcome] || r.bid_outcome)
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
 }
+
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => {
+    const v = cellText(r, key)
+    if (v !== '') set.add(v)
+  })
+  return Array.from(set).sort()
+}
+
+const filteredRows = computed(() => {
+  return rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  })
+})
 
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
@@ -163,38 +216,50 @@ onMounted(load)
 <template>
   <div>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
-      <el-select v-model="filter.kind" placeholder="项目类型" clearable style="width: 130px" @change="load">
-        <el-option label="有收入" value="revenue" />
-        <el-option label="无收入" value="no_revenue" />
-      </el-select>
-      <el-select v-model="filter.status_filter" placeholder="状态" clearable style="width: 130px" @change="load">
-        <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
-      <el-select v-model="filter.need_party_id" placeholder="按客户名称" clearable filterable style="width: 200px" @change="load">
-        <el-option v-for="np in needParties" :key="np.id" :label="np.name" :value="np.id" />
-      </el-select>
-      <el-select v-model="filter.sales_person_id" placeholder="按销售人员" clearable filterable style="width: 180px" @change="load">
-        <el-option v-for="sp in salesPersons" :key="sp.id" :label="sp.name" :value="sp.id" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增项目</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe highlight-current-row @row-click="openDetail">
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column prop="code" label="编号" width="100" />
-      <el-table-column prop="name" label="项目名称" min-width="180" />
-      <el-table-column label="类型" width="110">
+    <el-table :data="filteredRows" v-loading="loading" stripe highlight-current-row @row-click="openDetail">
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('code')" label="编号" width="100">
+        <template #header>
+          编号
+          <ColumnFilterMenu :options="distinctValues('code')" v-model="filters.code" />
+        </template>
+        <template #default="{ row }">{{ row.code }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('name')" label="项目名称" min-width="180">
+        <template #header>
+          项目名称
+          <ColumnFilterMenu :options="distinctValues('name')" v-model="filters.name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('kind')" label="类型" width="110">
+        <template #header>
+          类型
+          <ColumnFilterMenu :options="distinctValues('kind')" v-model="filters.kind" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="row.kind === 'revenue' ? 'success' : 'warning'">
             {{ row.kind === 'revenue' ? '有收入' : '无收入' }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="90">
+      <el-table-column v-if="visibleCols.has('status')" label="状态" width="110">
+        <template #header>
+          状态
+          <ColumnFilterMenu :options="distinctValues('status')" v-model="filters.status" />
+        </template>
         <template #default="{ row }"><el-tag>{{ STATUS_LABEL[row.status] }}</el-tag></template>
       </el-table-column>
-      <el-table-column label="投标结果" width="110">
+      <el-table-column v-if="visibleCols.has('bid_outcome')" label="投标结果" width="130">
+        <template #header>
+          投标结果
+          <ColumnFilterMenu :options="distinctValues('bid_outcome')" v-model="filters.bid_outcome" />
+        </template>
         <template #default="{ row }">
           <span v-if="row.kind === 'no_revenue'" style="color: #c0c4cc">NA</span>
           <el-tag v-else :type="BID_OUTCOME_TYPES[row.bid_outcome as BidOutcome]" size="small">
@@ -202,20 +267,30 @@ onMounted(load)
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="need_party_name" label="客户名称" min-width="150" />
-      <el-table-column label="销售" width="120">
+      <el-table-column v-if="visibleCols.has('need_party_name')" label="客户名称" min-width="170">
+        <template #header>
+          客户名称
+          <ColumnFilterMenu :options="distinctValues('need_party_name')" v-model="filters.need_party_name" :width="240" />
+        </template>
+        <template #default="{ row }">{{ row.need_party_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('sales_person_name')" label="销售" width="140">
+        <template #header>
+          销售
+          <ColumnFilterMenu :options="distinctValues('sales_person_name')" v-model="filters.sales_person_name" />
+        </template>
         <template #default="{ row }">
           {{ row.sales_person_name }}
           <el-tag v-if="!row.sales_person_active" type="info" size="small">停用</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="服务商价格" width="140">
+      <el-table-column v-if="visibleCols.has('outsource_benchmark_amount')" label="服务商价格" width="140">
         <template #default="{ row }">
           <span v-if="row.outsource_benchmark_amount">HK$ {{ fmt2(row.outsource_benchmark_amount) }}</span>
           <span v-else style="color: #c0c4cc; font-size: 12px">还未询价</span>
         </template>
       </el-table-column>
-      <el-table-column label="效益金额" width="160">
+      <el-table-column v-if="visibleCols.has('value_created_computed')" label="效益金额" width="160">
         <template #header>
           <el-tooltip placement="top">
             <template #content>
@@ -232,7 +307,7 @@ onMounted(load)
           <span v-else style="color: #c0c4cc; font-size: 12px">还未形成实际效益</span>
         </template>
       </el-table-column>
-      <el-table-column prop="planned_end_date" label="计划完成" width="120" />
+      <el-table-column v-if="visibleCols.has('planned_end_date')" prop="planned_end_date" label="计划完成" width="120" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click.stop="openEdit(row)">编辑</el-button>

@@ -7,6 +7,7 @@ export interface LoginResp {
   username: string
   user_id: number
   engineer_id: number | null
+  vendor_id: number | null
 }
 
 export async function login(username: string, password: string): Promise<LoginResp> {

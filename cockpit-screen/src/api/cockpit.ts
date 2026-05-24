@@ -32,6 +32,14 @@ export const getOverview = () => http.get<OverviewKpi>('/overview').then((r) => 
 export const getSavingsAndValue = () =>
   http.get<SavingsAndValue>('/savings-and-value').then((r) => r.data)
 
+export interface RecentAsset {
+  id: number
+  title: string
+  category_code: string
+  category_label: string
+  project_name: string | null
+  created_at: string | null
+}
 export interface KnowledgeStats {
   total_assets: number
   by_category: { code: string; label: string; count: number }[]
@@ -40,6 +48,7 @@ export interface KnowledgeStats {
   total_references: number
   distinct_reused_assets: number
   total_hours_saved: number
+  recent_assets: RecentAsset[]
 }
 export const getKnowledgeStats = () =>
   http.get<KnowledgeStats>('/knowledge-stats').then((r) => r.data)

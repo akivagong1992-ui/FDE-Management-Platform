@@ -7,6 +7,8 @@ export interface User {
   email?: string | null
   role: string
   is_active: boolean
+  engineer_id?: number | null
+  vendor_id?: number | null
   created_at: string
 }
 
@@ -17,6 +19,8 @@ export interface UserPayload {
   email?: string
   role: string
   is_active: boolean
+  engineer_id?: number | null
+  vendor_id?: number | null
 }
 
 export const listUsers = () => http.get<User[]>('/users').then((r) => r.data)

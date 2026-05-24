@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import CountNumber from '@/components/CountNumber.vue'
-import { getCapabilityStats, getGrowthTrend, type CapabilityStats, type GrowthTrend } from '@/api/cockpit'
+import {
+  getCapabilityStats, getEngineerStats, getGrowthTrend,
+  type CapabilityStats, type EngineerStats, type GrowthTrend,
+} from '@/api/cockpit'
 
 const data = ref<CapabilityStats | null>(null)
 const trend = ref<GrowthTrend | null>(null)
+const engineers = ref<EngineerStats | null>(null)
 let timer: number | undefined
 
 async function load() {
   try {
-    const [c, t] = await Promise.all([getCapabilityStats(), getGrowthTrend()])
+    const [c, t, e] = await Promise.all([
+      getCapabilityStats(), getGrowthTrend(), getEngineerStats(),
+    ])
     data.value = c
     trend.value = t
+    engineers.value = e
   } catch { /* keep snapshot */ }
 }
 
@@ -65,6 +72,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   <div class="grid">
     <div class="kpi-row">
       <div class="panel kpi-card brag">
+        <div class="kpi-label">工程师总数</div>
+        <div class="kpi-value glow-text"><CountNumber :value="engineers?.total ?? 0" /></div>
+        <div class="kpi-sub">在职 {{ engineers?.active ?? 0 }} 人</div>
+      </div>
+      <div class="panel kpi-card">
         <div class="kpi-label">累计外部证书</div>
         <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
       </div>
@@ -154,18 +166,18 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <style scoped>
 .grid { display: flex; flex-direction: column; height: 100%; gap: 16px; }
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px; }
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; height: 140px; }
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
 .kpi-card.brag .kpi-value { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
-.kpi-card.brag-growth { border-color: #ffe082; box-shadow: 0 0 18px rgba(255, 224, 130, 0.3); }
-.kpi-card.brag-growth .kpi-value { color: #ffe082; text-shadow: 0 0 8px #ffe082; }
-.growth-delta { font-size: 0.45em; color: #67ff8a; margin-left: 6px; font-family: 'Courier New', monospace; }
+.kpi-card.brag-growth { border-color: var(--cockpit-accent-gold); box-shadow: 0 0 18px rgba(255, 224, 130, 0.3); }
+.kpi-card.brag-growth .kpi-value { color: var(--cockpit-accent-gold); text-shadow: 0 0 8px var(--cockpit-accent-gold); }
+.growth-delta { font-size: 0.45em; color: var(--cockpit-accent-green); margin-left: 6px; font-family: 'Courier New', monospace; }
 .kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .legend { display: flex; gap: 12px; margin-top: 4px; color: var(--cockpit-text-dim); font-size: 11px; }
 .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; }
 .growth-summary { color: var(--cockpit-text); font-size: 12px; margin-top: 8px; }
-.hi { color: #67ff8a; font-family: 'Courier New', monospace; }
+.hi { color: var(--cockpit-accent-green); font-family: 'Courier New', monospace; }
 .compact { gap: 6px; }
 .top-eng { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%; }
 .top-eng-row {

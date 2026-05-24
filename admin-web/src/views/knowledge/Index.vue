@@ -11,6 +11,8 @@ import {
 } from '@/api/assetReferences'
 import { listProjects, type Project } from '@/api/projects'
 import { listDict, type DictItem } from '@/api/dataDict'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 const rows = ref<KnowledgeAsset[]>([])
 const projects = ref<Project[]>([])
@@ -122,6 +124,46 @@ async function onDelRef(r: AssetReference) {
   refs.value = await listReferences(detail.value.id)
 }
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'category', label: '分类' },
+  { key: 'title', label: '标题' },
+  { key: 'project_name', label: '来源项目' },
+  { key: 'tags', label: '标签' },
+  { key: 'confidentiality', label: '保密' },
+  { key: 'created_at', label: '创建时间' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['category', 'title', 'project_name', 'confidentiality']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: KnowledgeAsset, key: string): string {
+  switch (key) {
+    case 'category': return r.category_label || r.category || ''
+    case 'confidentiality': return CONF_LABEL[r.confidentiality as Confidentiality] || r.confidentiality
+    default: {
+      const v = (r as unknown as Record<string, unknown>)[key]
+      return v == null ? '' : String(v)
+    }
+  }
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
@@ -132,26 +174,37 @@ onMounted(load)
         v-model="filter.keyword" placeholder="关键词搜索（标题/摘要/标签）"
         clearable style="width: 280px" @change="load" @clear="load"
       />
-      <el-select v-model="filter.category" placeholder="按分类" clearable style="width: 180px" @change="load">
-        <el-option v-for="c in categories" :key="c.code" :label="c.label" :value="c.code" />
-      </el-select>
-      <el-select v-model="filter.project_id" placeholder="按项目" clearable filterable style="width: 220px" @change="load">
-        <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
-      </el-select>
       <div style="flex: 1" />
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增知识资产</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe highlight-current-row @row-click="openDetail">
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column label="分类" width="140">
+    <el-table :data="filteredRows" v-loading="loading" stripe highlight-current-row @row-click="openDetail">
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('category')" label="分类" width="160">
+        <template #header>
+          分类
+          <ColumnFilterMenu :options="distinctValues('category')" v-model="filters.category" />
+        </template>
         <template #default="{ row }">
           <el-tag>{{ row.category_label || row.category }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="title" label="标题" min-width="240" />
-      <el-table-column prop="project_name" label="来源项目" width="160" />
-      <el-table-column label="标签" width="200">
+      <el-table-column v-if="visibleCols.has('title')" label="标题" min-width="240">
+        <template #header>
+          标题
+          <ColumnFilterMenu :options="distinctValues('title')" v-model="filters.title" :width="320" />
+        </template>
+        <template #default="{ row }">{{ row.title }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('project_name')" label="来源项目" width="180">
+        <template #header>
+          来源项目
+          <ColumnFilterMenu :options="distinctValues('project_name')" v-model="filters.project_name" :width="260" />
+        </template>
+        <template #default="{ row }">{{ row.project_name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('tags')" label="标签" width="200">
         <template #default="{ row }">
           <span v-if="row.tags">
             <el-tag v-for="t in row.tags.split(',').map((s: string) => s.trim()).filter(Boolean)"
@@ -162,14 +215,18 @@ onMounted(load)
           <span v-else style="color: #909399">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="保密" width="90">
+      <el-table-column v-if="visibleCols.has('confidentiality')" label="保密" width="110">
+        <template #header>
+          保密
+          <ColumnFilterMenu :options="distinctValues('confidentiality')" v-model="filters.confidentiality" />
+        </template>
         <template #default="{ row }">
           <el-tag :type="CONF_TYPE[row.confidentiality as Confidentiality] as any">
             {{ CONF_LABEL[row.confidentiality as Confidentiality] }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="created_at" label="创建时间" width="180" />
+      <el-table-column v-if="visibleCols.has('created_at')" prop="created_at" label="创建时间" width="180" />
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click.stop="openEdit(row)">编辑</el-button>

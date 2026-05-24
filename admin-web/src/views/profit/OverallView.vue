@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getMarginLift, getOverall, type MarginLift, type OverallProfit } from '@/api/profit'
+import { fmt2 as fmt } from '@/utils/format'
 
 const data = ref<OverallProfit | null>(null)
 const lift = ref<MarginLift | null>(null)
@@ -15,9 +16,6 @@ async function load() {
   } finally { loading.value = false }
 }
 
-function fmt(n: number): string {
-  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2 }).format(n)
-}
 function pct(n: number): string {
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
 }
@@ -48,26 +46,36 @@ onMounted(load)
               HK$ {{ fmt(data.total_vendor_service_fees) }}
             </div>
             <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              团队转给 vendor 的钱，6 类支出已含在内
-            </div>
-          </el-card>
-        </el-col>
-        <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover" style="background: #fafafa">
-            <div style="color: #909399; font-size: 13px">
-              6 类支出（参考 · 不计入毛利）
-            </div>
-            <div style="font-size: 22px; font-weight: 500; color: #909399; margin-top: 8px">
-              HK$ {{ fmt(data.total_external_expenses) }}
-            </div>
-            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              Vendor 用 VSF 的钱支付 — 仅展示，不重复扣减
+              团队转给 vendor 的全部金额
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">团队毛利</div>
+            <div style="color: #909399; font-size: 13px">全部支出（vendor 端从 VSF 扣）</div>
+            <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
+              HK$ {{ fmt(data.total_external_expenses) }}
+            </div>
+            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
+              7 类合计：耗材/分包/差旅/许可/培训/其他 + <strong>外包工程师支出</strong>
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="12" style="margin-bottom: 16px">
+          <el-card shadow="hover">
+            <div style="color: #909399; font-size: 13px; display: flex; align-items: center; gap: 4px">
+              团队真实利润
+              <el-tooltip placement="top">
+                <template #content>
+                  <div style="max-width: 340px; line-height: 1.6">
+                    <strong>= VSF − 全部支出</strong>（vendor markup 视角）<br /><br />
+                    从财务实质看，vendor 是受我们控制的壳，它从 VSF 自留的 markup 实际上就是<strong>团队的真实利润</strong>。<br /><br />
+                    <span style="color: #e6a23c">⚠ 重要：</span>这个数字依赖于「外包工程师支出」类目录入是否齐全。若未录全（vendor 给工程师/劳务公司的钱没记），此数字偏高。
+                  </div>
+                </template>
+                <span style="cursor: help; color: #c0c4cc; font-size: 12px">ⓘ</span>
+              </el-tooltip>
+            </div>
             <div :style="{
               fontSize: '26px', fontWeight: 600, marginTop: '8px',
               color: data.team_margin >= 0 ? '#67c23a' : '#f56c6c',
@@ -75,7 +83,7 @@ onMounted(load)
               HK$ {{ fmt(data.team_margin) }}
             </div>
             <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              = 团队总入账 − VSF
+              = VSF − 全部支出 · vendor markup 视角
             </div>
           </el-card>
         </el-col>
@@ -96,7 +104,7 @@ onMounted(load)
       <el-row :gutter="16">
         <el-col :span="8" style="margin-bottom: 16px">
           <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">老外包模式 毛利率（假设）</div>
+            <div style="color: #909399; font-size: 13px">服务转包模式 毛利率</div>
             <div :style="{
               fontSize: '26px', fontWeight: 600, marginTop: '8px',
               color: lift.outsource_margin_pct >= 0 ? '#909399' : '#f56c6c',

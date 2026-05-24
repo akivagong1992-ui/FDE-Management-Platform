@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   CLIENT_TYPES,
   createNeedParty, deleteNeedParty, listNeedParties, updateNeedParty, uploadFile,
   type NeedParty, type NeedPartyPayload,
 } from '@/api/needParties'
+import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
+import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 
 const rows = ref<NeedParty[]>([])
 const loading = ref(false)
@@ -103,18 +105,54 @@ async function onDelete(np: NeedParty) {
 
 const logoUrl = (path?: string | null) => (path ? `/api/uploads/${path}` : '')
 
+// ─ Column visibility + per-column filter ─────────────────────────
+const COL_DEFS = [
+  { key: 'id', label: 'ID' },
+  { key: 'logo_path', label: 'Logo' },
+  { key: 'name', label: '名称' },
+  { key: 'party_type', label: '类型' },
+  { key: 'show_in_cockpit', label: '驾驶舱展示' },
+  { key: 'contact_person', label: '联系人' },
+  { key: 'contact_phone', label: '电话' },
+  { key: 'contact_email', label: '邮箱' },
+]
+const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
+const FILTERABLE_KEYS = ['name', 'party_type', 'contact_person']
+const filters = ref<Record<string, Set<string | number>>>(
+  Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
+)
+function cellText(r: NeedParty, key: string): string {
+  const v = (r as unknown as Record<string, unknown>)[key]
+  return v == null ? '' : String(v)
+}
+function distinctValues(key: string): string[] {
+  const set = new Set<string>()
+  rows.value.forEach((r) => { const v = cellText(r, key); if (v !== '') set.add(v) })
+  return Array.from(set).sort()
+}
+const filteredRows = computed(() =>
+  rows.value.filter((row) => {
+    for (const [key, sel] of Object.entries(filters.value)) {
+      if (sel.size === 0) continue
+      if (!sel.has(cellText(row, key))) return false
+    }
+    return true
+  }),
+)
+
 onMounted(load)
 </script>
 
 <template>
   <div>
-    <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px">
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-bottom: 12px">
+      <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
       <el-button type="primary" @click="openCreate">新增客户</el-button>
     </div>
 
-    <el-table :data="rows" v-loading="loading" stripe>
-      <el-table-column prop="id" label="ID" width="60" />
-      <el-table-column label="Logo" width="80">
+    <el-table :data="filteredRows" v-loading="loading" stripe>
+      <el-table-column v-if="visibleCols.has('id')" prop="id" label="ID" width="60" />
+      <el-table-column v-if="visibleCols.has('logo_path')" label="Logo" width="80">
         <template #default="{ row }">
           <el-image
             v-if="row.logo_path"
@@ -125,13 +163,23 @@ onMounted(load)
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
-      <el-table-column prop="name" label="名称" min-width="200" />
-      <el-table-column prop="party_type" label="类型" width="120">
+      <el-table-column v-if="visibleCols.has('name')" label="名称" min-width="200">
+        <template #header>
+          名称
+          <ColumnFilterMenu :options="distinctValues('name')" v-model="filters.name" :width="240" />
+        </template>
+        <template #default="{ row }">{{ row.name }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('party_type')" label="类型" width="130">
+        <template #header>
+          类型
+          <ColumnFilterMenu :options="distinctValues('party_type')" v-model="filters.party_type" />
+        </template>
         <template #default="{ row }">
           <el-tag type="info">{{ row.party_type || '—' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="驾驶舱展示" width="120">
+      <el-table-column v-if="visibleCols.has('show_in_cockpit')" label="驾驶舱展示" width="120">
         <template #default="{ row }">
           <el-switch
             :model-value="row.show_in_cockpit"
@@ -140,10 +188,16 @@ onMounted(load)
           />
         </template>
       </el-table-column>
-      <el-table-column prop="contact_person" label="联系人" width="100" />
-      <el-table-column prop="contact_phone" label="电话" width="130" />
-      <el-table-column prop="contact_email" label="邮箱" />
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column v-if="visibleCols.has('contact_person')" label="联系人" width="110">
+        <template #header>
+          联系人
+          <ColumnFilterMenu :options="distinctValues('contact_person')" v-model="filters.contact_person" />
+        </template>
+        <template #default="{ row }">{{ row.contact_person }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('contact_phone')" prop="contact_phone" label="电话" width="130" />
+      <el-table-column v-if="visibleCols.has('contact_email')" prop="contact_email" label="邮箱" />
+      <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openEdit(row)">编辑</el-button>
           <el-button size="small" type="danger" @click="onDelete(row)">删除</el-button>
