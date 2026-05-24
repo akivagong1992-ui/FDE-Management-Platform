@@ -90,7 +90,7 @@ export const getProfitCompare = () => http.get<ProfitCompare>('/profit-compare')
 export interface EngineerStats {
   total: number; active: number
   by_vendor: { vendor_id: number; name: string; count: number }[]
-  total_certificates: number  // 替代旧 by_level（按 engineer.level L1-L5 聚合）
+  total_certificates: number  // 替代旧 by_level（按 engineer.level L1-L3 聚合）
   top_allocated: { engineer_id: number; name: string; alloc_pct: number }[]
 }
 export const getEngineerStats = () => http.get<EngineerStats>('/engineer-stats').then((r) => r.data)

@@ -669,3 +669,80 @@ Manpower-management-platform/
 - **v0.4.3** (Phase 3-next-iii Round 1 完成后)：大屏动效落地——CountNumber 组件（easeOutCubic 数字滚动）应用到 Overview/ProfitCompare/Knowledge 主 KPI；三类 brag 卡（粉/金/绿）循环脉冲发光；Tab 切换 fade-in 过渡；总览页"数据健康"面板（含跳动绿点 + 隔离守门提示）。R6 落地——Project 加 `benchmark_basis` (vendor_quote/historical/industry/manual) + note 字段；表单按金额可见性展开；详情抽屉以彩色 tag 显示可信度；seed 按 40/30/20/10 权重自动分配 basis。
 - **v0.4.4** (Phase 3-next-iii Round 2 完成后)：新建 RenewalAttempt 域（outcome=pending/won/lost + 6 类输因枚举）+ admin CRUD；管理后台 `/relationship` 改 2 Tab（复盘 / 续单跟踪），AttemptList 按 outcome 条件展开字段；驾驶舱 Tab 8 重做 4 KPI（满意度 ⭐ / 续单胜率 33% / 闭环率 / 跟踪总数）+ 右下"续单输因分布"水平条形图；CountNumber 推到 Tab 4/5/7/8 主 KPI。seed 12 次尝试（3 赢/6 输/3 待）+ 6 种输因覆盖。
 - **v0.4.5** (Phase 3-next-iii Round 3 完成后)：驾驶舱 Tab 2 升级为真 HK 地图——ECharts geo 运行时拉取阿里 DataV 的 HK 18 区 geoJSON 并 `registerMap('HK', geo)`；客户端把 18 区映射到原有 5 大宏区配色（港岛/九龙/新界东/新界西/离岛），项目数着色，hover tooltip 中文。fetch 失败有橙色警告条 + 自动 fallback 到原 SVG schematic 网格。echarts 让 ProjectMap chunk 涨到 ~1MB（Phase 4 再 tree-shake）。
+- **v0.5.0** (2026-05-24 业务模型大改造，详见 [§20](#20-今日改动--下次开发起点))：
+  全面校准业务模型——Project 加 `bid_outcome` (won/pending/lost/escaped)、ProjectRevenue 加 `non_service_expense`、删除 ProjectRevenue.status。`compute_company_margin_lift` 公式重写含非服务开销。删 4 个 value_basis 枚举只剩 2 个、删 2 个 benchmark_basis 只剩 2 个、cert_level 从 L1-L5 砍回 L1-L3。RevenueList 挪到「项目和客户管理 → 收入列表」+ benchmark/basis/gross/non_service_expense 全必填。首页大改 4 段式仪表盘。Seed 按业务比例校准（团队入账=客户付款 20%，非服务开销=客户付款 70%，team_revenue=benchmark×0.8-0.9）。
+
+---
+
+## 20. 今日改动 / 下次开发起点
+
+> **下次回来时直接说**：「按 [README §1.7](README.md#17-业务模型最终态v04--2026-05-24-用户多轮确认后定稿) 和 PLAN §20 的状态继续，我想做 XXX」
+>
+> 这一节是 2026-05-24 session 收尾，所有迭代后的当前真相。
+
+### 20.1 当前业务模型（已 freeze）
+
+见 [README §1.7](README.md#17-业务模型最终态v04--2026-05-24-用户多轮确认后定稿)，关键 4 个金额字段 + 公式 + 比例都在那里。简短回顾：
+
+```
+客户付款 (gross) = 非服务开销 (~70%) + 团队入账 (~20%) + 公司毛利 (~10%)
+团队入账 ≈ VSF ≈ 服务商价格 × 0.85（FDE 比外包便宜 ~15%）
+```
+
+驾驶舱 C 口径 savings、admin 公司毛利率提升 — **公式都是按这套口径计算**，改之前一定要看。
+
+### 20.2 今日落地的 Schema 改动
+
+| 改动 | 文件 | Migration |
+|---|---|---|
+| 加 `Project.bid_outcome` 枚举 | [models/project.py](backend/app/models/project.py) | `h8i9j0k1l2m3` (含回填) |
+| `value_created_basis` 6 → 2 选项 | [models/project.py](backend/app/models/project.py) | `i9j0k1l2m3n4` |
+| `benchmark_basis` 4 → 2 选项 | [schemas/project.py](backend/app/schemas/project.py) | `j0k1l2m3n4o5` |
+| 加 `ProjectRevenue.non_service_expense` 字段 | [models/project_revenue.py](backend/app/models/project_revenue.py) | `k1l2m3n4o5p6` (含回填 = gross × 0.70) |
+| `cert_level` 从 L1-L5 收回 L1-L3 | [models/engineer.py](backend/app/models/engineer.py) | 无 (改 enum + schema pattern + seed) |
+| `ProjectRevenue.status` 字段 deprecated | (schema + UI 移除，DB 列保留) | 无 |
+| 删 `EngineerSkillSnapshot.avg_level` 旧 5 级 seed 算法 | [scripts/seed_demo.py](backend/scripts/seed_demo.py) | 无 (改 seed) |
+
+### 20.3 今日落地的 UI 改动
+
+- **首页**：4 段式仪表盘大改 ([Home.vue](admin-web/src/views/dashboard/Home.vue))
+  - 6 KPI 卡 + 项目盘面（bid_outcome 堆叠 + status 条）+ 财务（6 月趋势 + Top5 客户）+ 风险预警 4 卡
+- **项目和客户管理**：收入列表挪进来（之前在利润管理下）；新增收入记录表单含 5 必填字段（项目/团队入账/确认日期/客户付款总额/非服务开销/服务商报价/价格来源依据）
+- **利润管理**：FDE 利润率对比公式更新为含 non_service_expense；总体利润一览展示「6 类支出 = 参考·不计入毛利」
+- **培训管理**：「成长曲线 / 季度快照」tab 改名「技能概览」，删快照表 + 拍快照按钮 + 快照次数 KPI 卡，重排 KPI 三卡与曲线色彩一致
+- **项目列表**：服务商价格列重命名（外包估算 → 服务商价格），效益金额列（创造价值 → 效益金额）；空值文案「还未询价 / 还未形成实际效益」；金额统一 2 位小数
+- **项目新增 dialog**：revenue 项目藏起 benchmark 字段（去收入列表录入）；no_revenue 保留 benchmark 字段；投标结果选项简化无括号
+
+### 20.4 今日的业务规则确认（已写进 memory）
+
+- [project_benchmark_workflow.md](.claude/.../project_benchmark_workflow.md) — benchmark 只来自真实询价
+- [project_no_revenue_opportunity_cost.md](.claude/.../project_no_revenue_opportunity_cost.md) — B 口径把 no_revenue 项目按 benchmark 算成本
+
+### 20.5 待办（下次起点）
+
+技术层面：
+- [ ] 用户可能想再调 seed 数据比例 / 业务模型；任何金额公式改动**先看 [README §1.7](README.md#17-业务模型最终态v04--2026-05-24-用户多轮确认后定稿)**
+- [ ] Cockpit-screen 端的 ProfitCompare 还在用 C 口径数字，含 non_service_expense 的公式只影响 admin 端 margin_lift，cockpit savings 不变（架构正确，无需改）
+- [ ] 老 `EngineerSkill.level` 字段已停用（默认 0），database column 还在；后续 cleanup migration 可考虑 drop
+- [ ] `ProjectRevenue.status` DB column 同上 — UI / schema 不用，可以 drop
+
+业务层面（用户可能下次提到）：
+- [ ] 「团队毛利」 KPI 一直略负（−154K 量级），原因 = lost 项目 pre-sales VSF。可加 tooltip 给老板解释
+- [ ] 首页 ②③④ 段没有 mock 数据下的 loading state，多个 API 并发的失败兜底要补
+- [ ] 首页风险预警的「已中标缺报价」会随 benchmark 必填化而趋向 0，可考虑替换成其它信号
+
+### 20.6 当前 seed 数据快照（命令：`PYTHONPATH=. .venv/bin/python scripts/seed_demo.py`）
+
+```
+✓ projects x28 (20 revenue / 8 no_revenue, 7 续单)
+  bid_outcome 分布：won 14, pending 3, lost 2, escaped 1
+✓ project revenues x30 (含 gross + non_service_expense)
+✓ vendor service fees x42 (项目驱动，VSF ≈ team_revenue)
+
+实测公式数字：
+  客户付款 gross   = HK$ 110,261,536
+  非服务开销 nse   = HK$  77,702,260  (70.5% of gross)
+  外部报价 bench   = HK$  25,570,000
+  团队入账 team    = HK$  22,040,164  (20.0% of gross)
+  老外包毛利率 = 6.34%, FDE 毛利率 = 9.54%, 利润率提升 = +3.20 个百分点
+```

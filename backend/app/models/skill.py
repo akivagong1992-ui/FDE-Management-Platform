@@ -20,7 +20,7 @@ class Skill(Base):
 
 
 class EngineerSkill(Base):
-    """工程师 × 技能 多对多，含等级（L1-L5）。"""
+    """工程师 × 技能 多对多，含等级（已停用 — 只保留会/不会标记，由 cert_level 替代）。"""
 
     __tablename__ = "engineer_skills"
     __table_args__ = (UniqueConstraint("engineer_id", "skill_id", name="uq_engineer_skill"),)

@@ -90,6 +90,89 @@
 
 每个**无收入项目**必填一个字段：**估算创造价值（HKD）**——由 PM 或负责人填写并保留依据（如"省去外部审计费 X 万"、"避免合规处罚 Y 万"等）。
 
+### 1.7 业务模型最终态（v0.4 · 2026-05-24 用户多轮确认后定稿）
+
+> ⚠️ **每次开发前必看**。下面的字段、公式、比例都是用户多次校准后的"圈定值"，不是 default — 改之前先看 [PLAN.md §20 今日改动](PLAN.md#20-今日改动--下次开发起点)。
+
+#### 1.7.1 资金流（4 个金额字段）
+
+```
+                    客户 → 公司 → 团队入账 → Vendor (100% pass-through)
+                     │      │       │           │
+                     ▼      ▼       ▼           ▼
+         gross_amount  非服务开销  团队入账(amount)  VSF (≈ amount)
+         (客户付款总额) (硬件/第三方)  (= 转给vendor的钱) (VendorServiceFee)
+```
+
+**ProjectRevenue 表关键字段**（每条收入记录都必填）：
+- `gross_amount` (必填) — 客户付公司的总钱数（销售切除前）
+- `non_service_expense` (必填) — 非服务开销：硬件 / 第三方软件 / 物料，**占 gross 约 65-75%**
+- `amount` (必填) — 团队入账 (= 100% pass-through 给 vendor)，**占 gross 约 20%**
+
+**典型分配比例**：
+| 字段 | 占 gross | 含义 |
+|---|---|---|
+| 非服务开销 | 65-75% | 销售切除中的硬件/第三方采购 |
+| 团队入账 | ~20% | 团队真实拿到的服务费（= VSF） |
+| 公司毛利 | 5-15% | 剩余部分 = 公司利润 |
+
+#### 1.7.2 投标结果（Project.bid_outcome）
+
+只对 revenue 类项目适用（no_revenue 项目显示 NA）：
+- `pending` — 投标中 / 未定
+- `won` — 已中标（**唯一计入 C 口径 savings 的状态**；默认中标 = 团队一定拿到 team_revenue）
+- `lost` — 已丢标
+- `escaped` — 中标后跑单
+
+#### 1.7.3 核心公式（按"已中标"项目聚合）
+
+**口径 A · 团队整体毛利**（admin 仅 lead/finance 可见）：
+```
+team_margin = Σ ProjectRevenue.amount − Σ VSF
+```
+理想 = 0（100% pass-through），实际略负（lost 项目 pre-sales VSF 吃掉一点）。
+
+**口径 B · 每销售/每客户利润**（admin 仅 lead/finance 可见）：
+- revenue 项目：`收入 = Σ amount`，`成本 = Σ VSF`，`毛利 = 收入 − 成本`
+- no_revenue 项目：`收入 = 0`，`成本 = outsource_benchmark_amount`（机会成本），`毛利 = −benchmark`
+- 见 [memory: project_no_revenue_opportunity_cost.md](.claude/.../project_no_revenue_opportunity_cost.md)
+
+**口径 C · 驾驶舱降本**（cockpit 唯一允许显示的金额叙事）：
+- revenue 项目（bid_outcome=won）：`savings = outsource_benchmark − Σ amount`
+- no_revenue 项目（status ∈ {closing, archived}）：`value_created = outsource_benchmark`
+- `total_c_view = Σ savings + Σ value_created`
+
+**公司利润率提升**（admin only）：
+```
+老外包模式毛利率 = (gross − benchmark − non_service) / gross
+FDE 模式毛利率   = (gross − amount    − non_service) / gross
+利润率提升       = FDE − 老外包 = (benchmark − amount) / gross
+多挣 (extra_profit) = Σ benchmark − Σ amount
+```
+典型数字：老外包 ~6%，FDE ~10%，提升 +3-5 个百分点。
+
+#### 1.7.4 服务商价格（Project.outsource_benchmark_amount）
+
+- 只来自**真实 vendor 询价**（业务实操几乎只用 `vendor_quote` basis）
+- 没询价就空，不要瞎填
+- 等于 team_revenue × **1.11-1.25**（即 team = bench × 0.8-0.9，FDE 比外包便宜 10-20%）
+- 见 [memory: project_benchmark_workflow.md](.claude/.../project_benchmark_workflow.md)
+- 在 UI 上：
+  - revenue 项目的 benchmark 在「收入列表 → 新增收入记录」里录入（与收入条目耦合，自动写回项目）
+  - no_revenue 项目的 benchmark 在「项目列表 → 新增项目」直接录入（无收入记录入口）
+
+#### 1.7.5 枚举常量
+
+| 字段 | 取值（已收缩） |
+|---|---|
+| `Project.bid_outcome` | `pending` / `won` / `lost` / `escaped`（no_revenue 不适用） |
+| `Project.status` | `drafting` / `in_progress` / `accepting` / `closing` / `archived` / `cancelled` |
+| `Project.value_created_basis` | `outsource_equiv` / `other` |
+| `Project.benchmark_basis` | `vendor_quote` / `historical_avg`（两个就够，业务上几乎都用第一个） |
+| `Certificate.cert_level` | `L1` / `L2` / `L3`（3 级，不要 L4/L5） |
+
+`ProjectRevenue.status` 字段已废弃（DB 列保留但不使用，UI 已移除）。
+
 ---
 
 ## 2. 两个独立的前端界面

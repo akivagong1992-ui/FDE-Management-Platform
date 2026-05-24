@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.assignment import ASSIGNMENT_STATUS_ENDED, Assignment
 from app.models.engineer import Certificate, Engineer
-from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
 from app.models.project import (
+    PROJECT_BID_OUTCOME_WON,
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
     PROJECT_STATUS_ACCEPTING,
@@ -26,32 +26,12 @@ from app.models.project import (
     PROJECT_STATUS_IN_PROGRESS,
     Project,
 )
-from app.models.project_revenue import REVENUE_STATUS_RECEIVED, ProjectRevenue
+from app.models.project_revenue import ProjectRevenue
 from app.models.skill import EngineerSkill, Skill
 from app.models.vendor import Vendor
 from app.models.vendor_service_fee import VendorServiceFee
 
 router = APIRouter(tags=["cockpit-aggregations"])
-
-
-# Shared cost lookup (reused; keep in sync with services/profit._project_costs)
-async def _project_costs(db: AsyncSession) -> dict[int, float]:
-    costs: dict[int, float] = defaultdict(float)
-    vsf_rows = (await db.execute(
-        select(VendorServiceFee.project_id, func.coalesce(func.sum(VendorServiceFee.amount), 0))
-        .where(VendorServiceFee.project_id.is_not(None))
-        .group_by(VendorServiceFee.project_id)
-    )).all()
-    for pid, total in vsf_rows:
-        costs[pid] += float(total)
-    exp_rows = (await db.execute(
-        select(ExpenseRequest.project_id, func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.status != EXPENSE_STATUS_REJECTED)
-        .group_by(ExpenseRequest.project_id)
-    )).all()
-    for pid, total in exp_rows:
-        costs[pid] += float(total)
-    return costs
 
 
 # ── Tab 2 · Project board ───────────────────────────────────────────
@@ -101,13 +81,11 @@ async def project_board(db: AsyncSession = Depends(get_db)) -> dict:
 @router.get("/profit-compare")
 async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
     """口径 C 扩展：节省 vs 创造价值 + Top 项目 + Vendor 节省贡献榜。"""
-    costs = await _project_costs(db)
-
-    # 收款门槛 + 报价 cap + 排除 cancelled，与 /api/cockpit/savings-and-value 同口径
+    # 中标项目（bid_outcome=won）— 与 /api/cockpit/savings-and-value 同口径
     rev_projects = (await db.execute(
         select(Project).where(
             Project.kind == PROJECT_KIND_REVENUE,
-            Project.status != PROJECT_STATUS_CANCELLED,
+            Project.bid_outcome == PROJECT_BID_OUTCOME_WON,
         )
     )).scalars().all()
     no_rev_projects = (await db.execute(
@@ -117,29 +95,24 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
         )
     )).scalars().all()
 
-    # 每个项目的累计实收金额（status=received 才算）
-    received_rows = (await db.execute(
+    # 每项目累计团队入账（不再 filter status）
+    rev_rows = (await db.execute(
         select(ProjectRevenue.project_id, func.coalesce(func.sum(ProjectRevenue.amount), 0))
-        .where(ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
         .group_by(ProjectRevenue.project_id)
     )).all()
-    received_by_pid: dict[int, float] = {pid: float(amt) for pid, amt in received_rows}
+    team_revenue_by_pid: dict[int, float] = {pid: float(amt) for pid, amt in rev_rows}
 
-    # Top savings on revenue projects：实收 > 0 才计入；effective_bench = min(benchmark, received)
+    # Top savings: savings = outsource_benchmark − 团队入账
     rev_with_savings = []
     for p in rev_projects:
-        received = received_by_pid.get(p.id, 0.0)
-        if received <= 0:
-            continue
         bench = float(p.outsource_benchmark_amount or 0)
-        effective_bench = min(bench, received) if bench > 0 else received
-        actual = costs.get(p.id, 0.0)
-        savings = effective_bench - actual
+        team_share = team_revenue_by_pid.get(p.id, 0.0)
+        savings = bench - team_share
         rev_with_savings.append({
             "project_id": p.id, "name": p.name,
             "savings": savings,
-            "benchmark": effective_bench,
-            "actual": actual,
+            "benchmark": bench,
+            "actual": team_share,
         })
     rev_with_savings.sort(key=lambda x: -x["savings"])
 
@@ -216,7 +189,7 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
     ]
     vendor_dist.sort(key=lambda x: -x["count"])
 
-    # 认证总量（替代旧「个人等级 L1-L5 分布」）
+    # 认证总量（替代旧「个人等级 L1-L3 分布」）
     total_certificates = (await db.execute(
         select(func.count(Certificate.id))
     )).scalar_one() or 0

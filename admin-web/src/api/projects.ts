@@ -2,9 +2,21 @@ import http from './http'
 
 export type ProjectKind = 'revenue' | 'no_revenue'
 export type ProjectStatus = 'drafting' | 'in_progress' | 'accepting' | 'closing' | 'archived' | 'cancelled'
-export type ValueBasis =
-  | 'outsource_equiv' | 'replace_audit_fee' | 'avoid_penalty'
-  | 'save_hours' | 'strategic_reserve' | 'other'
+export type BidOutcome = 'pending' | 'won' | 'lost' | 'escaped'
+
+export const BID_OUTCOME_LABELS: Record<BidOutcome, string> = {
+  pending: '投标中 / 未定',
+  won: '已中标',
+  lost: '已丢标',
+  escaped: '中标后跑单',
+}
+export const BID_OUTCOME_TYPES: Record<BidOutcome, 'info' | 'success' | 'danger' | 'warning'> = {
+  pending: 'info',
+  won: 'success',
+  lost: 'danger',
+  escaped: 'warning',
+}
+export type ValueBasis = 'outsource_equiv' | 'other'
 export type TransferReason = 'resignation' | 'role_change' | 'other'
 
 export type HKDistrict = 'HK_ISLAND' | 'KOWLOON' | 'NT_EAST' | 'NT_WEST' | 'OUTLYING'
@@ -14,14 +26,11 @@ export const DISTRICT_LABELS: Record<HKDistrict, string> = {
   NT_WEST: '新界西', OUTLYING: '离岛',
 }
 
-export type BenchmarkBasis =
-  | 'historical_avg' | 'industry_benchmark' | 'vendor_quote' | 'manual_estimate'
+export type BenchmarkBasis = 'vendor_quote' | 'historical_avg'
 
 export const BENCHMARK_BASIS_LABELS: Record<BenchmarkBasis, string> = {
-  vendor_quote: '外包供应商真实报价（最强）',
+  vendor_quote: '外部供应商真实报价',
   historical_avg: '同类历史项目均价',
-  industry_benchmark: '行业基准 / 公开报告',
-  manual_estimate: '经验估算（最弱）',
 }
 
 export interface Project {
@@ -40,6 +49,7 @@ export interface Project {
   value_created_note?: string | null
   value_created_computed?: number | string | null
   status: ProjectStatus
+  bid_outcome: BidOutcome
   planned_start_date?: string | null
   planned_end_date?: string | null
   actual_start_date?: string | null
@@ -66,6 +76,7 @@ export interface ProjectPayload {
   value_created_basis?: ValueBasis | null
   value_created_note?: string | null
   status?: ProjectStatus
+  bid_outcome?: BidOutcome
   planned_start_date?: string | null
   planned_end_date?: string | null
   actual_start_date?: string | null

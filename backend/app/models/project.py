@@ -28,20 +28,22 @@ BENCHMARK_BASIS_MANUAL = "manual_estimate"         # 经验估算（最弱）
 PROJECT_KIND_REVENUE = "revenue"          # 有收入项目
 PROJECT_KIND_NO_REVENUE = "no_revenue"    # 无收入项目（必须有 value_created_basis）
 
-# Status machine
+# Status machine — 执行生命周期
 PROJECT_STATUS_DRAFTING = "drafting"      # 立项
 PROJECT_STATUS_IN_PROGRESS = "in_progress"  # 进行中
 PROJECT_STATUS_ACCEPTING = "accepting"    # 验收
 PROJECT_STATUS_CLOSING = "closing"        # 收尾
 PROJECT_STATUS_ARCHIVED = "archived"      # 归档
-PROJECT_STATUS_CANCELLED = "cancelled"    # 跑单 / 中途取消（不进任何驾驶舱算式）
+PROJECT_STATUS_CANCELLED = "cancelled"    # 跑单 / 中途取消（保留向后兼容；新数据用 bid_outcome=escaped）
+
+# Bid outcome — 投标结果（与 status 正交：一个项目可同时 bid_outcome=won + status=in_progress）
+PROJECT_BID_OUTCOME_PENDING = "pending"   # 投标中 / 未定（默认）
+PROJECT_BID_OUTCOME_WON = "won"           # 已中标 → C-tier savings 立即计入（默认团队一定拿到 team revenue）
+PROJECT_BID_OUTCOME_LOST = "lost"         # 已丢标 → 不计入任何 cockpit 指标
+PROJECT_BID_OUTCOME_ESCAPED = "escaped"   # 中标后跑单（客户违约） → 不计入
 
 # value_created_basis (only for no_revenue)
-VALUE_BASIS_OUTSOURCE_EQUIV = "outsource_equiv"        # 等同外包成本（默认）
-VALUE_BASIS_REPLACE_AUDIT = "replace_audit_fee"        # 替代外部审计 / 咨询费
-VALUE_BASIS_AVOID_PENALTY = "avoid_penalty"            # 避免合规罚款
-VALUE_BASIS_SAVE_HOURS = "save_hours"                  # 节省工时折算
-VALUE_BASIS_STRATEGIC = "strategic_reserve"            # 战略储备
+VALUE_BASIS_OUTSOURCE_EQUIV = "outsource_equiv"        # 等同外包服务所抵消的成本（默认）
 VALUE_BASIS_OTHER = "other"                            # 其他（必填备注）
 
 # SalesTransferLog reason
@@ -79,6 +81,10 @@ class Project(Base):
 
     # 状态机
     status: Mapped[str] = mapped_column(String(16), default=PROJECT_STATUS_DRAFTING, index=True)
+    # 投标结果（决定是否计入驾驶舱 C-tier savings）
+    bid_outcome: Mapped[str] = mapped_column(
+        String(16), default=PROJECT_BID_OUTCOME_PENDING, index=True
+    )
 
     # 时间
     planned_start_date: Mapped[date | None] = mapped_column(Date)

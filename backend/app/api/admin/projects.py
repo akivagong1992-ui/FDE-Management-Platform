@@ -7,6 +7,7 @@ from app.core.deps import get_current_user, require_role
 from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
 from app.models.need_party import NeedParty
 from app.models.project import (
+    PROJECT_BID_OUTCOME_WON,
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
     PROJECT_STATUS_ARCHIVED,
@@ -16,7 +17,7 @@ from app.models.project import (
     Project,
     SalesTransferLog,
 )
-from app.models.project_revenue import REVENUE_STATUS_RECEIVED, ProjectRevenue
+from app.models.project_revenue import ProjectRevenue
 from app.models.sales_person import SalesPerson
 from app.models.user import User
 from app.models.vendor_service_fee import VendorServiceFee
@@ -31,24 +32,24 @@ from app.schemas.project import (
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-def _to_out(p: Project, *, received_amount: float = 0.0, actual_cost: float = 0.0) -> ProjectOut:
-    """方案 B 同口径计算 value_created_computed：
-    - no_revenue：仅 status ∈ {closing, archived} 且 ≠ cancelled 时 = outsource_benchmark
-    - revenue：仅有实收（received_amount > 0）且 ≠ cancelled 时 = min(benchmark, received) − actual_cost
+def _to_out(p: Project, *, team_revenue: float = 0.0) -> ProjectOut:
+    """与驾驶舱口径 C 一致的 value_created_computed：
+    - no_revenue：仅 status ∈ {closing, archived} 时 = outsource_benchmark
+    - revenue：仅 bid_outcome == 'won'（已中标，默认团队拿到）时
+               = outsource_benchmark − 团队入账（Σ ProjectRevenue.amount）
+               不再 filter status=received（中标即视作已实现），不再按实收封顶
     - 其他情况 = None（前端表格显示 —）
     """
     computed = None
-    if p.status != PROJECT_STATUS_CANCELLED:
-        if p.kind == PROJECT_KIND_NO_REVENUE:
-            if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}:
-                computed = p.outsource_benchmark_amount
-        elif p.kind == PROJECT_KIND_REVENUE:
-            if received_amount > 0:
-                bench = float(p.outsource_benchmark_amount or 0)
-                effective_bench = min(bench, received_amount) if bench > 0 else received_amount
-                value = effective_bench - actual_cost
-                if value > 0:
-                    computed = value
+    if p.kind == PROJECT_KIND_NO_REVENUE:
+        if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}:
+            computed = p.outsource_benchmark_amount
+    elif p.kind == PROJECT_KIND_REVENUE:
+        if p.bid_outcome == PROJECT_BID_OUTCOME_WON:
+            bench = float(p.outsource_benchmark_amount or 0)
+            value = round(bench - team_revenue, 2)  # 2 位小数，避免浮点拖尾
+            if value > 0:
+                computed = value
     return ProjectOut(
         id=p.id,
         code=p.code,
@@ -65,6 +66,7 @@ def _to_out(p: Project, *, received_amount: float = 0.0, actual_cost: float = 0.
         value_created_note=p.value_created_note,
         value_created_computed=computed,
         status=p.status,
+        bid_outcome=p.bid_outcome,
         planned_start_date=p.planned_start_date,
         planned_end_date=p.planned_end_date,
         actual_start_date=p.actual_start_date,
@@ -91,50 +93,22 @@ def _validate_no_revenue_fields(kind: str, basis: str | None, note: str | None) 
         raise HTTPException(status_code=400, detail="value_created_basis=other 时必须填备注")
 
 
-async def _single_received_and_cost(db: AsyncSession, project_id: int) -> tuple[float, float]:
-    """单项目版本——用于 create / update / transfer 返回时即时计算 value_created_computed。"""
-    received = (await db.execute(
+async def _single_team_revenue(db: AsyncSession, project_id: int) -> float:
+    """单项目累计团队入账（不再 filter status — 默认中标 = 团队拿到）。"""
+    total = (await db.execute(
         select(func.coalesce(func.sum(ProjectRevenue.amount), 0))
-        .where(ProjectRevenue.project_id == project_id,
-               ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
+        .where(ProjectRevenue.project_id == project_id)
     )).scalar_one() or 0
-    vsf = (await db.execute(
-        select(func.coalesce(func.sum(VendorServiceFee.amount), 0))
-        .where(VendorServiceFee.project_id == project_id)
-    )).scalar_one() or 0
-    exp = (await db.execute(
-        select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.project_id == project_id,
-               ExpenseRequest.status != EXPENSE_STATUS_REJECTED)
-    )).scalar_one() or 0
-    return float(received), float(vsf) + float(exp)
+    return float(total)
 
 
-async def _bulk_received_and_cost(db: AsyncSession) -> tuple[dict[int, float], dict[int, float]]:
-    """一次性算出每个 revenue 项目的累计实收金额 + 实际成本（Vendor 服务费 + 已批支出）。"""
-    received_rows = (await db.execute(
+async def _bulk_team_revenue(db: AsyncSession) -> dict[int, float]:
+    """每个项目的累计团队入账（不再 filter status）。"""
+    rows = (await db.execute(
         select(ProjectRevenue.project_id, func.coalesce(func.sum(ProjectRevenue.amount), 0))
-        .where(ProjectRevenue.status == REVENUE_STATUS_RECEIVED)
         .group_by(ProjectRevenue.project_id)
     )).all()
-    received_by_pid: dict[int, float] = {pid: float(amt) for pid, amt in received_rows}
-
-    cost_by_pid: dict[int, float] = {}
-    vsf_rows = (await db.execute(
-        select(VendorServiceFee.project_id, func.coalesce(func.sum(VendorServiceFee.amount), 0))
-        .where(VendorServiceFee.project_id.is_not(None))
-        .group_by(VendorServiceFee.project_id)
-    )).all()
-    for pid, amt in vsf_rows:
-        cost_by_pid[pid] = cost_by_pid.get(pid, 0.0) + float(amt)
-    exp_rows = (await db.execute(
-        select(ExpenseRequest.project_id, func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.status != EXPENSE_STATUS_REJECTED)
-        .group_by(ExpenseRequest.project_id)
-    )).all()
-    for pid, amt in exp_rows:
-        cost_by_pid[pid] = cost_by_pid.get(pid, 0.0) + float(amt)
-    return received_by_pid, cost_by_pid
+    return {pid: float(amt) for pid, amt in rows}
 
 
 @router.get("", response_model=list[ProjectOut])
@@ -156,10 +130,9 @@ async def list_projects(
     if need_party_id is not None:
         stmt = stmt.where(Project.need_party_id == need_party_id)
     rows = (await db.execute(stmt)).scalars().all()
-    received_by_pid, cost_by_pid = await _bulk_received_and_cost(db)
+    team_rev_by_pid = await _bulk_team_revenue(db)
     return [
-        _to_out(p, received_amount=received_by_pid.get(p.id, 0.0),
-                actual_cost=cost_by_pid.get(p.id, 0.0))
+        _to_out(p, team_revenue=team_rev_by_pid.get(p.id, 0.0))
         for p in rows
     ]
 
@@ -173,10 +146,8 @@ async def get_project(
     p = await db.get(Project, project_id)
     if not p:
         raise HTTPException(status_code=404, detail="项目不存在")
-    received_by_pid, cost_by_pid = await _bulk_received_and_cost(db)
-    return _to_out(p,
-                   received_amount=received_by_pid.get(p.id, 0.0),
-                   actual_cost=cost_by_pid.get(p.id, 0.0))
+    team_rev_by_pid = await _bulk_team_revenue(db)
+    return _to_out(p, team_revenue=team_rev_by_pid.get(p.id, 0.0))
 
 
 @router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
@@ -208,8 +179,8 @@ async def create_project(
     db.add(p)
     await db.commit()
     await db.refresh(p)
-    received, cost = await _single_received_and_cost(db, p.id)
-    return _to_out(p, received_amount=received, actual_cost=cost)
+    team_revenue = await _single_team_revenue(db, p.id)
+    return _to_out(p, team_revenue=team_revenue)
 
 
 @router.patch("/{project_id}", response_model=ProjectOut)
@@ -241,8 +212,8 @@ async def update_project(
         setattr(p, k, v)
     await db.commit()
     await db.refresh(p)
-    received, cost = await _single_received_and_cost(db, p.id)
-    return _to_out(p, received_amount=received, actual_cost=cost)
+    team_revenue = await _single_team_revenue(db, p.id)
+    return _to_out(p, team_revenue=team_revenue)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -290,8 +261,8 @@ async def transfer_sales(
     )
     await db.commit()
     await db.refresh(p)
-    received, cost = await _single_received_and_cost(db, p.id)
-    return _to_out(p, received_amount=received, actual_cost=cost)
+    team_revenue = await _single_team_revenue(db, p.id)
+    return _to_out(p, team_revenue=team_revenue)
 
 
 @router.get("/{project_id}/cost-breakdown")

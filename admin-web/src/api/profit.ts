@@ -12,6 +12,7 @@ export interface ProjectMarginRow {
   project_id: number
   project_name: string
   project_code?: string | null
+  kind: 'revenue' | 'no_revenue'
   status: string
   sales_person_id: number
   sales_person_name?: string | null
@@ -48,6 +49,7 @@ export interface MarginLift {
   total_team_revenue: number
   total_outsource_benchmark: number
   total_actual_cost: number
+  total_non_service_expense: number
   outsource_margin: number
   fde_margin: number
   outsource_margin_pct: number

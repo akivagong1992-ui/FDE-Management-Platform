@@ -22,8 +22,10 @@ class ProjectRevenue(Base):
     # amount = 团队入账（pass-through 到 Vendor 的部分），用于团队成本核算 + 驾驶舱降本
     amount: Mapped[float] = mapped_column(Numeric(14, 2))
     # gross_amount = 客户付款总额（销售切除前），用于公司级毛利率计算（仅 admin 可见）
-    # 与 amount 的差额 = 销售切给非工程师服务的部分（硬件 / 第三方等）
     gross_amount: Mapped[float | None] = mapped_column(Numeric(14, 2))
+    # non_service_expense = 非服务开销（硬件采购 / 第三方软件 / 物料等公司直付支出，占 gross 约 65-75%）
+    # 公司毛利率公式：(gross − benchmark − non_service_expense) / gross
+    non_service_expense: Mapped[float | None] = mapped_column(Numeric(14, 2))
     currency: Mapped[str] = mapped_column(String(8), default="HKD")
     recognized_date: Mapped[date] = mapped_column(Date, index=True)
     invoice_no: Mapped[str | None] = mapped_column(String(64))

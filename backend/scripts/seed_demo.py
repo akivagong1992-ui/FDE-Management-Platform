@@ -307,27 +307,50 @@ async def main() -> None:
         print(f"  ✓ engineer skills + {cert_count} certificates (含 cert_level/category)")
 
         # ── Projects ──────────────────────────────────────────────────
+        # 真实业务模型驱动的生成：
+        #   bid_outcome ∈ {won 70%, pending 12%, lost 12%, escaped 6%}
+        #   status 与 bid_outcome 协调（pending → drafting；lost → drafting/cancelled）
+        #   benchmark 来自真实询价（每个项目都有），savings 假设 FDE 比外包便宜 30-50%
         proj_objs = []
+        # 显式控制 bid_outcome 分布，确保每种都有合理数量
+        N_REV = len(PROJECT_TEMPLATES_REVENUE)  # 20
+        bid_pool = (["won"] * 14 + ["pending"] * 3 + ["lost"] * 2 + ["escaped"] * 1)[:N_REV]
+        random.shuffle(bid_pool)
+
         for i, tmpl in enumerate(PROJECT_TEMPLATES_REVENUE):
             name = tmpl.format(n=random.randint(1, 5), client=random.choice(np_objs).name.split("（")[0])
             need = random.choice(np_objs)
             sales = random.choice([s for s in sp_objs if s.is_active])
             benchmark = Decimal(random.randint(40, 350)) * 10000  # 400K - 3.5M
-            status = random.choices(
-                ["in_progress", "in_progress", "accepting", "closing", "archived", "drafting"],
-                weights=[35, 20, 10, 15, 15, 5],
-            )[0]
+            bid_outcome = bid_pool[i]
+
+            # status 与 bid_outcome 协调
+            if bid_outcome == "pending":
+                status = "drafting"
+            elif bid_outcome == "lost":
+                status = random.choice(["drafting", "cancelled"])
+            elif bid_outcome == "escaped":
+                # 中标后跑单 → 多半已开始执行
+                status = random.choice(["in_progress", "cancelled"])
+            else:  # won
+                status = random.choices(
+                    ["in_progress", "accepting", "closing", "archived"],
+                    weights=[40, 15, 20, 25],
+                )[0]
+
             planned_start = random_date_within(540, 60)
             planned_end = planned_start + timedelta(days=random.randint(60, 180))
+            actual_start = (planned_start + timedelta(days=random.randint(-3, 7))
+                            if bid_outcome in {"won", "escaped"} else None)
             actual_end = (planned_end + timedelta(days=random.randint(-15, 30))
                           if status in {"closing", "archived"} else None)
             p = Project(
                 code=f"P-2026-{i+1:03d}", name=name,
                 need_party_id=need.id, sales_person_id=sales.id,
                 kind="revenue", outsource_benchmark_amount=benchmark,
-                status=status,
+                status=status, bid_outcome=bid_outcome,
                 planned_start_date=planned_start, planned_end_date=planned_end,
-                actual_start_date=planned_start + timedelta(days=random.randint(-3, 7)),
+                actual_start_date=actual_start,
                 actual_end_date=actual_end,
                 description=f"项目 {name} — 自动 seed 生成",
                 district=random.choices(
@@ -336,13 +359,12 @@ async def main() -> None:
                 rework_count=random.choices([0, 0, 0, 1, 2], weights=[55, 20, 10, 10, 5])[0],
                 change_count=random.choices([0, 1, 2, 3, 4], weights=[30, 30, 20, 15, 5])[0],
                 benchmark_basis=random.choices(
-                    ["vendor_quote", "historical_avg", "industry_benchmark", "manual_estimate"],
-                    weights=[40, 30, 20, 10])[0],
+                    ["vendor_quote", "historical_avg"],
+                    weights=[70, 30])[0],
                 benchmark_basis_note=random.choice([
                     "参考 2024 同类项目 P-2024-005 报价",
                     "Gartner 2025 IT 服务行业基准",
                     "外包供应商 A/B 实际报价单 + 10%",
-                    "PM 经验估算",
                     None, None,
                 ]),
             )
@@ -357,10 +379,11 @@ async def main() -> None:
                 need_party_id=need.id, sales_person_id=sales.id,
                 kind="no_revenue",
                 outsource_benchmark_amount=benchmark,
-                value_created_basis=random.choice(["outsource_equiv", "replace_audit_fee",
-                                                    "avoid_penalty", "strategic_reserve"]),
+                value_created_basis="outsource_equiv",
                 value_created_note="自动 seed",
                 status=random.choices(["in_progress", "closing", "archived"], weights=[40, 20, 40])[0],
+                # no_revenue 项目一般是公司内部审批立项，默认视为已"中标" 进入交付
+                bid_outcome="won",
                 planned_start_date=random_date_within(360, 30),
                 planned_end_date=random_date_within(120, -180),
                 district=random.choices(
@@ -395,6 +418,40 @@ async def main() -> None:
 
         revenue_projects = [p for p in proj_objs if p.kind == "revenue"]
 
+        # ── Project finance plan ──────────────────────────────────────
+        # 业务模型（用户 2026-05-24 校准）：
+        #   team_revenue = benchmark × random(0.7, 0.9)  — FDE 比外包便宜 10-30%
+        #   VSF = team_revenue × random(0.99, 1.01)      — 100% pass-through ±1%
+        # 不按 status completion 缩放 — 让 won 项目数据满额，方便 FDE 利润率对比展示
+        def vsf_noise() -> float:
+            return random.uniform(0.99, 1.01)
+
+        project_finance: dict[int, dict[str, float]] = {}
+        for p in proj_objs:
+            if p.kind != "revenue":
+                # no_revenue：B 口径用 benchmark 当机会成本，不需要 VSF / Revenue
+                project_finance[p.id] = {"team_revenue": 0.0, "vsf": 0.0}
+                continue
+            bench = float(p.outsource_benchmark_amount or 0)
+            if p.bid_outcome == "won":
+                ratio = random.uniform(0.80, 0.90)  # FDE 比外包便宜 10-20%
+                team_rev = bench * ratio
+                vsf = team_rev * vsf_noise()
+            elif p.bid_outcome == "escaped":
+                # 中标后跑单 — 部分完成（20-50%），钱已付给 vendor
+                partial = random.uniform(0.20, 0.50)
+                ratio = random.uniform(0.80, 0.90)
+                team_rev = bench * ratio * partial
+                vsf = team_rev * vsf_noise()
+            elif p.bid_outcome == "lost":
+                # 丢标 — pre-sales 投入小成本（3-8% benchmark），无 revenue
+                team_rev = 0.0
+                vsf = bench * random.uniform(0.03, 0.08)
+            else:  # pending
+                team_rev = 0.0
+                vsf = 0.0
+            project_finance[p.id] = {"team_revenue": team_rev, "vsf": vsf}
+
         # ── Suppliers ─────────────────────────────────────────────────
         sup_objs = []
         for name, cat in [
@@ -425,37 +482,40 @@ async def main() -> None:
               f"(e1..e{len(engineer_user_accounts)} / demo123)")
 
         # ── Vendor Service Fees ───────────────────────────────────────
-        # Each in-progress engineer ~ 4-6 months of fees on a random project
+        # 按 project_finance 计划生成：每个项目的 VSF 总额 ≈ 该项目 team_revenue
+        # 业务模型：100% pass-through，团队入账 → 月结发 VSF 给 vendor
         vsf_count = 0
-        for e in active_engineers:
-            project = random.choice(revenue_projects + proj_objs[-5:])  # mix
-            months = random.randint(2, 6)
+        for p in proj_objs:
+            target_vsf = project_finance.get(p.id, {}).get("vsf", 0)
+            if target_vsf <= 0:
+                continue
+            # 拆成 1-4 个月度账单，反映真实月结发票节奏
+            months = random.randint(1, 4)
+            monthly = target_vsf / months
+            vendor = random.choice(vendor_objs)
+            engineer = random.choice(active_engineers)
             for m in range(months):
-                period_start = date(2025, 12 - m % 12, 1) if m < 12 else date(2025, 1, 1)
-                # use a simpler month walker
                 base_month = TODAY.month - m
                 base_year = TODAY.year
                 while base_month <= 0:
                     base_month += 12
                     base_year -= 1
                 period_start = date(base_year, base_month, 1)
-                # period_end ≈ last day
                 if base_month == 12:
                     period_end = date(base_year, 12, 31)
                 else:
                     period_end = date(base_year, base_month + 1, 1) - timedelta(days=1)
-                amount = e.monthly_cost_to_telecom * Decimal(random.uniform(0.9, 1.1))
                 db.add(VendorServiceFee(
-                    vendor_id=e.vendor_id, engineer_id=e.id, project_id=project.id,
+                    vendor_id=vendor.id, engineer_id=engineer.id, project_id=p.id,
                     fee_type="monthly_per_engineer",
                     period_start=period_start, period_end=period_end,
-                    amount=amount.quantize(Decimal("0.01")),
-                    invoice_no=f"INV-{base_year}{base_month:02d}-{e.id:03d}",
+                    amount=Decimal(str(round(monthly, 2))),
+                    invoice_no=f"INV-{base_year}{base_month:02d}-P{p.id:03d}-{m+1}",
                     status=random.choices(["paid", "billed", "draft"], weights=[70, 20, 10])[0],
                 ))
                 vsf_count += 1
         await db.flush()
-        print(f"  ✓ vendor service fees x{vsf_count}")
+        print(f"  ✓ vendor service fees x{vsf_count} (项目驱动，合计 ≈ Σ team_revenue)")
 
         # ── External Expenses ─────────────────────────────────────────
         exp_count = 0
@@ -480,26 +540,34 @@ async def main() -> None:
         print(f"  ✓ expenses x{exp_count}")
 
         # ── Project Revenues ──────────────────────────────────────────
+        # 只为 won / escaped 项目生成；pending / lost / no_revenue 无收入记录
+        # 业务模型（用户 2026-05-24 校准）：
+        #   team_revenue 约占 gross 的 20%（销售切除 80%）→ gross = team × random(4.5, 5.5)
+        #   non_service_expense 约占 gross 的 65-75%（硬件 / 第三方 / 物料）
+        #   → 公司毛利 = gross − team − non_service ≈ gross × 5-15%
         rev_count = 0
         for p in revenue_projects:
-            bench = float(p.outsource_benchmark_amount or 0)
-            # Total revenue ~ 70% of benchmark on average (some over, some under)
-            total = Decimal(bench) * Decimal(random.uniform(0.55, 0.95))
-            installments = random.randint(1, 3)
-            installment_amount = (total / installments).quantize(Decimal("0.01"))
+            target_team_rev = project_finance.get(p.id, {}).get("team_revenue", 0)
+            if target_team_rev <= 0:
+                continue
+            installments = (random.randint(1, 3) if p.bid_outcome == "won"
+                            else random.randint(1, 2))
+            installment_amount = Decimal(str(round(target_team_rev / installments, 2)))
             for i in range(installments):
-                # gross_amount = 客户付款总额；假设销售切了 25-35% 给非工程师服务
-                gross = (installment_amount * Decimal(random.uniform(1.25, 1.35))).quantize(Decimal("0.01"))
+                gross_mult = random.uniform(4.5, 5.5)
+                gross = (installment_amount * Decimal(str(round(gross_mult, 3)))).quantize(Decimal("0.01"))
+                nse_ratio = random.uniform(0.65, 0.75)
+                nse = (gross * Decimal(str(round(nse_ratio, 3)))).quantize(Decimal("0.01"))
                 db.add(ProjectRevenue(
                     project_id=p.id, amount=installment_amount,
                     gross_amount=gross,
+                    non_service_expense=nse,
                     recognized_date=random_date_within(360, 0),
                     invoice_no=f"INV-R-{p.id}-{i+1}",
-                    status="received" if random.random() < 0.7 else "pending",
                 ))
                 rev_count += 1
         await db.flush()
-        print(f"  ✓ project revenues x{rev_count}")
+        print(f"  ✓ project revenues x{rev_count} (含 gross + non_service_expense)")
 
         # ── Assignments + 对话消息 ────────────────────────────────────
         # 历史派单默认 accepted（已经在跑），少量给出 pending / rejected 演示流转
@@ -706,15 +774,16 @@ async def main() -> None:
         snap_count = 0
         for e in active_engineers:
             base_skills = random.randint(2, 4)  # starting skill count
-            base_level = round(random.uniform(2.0, 3.5), 2)
+            base_level = round(random.uniform(1.2, 2.0), 2)  # 3 级系统：起点 L1.2-L2.0
             base_certs = random.randint(0, 1)
             # 8 snapshots: 720d ago to 0d ago, every 90d
             for q in range(8):
                 snap_date = days_ago(720 - q * 90)
-                # Simulate growth: each quarter +0.3 skill on avg, +0.05 level, +0.1 cert
+                # Simulate growth: each quarter +0.3 skill on avg, +~0.1 level, +0.1 cert
                 growth_factor = q / 8.0
                 skills_now = base_skills + int(growth_factor * random.uniform(2, 5))
-                level_now = round(min(5.0, base_level + growth_factor * random.uniform(0.5, 1.2)), 2)
+                # 3 级封顶 L3.0：从 base + 最多 +1.0 涨幅
+                level_now = round(min(3.0, base_level + growth_factor * random.uniform(0.3, 0.8)), 2)
                 certs_now = base_certs + int(growth_factor * random.uniform(0, 3))
                 db.add(EngineerSkillSnapshot(
                     engineer_id=e.id, snapshot_date=snap_date,
@@ -760,7 +829,7 @@ async def main() -> None:
         idp_count = 0
         for e in active_engineers:
             if random.random() < 0.6:  # 60% have an IDP
-                target_level = min(5, (e.level or 3) + 1)
+                target_level = min(3, (e.level or 2) + 1)
                 db.add(IDP(
                     engineer_id=e.id,
                     title=f"L{e.level} → L{target_level} 成长路径",

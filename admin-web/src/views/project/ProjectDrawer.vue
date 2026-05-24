@@ -4,8 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   getProject, listTransferLogs, transferSales,
-  BENCHMARK_BASIS_LABELS,
-  type Project, type TransferLog, type TransferReason,
+  BENCHMARK_BASIS_LABELS, BID_OUTCOME_LABELS, BID_OUTCOME_TYPES,
+  type BidOutcome, type Project, type TransferLog, type TransferReason,
 } from '@/api/projects'
 import { listSalesPersons, type SalesPerson } from '@/api/salesPersons'
 
@@ -28,12 +28,13 @@ const STATUS_LABEL: Record<string, string> = {
   drafting: '立项', in_progress: '进行中', accepting: '验收', closing: '收尾', archived: '归档',
 }
 const BASIS_LABEL: Record<string, string> = {
-  outsource_equiv: '等同外包成本（默认）',
-  replace_audit_fee: '替代外部审计/咨询费',
-  avoid_penalty: '避免合规罚款',
-  save_hours: '节省工时折算',
-  strategic_reserve: '战略储备',
+  outsource_equiv: '等同外包服务所抵消的成本（默认）',
   other: '其他（备注必填）',
+}
+
+function fmt2(n: number | string | null | undefined): string {
+  if (n == null) return '—'
+  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
 }
 
 async function refresh() {
@@ -94,10 +95,22 @@ function salesNameById(id: number): string {
         <el-descriptions-item label="状态">
           <el-tag>{{ STATUS_LABEL[project.status] }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="项目类型" :span="2">
+        <el-descriptions-item label="项目类型">
           <el-tag :type="project.kind === 'revenue' ? 'success' : 'warning'">
             {{ project.kind === 'revenue' ? '有收入项目' : '无收入项目 (仅入 C 口径)' }}
           </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="投标结果">
+          <span v-if="project.kind === 'no_revenue'" style="color: #c0c4cc">NA</span>
+          <template v-else>
+            <el-tag :type="BID_OUTCOME_TYPES[project.bid_outcome as BidOutcome]">
+              {{ BID_OUTCOME_LABELS[project.bid_outcome as BidOutcome] || project.bid_outcome }}
+            </el-tag>
+            <span v-if="project.bid_outcome !== 'won'"
+                  style="color: #909399; font-size: 12px; margin-left: 8px">
+              （不计入驾驶舱降本）
+            </span>
+          </template>
         </el-descriptions-item>
         <el-descriptions-item label="需求方">{{ project.need_party_name }}</el-descriptions-item>
         <el-descriptions-item label="销售人员">
@@ -114,27 +127,36 @@ function salesNameById(id: number): string {
 
       <el-descriptions :column="1" border title="价值估算（C 口径）" style="margin-top: 16px">
         <el-descriptions-item label="传统外包模式估算">
-          <span v-if="project.outsource_benchmark_amount">HK$ {{ project.outsource_benchmark_amount }}</span>
+          <span v-if="project.outsource_benchmark_amount">HK$ {{ fmt2(project.outsource_benchmark_amount) }}</span>
           <span v-else style="color: #909399">—</span>
           <span style="color: #909399; font-size: 12px; margin-left: 8px">
             （如果当年走老外包，估算花多少）
           </span>
         </el-descriptions-item>
-        <el-descriptions-item v-if="project.benchmark_basis" label="估算依据 (R6)">
-          <el-tag :type="project.benchmark_basis === 'vendor_quote' ? 'success'
-                        : project.benchmark_basis === 'historical_avg' ? 'primary'
-                        : project.benchmark_basis === 'industry_benchmark' ? 'warning' : 'info'">
+        <el-descriptions-item v-if="project.benchmark_basis" label="价格来源依据">
+          <el-tag :type="project.benchmark_basis === 'vendor_quote' ? 'success' : 'primary'">
             {{ BENCHMARK_BASIS_LABELS[project.benchmark_basis] }}
           </el-tag>
           <div v-if="project.benchmark_basis_note" style="color: #606266; margin-top: 4px; font-size: 12px">
             {{ project.benchmark_basis_note }}
           </div>
         </el-descriptions-item>
-        <el-descriptions-item v-if="project.kind === 'no_revenue'" label="自动计算的创造价值">
-          <span style="color: #e6a23c; font-weight: 600">HK$ {{ project.value_created_computed ?? '—' }}</span>
+        <el-descriptions-item v-if="project.kind === 'no_revenue'" label="自动计算的效益金额">
+          <span style="color: #e6a23c; font-weight: 600">HK$ {{ fmt2(project.value_created_computed) }}</span>
           <span style="color: #909399; font-size: 12px; margin-left: 8px">
-            = 外包估算（R13 自动）
+            = 服务商价格（项目完成时自动计入）
           </span>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="project.kind === 'revenue'" label="自动计算的效益金额">
+          <span v-if="project.value_created_computed" style="color: #e6a23c; font-weight: 600">
+            HK$ {{ fmt2(project.value_created_computed) }}
+          </span>
+          <span v-else style="color: #909399">
+            —（须 <strong>投标结果=已中标</strong>）
+          </span>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            = 服务商价格 − 团队入账（Σ 该项目收入记录的 amount）
+          </div>
         </el-descriptions-item>
         <el-descriptions-item v-if="project.kind === 'no_revenue'" label="价值依据">
           {{ BASIS_LABEL[project.value_created_basis || 'outsource_equiv'] }}

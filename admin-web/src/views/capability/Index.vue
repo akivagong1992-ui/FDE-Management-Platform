@@ -11,7 +11,7 @@ const tab = ref<Tab>('growth')
 <template>
   <el-card>
     <el-tabs v-model="tab">
-      <el-tab-pane label="成长曲线 / 季度快照" name="growth"><GrowthView v-if="tab === 'growth'" /></el-tab-pane>
+      <el-tab-pane label="技能概览" name="growth"><GrowthView v-if="tab === 'growth'" /></el-tab-pane>
       <el-tab-pane label="培训记录" name="trainings"><TrainingList v-if="tab === 'trainings'" /></el-tab-pane>
       <el-tab-pane label="IDP 个人发展计划" name="idps"><IDPList v-if="tab === 'idps'" /></el-tab-pane>
     </el-tabs>

@@ -4,8 +4,8 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import {
   createProject, deleteProject, listProjects, updateProject,
-  DISTRICT_LABELS, BENCHMARK_BASIS_LABELS,
-  type BenchmarkBasis, type HKDistrict,
+  DISTRICT_LABELS, BENCHMARK_BASIS_LABELS, BID_OUTCOME_LABELS, BID_OUTCOME_TYPES,
+  type BenchmarkBasis, type BidOutcome, type HKDistrict,
   type Project, type ProjectPayload, type ProjectStatus, type ProjectKind,
 } from '@/api/projects'
 import { listNeedParties, type NeedParty } from '@/api/needParties'
@@ -22,12 +22,18 @@ const loading = ref(false)
 
 const filter = reactive<{ kind?: ProjectKind; status_filter?: ProjectStatus; sales_person_id?: number; need_party_id?: number }>({})
 
+function fmt2(n: number | string | null | undefined): string {
+  if (n == null) return ''
+  return new Intl.NumberFormat('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n))
+}
+
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<ProjectPayload>({
   name: '', need_party_id: 0, sales_person_id: 0, kind: 'revenue',
   outsource_benchmark_amount: undefined, value_created_basis: undefined, value_created_note: '',
-  status: 'drafting', code: '', planned_start_date: undefined, planned_end_date: undefined,
+  status: 'drafting', bid_outcome: 'pending',
+  code: '', planned_start_date: undefined, planned_end_date: undefined,
   actual_start_date: undefined, actual_end_date: undefined, description: '',
   district: null, rework_count: 0, change_count: 0, renewal_of_project_id: null,
   benchmark_basis: null, benchmark_basis_note: '',
@@ -46,12 +52,15 @@ const STATUS_OPTIONS: { label: string; value: ProjectStatus }[] = [
 ]
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(STATUS_OPTIONS.map((o) => [o.value, o.label]))
 
+const BID_OUTCOME_OPTIONS: { label: string; value: BidOutcome }[] = [
+  { label: '投标中 / 未定', value: 'pending' },
+  { label: '已中标', value: 'won' },
+  { label: '已丢标', value: 'lost' },
+  { label: '中标后跑单', value: 'escaped' },
+]
+
 const BASIS_OPTIONS = [
-  { label: '等同外包成本（默认）', value: 'outsource_equiv' },
-  { label: '替代外部审计/咨询费', value: 'replace_audit_fee' },
-  { label: '避免合规罚款', value: 'avoid_penalty' },
-  { label: '节省工时折算', value: 'save_hours' },
-  { label: '战略储备', value: 'strategic_reserve' },
+  { label: '等同外包服务所抵消的成本（默认）', value: 'outsource_equiv' },
   { label: '其他（备注必填）', value: 'other' },
 ]
 
@@ -75,7 +84,7 @@ function openCreate() {
     kind: 'revenue',
     outsource_benchmark_amount: undefined,
     value_created_basis: 'outsource_equiv', value_created_note: '',
-    status: 'drafting',
+    status: 'drafting', bid_outcome: 'pending',
     planned_start_date: undefined, planned_end_date: undefined,
     actual_start_date: undefined, actual_end_date: undefined,
     description: '',
@@ -98,6 +107,7 @@ function openEdit(p: Project) {
     value_created_basis: p.value_created_basis || 'outsource_equiv',
     value_created_note: p.value_created_note || '',
     status: p.status,
+    bid_outcome: p.bid_outcome,
     planned_start_date: p.planned_start_date || undefined,
     planned_end_date: p.planned_end_date || undefined,
     actual_start_date: p.actual_start_date || undefined,
@@ -184,6 +194,14 @@ onMounted(load)
       <el-table-column label="状态" width="90">
         <template #default="{ row }"><el-tag>{{ STATUS_LABEL[row.status] }}</el-tag></template>
       </el-table-column>
+      <el-table-column label="投标结果" width="110">
+        <template #default="{ row }">
+          <span v-if="row.kind === 'no_revenue'" style="color: #c0c4cc">NA</span>
+          <el-tag v-else :type="BID_OUTCOME_TYPES[row.bid_outcome as BidOutcome]" size="small">
+            {{ BID_OUTCOME_LABELS[row.bid_outcome as BidOutcome] || row.bid_outcome }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="need_party_name" label="客户名称" min-width="150" />
       <el-table-column label="销售" width="120">
         <template #default="{ row }">
@@ -191,16 +209,27 @@ onMounted(load)
           <el-tag v-if="!row.sales_person_active" type="info" size="small">停用</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="外包估算" width="120">
+      <el-table-column label="服务商价格" width="140">
         <template #default="{ row }">
-          <span v-if="row.outsource_benchmark_amount">HK$ {{ row.outsource_benchmark_amount }}</span>
-          <span v-else style="color: #909399">—</span>
+          <span v-if="row.outsource_benchmark_amount">HK$ {{ fmt2(row.outsource_benchmark_amount) }}</span>
+          <span v-else style="color: #c0c4cc; font-size: 12px">还未询价</span>
         </template>
       </el-table-column>
-      <el-table-column label="创造价值" width="120">
+      <el-table-column label="效益金额" width="160">
+        <template #header>
+          <el-tooltip placement="top">
+            <template #content>
+              <div style="max-width: 280px; line-height: 1.5">
+                有收入项目：<strong>服务商价格 − 团队入账</strong>，须 <strong>投标结果=已中标</strong><br />
+                无收入项目：<strong>= 服务商价格</strong>（状态收尾/归档时）
+              </div>
+            </template>
+            <span style="cursor: help">效益金额 <span style="color: #909399; font-size: 11px">ⓘ</span></span>
+          </el-tooltip>
+        </template>
         <template #default="{ row }">
-          <span v-if="row.value_created_computed" style="color: #e6a23c">HK$ {{ row.value_created_computed }}</span>
-          <span v-else style="color: #909399">—</span>
+          <span v-if="row.value_created_computed" style="color: #e6a23c">HK$ {{ fmt2(row.value_created_computed) }}</span>
+          <span v-else style="color: #c0c4cc; font-size: 12px">还未形成实际效益</span>
         </template>
       </el-table-column>
       <el-table-column prop="planned_end_date" label="计划完成" width="120" />
@@ -256,24 +285,23 @@ onMounted(load)
             />
           </el-tooltip>
           <span style="margin-left: 12px; color: #909399; font-size: 13px">
-            勾选后：项目状态改为收尾或归档时，创造价值 = 外包服务商报价（计入驾驶舱降本）
+            勾选后：项目状态改为收尾或归档时，效益金额 = 服务商价格（计入驾驶舱降本）
           </span>
         </el-form-item>
 
-        <el-form-item label="外部服务商报价">
-          <el-input-number
-            v-model="form.outsource_benchmark_amount" :min="0" :precision="2" style="width: 240px"
-            placeholder="HK$"
-          />
-        </el-form-item>
-        <el-form-item label="估算依据" v-if="form.outsource_benchmark_amount">
-          <el-select v-model="form.benchmark_basis" clearable style="width: 100%" placeholder="选择依据，越靠前越可信">
-            <el-option v-for="(label, code) in BENCHMARK_BASIS_LABELS" :key="code" :label="label" :value="code" />
-          </el-select>
-        </el-form-item>
-        <el-form-item v-if="form.benchmark_basis" label="依据说明">
-          <el-input v-model="form.benchmark_basis_note" placeholder="如：参考 2024 同类项目 P-2024-005 / Gartner 报告链接" />
-        </el-form-item>
+        <template v-if="form.kind === 'no_revenue'">
+          <el-form-item label="外部服务商报价">
+            <el-input-number
+              v-model="form.outsource_benchmark_amount" :min="0" :precision="2" style="width: 240px"
+              placeholder="HK$"
+            />
+          </el-form-item>
+          <el-form-item label="价格来源依据" v-if="form.outsource_benchmark_amount">
+            <el-select v-model="form.benchmark_basis" clearable style="width: 100%" placeholder="选择依据">
+              <el-option v-for="(label, code) in BENCHMARK_BASIS_LABELS" :key="code" :label="label" :value="code" />
+            </el-select>
+          </el-form-item>
+        </template>
 
         <template v-if="form.kind === 'no_revenue'">
           <el-form-item label="价值依据">
@@ -292,6 +320,16 @@ onMounted(load)
               <el-select v-model="form.status" style="width: 100%">
                 <el-option v-for="o in STATUS_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" v-if="form.kind === 'revenue'">
+            <el-form-item label="投标结果">
+              <el-select v-model="form.bid_outcome" style="width: 100%">
+                <el-option v-for="o in BID_OUTCOME_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+              </el-select>
+              <div style="color: #909399; font-size: 12px; margin-top: 4px">
+                <strong>已中标</strong> 才会计入驾驶舱降本
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">

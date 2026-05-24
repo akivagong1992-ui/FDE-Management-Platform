@@ -20,9 +20,9 @@ class EngineerSkillSnapshot(Base):
 
     # Snapshot 数值
     skill_count: Mapped[int] = mapped_column(Integer, default=0)
-    avg_level: Mapped[float] = mapped_column(Numeric(3, 2), default=0)  # 平均 L1-L5
+    avg_level: Mapped[float] = mapped_column(Numeric(3, 2), default=0)  # 平均 L1-L3
     cert_count: Mapped[int] = mapped_column(Integer, default=0)
-    level: Mapped[int | None] = mapped_column(Integer)  # 工程师当时级别 L1-L5
+    level: Mapped[int | None] = mapped_column(Integer)  # 工程师当时级别 L1-L3
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

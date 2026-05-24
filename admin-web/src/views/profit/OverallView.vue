@@ -27,30 +27,41 @@ onMounted(load)
 
 <template>
   <div v-loading="loading">
-    <!-- 第一组：基础四件套 -->
+    <!-- 第一组：基础四件套（口径 A，团队真实账面） -->
     <div v-if="data">
       <el-row :gutter="16">
         <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">总收入</div>
+            <div style="color: #909399; font-size: 13px">团队总入账</div>
             <div style="font-size: 26px; font-weight: 600; color: #67c23a; margin-top: 8px">
               HK$ {{ fmt(data.total_revenue) }}
             </div>
-          </el-card>
-        </el-col>
-        <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">Vendor 服务费</div>
-            <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
-              HK$ {{ fmt(data.total_vendor_service_fees) }}
+            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
+              销售切除后流到团队的部分（100% pass-through 给 vendor）
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
           <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">其他支出</div>
+            <div style="color: #909399; font-size: 13px">Vendor 服务费 (VSF)</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
+              HK$ {{ fmt(data.total_vendor_service_fees) }}
+            </div>
+            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
+              团队转给 vendor 的钱，6 类支出已含在内
+            </div>
+          </el-card>
+        </el-col>
+        <el-col :span="12" style="margin-bottom: 16px">
+          <el-card shadow="hover" style="background: #fafafa">
+            <div style="color: #909399; font-size: 13px">
+              6 类支出（参考 · 不计入毛利）
+            </div>
+            <div style="font-size: 22px; font-weight: 500; color: #909399; margin-top: 8px">
               HK$ {{ fmt(data.total_external_expenses) }}
+            </div>
+            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
+              Vendor 用 VSF 的钱支付 — 仅展示，不重复扣减
             </div>
           </el-card>
         </el-col>
@@ -63,6 +74,9 @@ onMounted(load)
             }">
               HK$ {{ fmt(data.team_margin) }}
             </div>
+            <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
+              = 团队总入账 − VSF
+            </div>
           </el-card>
         </el-col>
       </el-row>
@@ -73,8 +87,10 @@ onMounted(load)
       <div style="margin: 20px 0 12px; font-weight: 600; color: #303133">
         FDE 利润率对比
         <span style="color: #909399; font-size: 12px; font-weight: normal; margin-left: 8px">
-          已收款项目 {{ lift.counted_projects }} 个 · 客户付款合计
-          HK$ {{ fmt(lift.total_gross_revenue) }}
+          已中标项目 {{ lift.counted_projects }} 个 ·
+          客户付款 HK$ {{ fmt(lift.total_gross_revenue) }} ·
+          非服务开销 HK$ {{ fmt(lift.total_non_service_expense) }} ·
+          团队入账 HK$ {{ fmt(lift.total_team_revenue) }}
         </span>
       </div>
       <el-row :gutter="16">
@@ -88,7 +104,7 @@ onMounted(load)
               {{ pct(lift.outsource_margin_pct) }}
             </div>
             <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              = (客户付款 − 外部服务商报价) / 客户付款
+              = (客户付款 − 外部服务商报价 − 非服务开销) / 客户付款
             </div>
           </el-card>
         </el-col>
@@ -102,7 +118,7 @@ onMounted(load)
               {{ pct(lift.fde_margin_pct) }}
             </div>
             <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              = (客户付款 − 团队实际成本) / 客户付款
+              = (客户付款 − 团队入账 − 非服务开销) / 客户付款
             </div>
           </el-card>
         </el-col>
@@ -124,7 +140,7 @@ onMounted(load)
     </div>
     <el-alert v-else-if="lift" type="info" :closable="false" show-icon style="margin-top: 16px">
       <template #title>
-        暂无可对比项目 — 需要在「项目收入明细」录入 client 已付款的收入并填写
+        暂无可对比项目 — 需要在「项目和客户管理 → 收入列表」录入 client 已付款的收入并填写
         <strong>客户付款总额</strong> 才能算 FDE vs 老外包利润率对比
       </template>
     </el-alert>

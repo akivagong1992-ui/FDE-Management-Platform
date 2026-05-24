@@ -45,7 +45,7 @@ class Engineer(Base):
     id_doc_number_enc: Mapped[str | None] = mapped_column(Text)  # ciphertext (base64)
 
     # 级别 / 状态
-    level: Mapped[int | None] = mapped_column(default=3)  # L1-L5
+    level: Mapped[int | None] = mapped_column(default=2)  # L1-L3（已停用，cert_level 取代）
     status: Mapped[str] = mapped_column(String(16), default=STATUS_ACTIVE)
     entry_date: Mapped[date | None] = mapped_column(Date)
     exit_date: Mapped[date | None] = mapped_column(Date)
@@ -73,7 +73,7 @@ class Engineer(Base):
     )
 
 
-# Cert level — 厂商认证等级（替代主观个人评级）：L1=初级 / L2=中级 / L3=高级
+# Cert level — 厂商认证等级（替代主观个人评级）：L1 初级 / L2 中级 / L3 高级
 CERT_LEVEL_L1 = "L1"
 CERT_LEVEL_L2 = "L2"
 CERT_LEVEL_L3 = "L3"

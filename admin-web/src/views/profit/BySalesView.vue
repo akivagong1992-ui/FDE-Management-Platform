@@ -37,7 +37,12 @@ onMounted(load)
           <div style="padding: 0 32px">
             <el-table :data="row.projects" size="small">
               <el-table-column prop="project_code" label="编号" width="100" />
-              <el-table-column prop="project_name" label="项目" min-width="200" />
+              <el-table-column label="项目" min-width="200">
+                <template #default="{ row: p }">
+                  <el-tag v-if="p.kind === 'no_revenue'" type="warning" size="small" style="margin-right: 6px">无收入</el-tag>
+                  {{ p.project_name }}
+                </template>
+              </el-table-column>
               <el-table-column label="状态" width="100">
                 <template #default="{ row: p }">{{ STATUS_LABEL[p.status] || p.status }}</template>
               </el-table-column>

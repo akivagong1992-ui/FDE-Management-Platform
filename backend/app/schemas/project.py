@@ -6,9 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 PROJECT_KIND_PATTERN = "^(revenue|no_revenue)$"
 PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|closing|archived|cancelled)$"
-VALUE_BASIS_PATTERN = (
-    "^(outsource_equiv|replace_audit_fee|avoid_penalty|save_hours|strategic_reserve|other)$"
-)
+PROJECT_BID_OUTCOME_PATTERN = "^(pending|won|lost|escaped)$"
+VALUE_BASIS_PATTERN = "^(outsource_equiv|other)$"
 TRANSFER_REASON_PATTERN = "^(resignation|role_change|other)$"
 
 
@@ -23,6 +22,7 @@ class ProjectBase(BaseModel):
     value_created_basis: str | None = Field(default=None, pattern=f"({VALUE_BASIS_PATTERN})?")
     value_created_note: str | None = None
     status: str = Field(default="drafting", pattern=PROJECT_STATUS_PATTERN)
+    bid_outcome: str = Field(default="pending", pattern=PROJECT_BID_OUTCOME_PATTERN)
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     actual_start_date: date | None = None
@@ -38,7 +38,7 @@ class ProjectBase(BaseModel):
     # Phase 3-next-iii (R6 — outsource benchmark credibility)
     benchmark_basis: str | None = Field(
         default=None,
-        pattern="^(historical_avg|industry_benchmark|vendor_quote|manual_estimate)?$",
+        pattern="^(vendor_quote|historical_avg)?$",
     )
     benchmark_basis_note: str | None = None
 
@@ -58,6 +58,7 @@ class ProjectUpdate(BaseModel):
     value_created_basis: str | None = None
     value_created_note: str | None = None
     status: str | None = Field(default=None, pattern=PROJECT_STATUS_PATTERN)
+    bid_outcome: str | None = Field(default=None, pattern=PROJECT_BID_OUTCOME_PATTERN)
     planned_start_date: date | None = None
     planned_end_date: date | None = None
     actual_start_date: date | None = None

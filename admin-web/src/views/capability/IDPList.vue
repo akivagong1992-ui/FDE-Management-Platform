@@ -120,7 +120,7 @@ onMounted(load)
           </el-select>
         </el-form-item>
         <el-form-item label="标题" required>
-          <el-input v-model="form.title" placeholder="例如：L4 → L5 成长路径" />
+          <el-input v-model="form.title" placeholder="例如：L2 → L3 成长路径" />
         </el-form-item>
         <el-form-item label="目标技能"><el-input v-model="form.target_skills" placeholder="逗号分隔" /></el-form-item>
         <el-form-item label="目标证书"><el-input v-model="form.target_certs" placeholder="如 CCIE / CISSP" /></el-form-item>

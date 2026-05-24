@@ -32,7 +32,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="cSavings10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">无收入项目 · 创造价值</div>
+        <div class="kpi-label">无收入项目 · 效益金额</div>
         <div class="kpi-value glow-text"><CountNumber :value="cValue10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card brag">
@@ -57,7 +57,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </div>
 
       <div class="panel">
-        <div class="panel-title">Top 创造价值（无收入项目）</div>
+        <div class="panel-title">Top 效益金额（无收入项目）</div>
         <div v-if="!data?.top_value_projects.length" class="empty">暂无数据</div>
         <div v-else class="bar-list">
           <div v-for="p in data.top_value_projects" :key="p.project_id" class="bar-row">
