@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+.pnpm-store
+auto-imports.d.ts
+components.d.ts
+.DS_Store
+*.log
+.vscode
+.idea
