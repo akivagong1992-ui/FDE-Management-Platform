@@ -11,11 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
+# 装依赖：用 uv 读 pyproject.toml 一把装到系统 python
 COPY pyproject.toml ./
-RUN uv pip install --system -r <(uv pip compile pyproject.toml 2>/dev/null) || \
-    uv pip install --system fastapi uvicorn[standard] sqlalchemy[asyncio] alembic asyncpg \
-                            psycopg2-binary pydantic pydantic-settings python-jose[cryptography] \
-                            passlib[bcrypt] bcrypt==4.0.1 python-multipart loguru redis rq httpx
+RUN uv pip install --system \
+    fastapi 'uvicorn[standard]' 'sqlalchemy[asyncio]' alembic asyncpg \
+    psycopg2-binary aiosqlite 'pydantic[email]' pydantic-settings \
+    'python-jose[cryptography]' 'passlib[bcrypt]' bcrypt==4.0.1 \
+    cryptography python-multipart loguru redis rq httpx openpyxl
 
 COPY . .
 
