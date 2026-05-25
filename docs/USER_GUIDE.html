@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>FDE 管理系统 用户手册</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="/tmp/pandoc-style.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">FDE 管理系统 用户手册</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#fde-管理系统-用户手册v0.6-beta"
+id="toc-fde-管理系统-用户手册v0.6-beta">FDE 管理系统 · 用户手册（v0.6
+beta）</a>
+<ul>
+<li><a href="#目录" id="toc-目录">目录</a></li>
+<li><a href="#系统总览" id="toc-系统总览">1. 系统总览</a></li>
+<li><a href="#用户角色与权限矩阵" id="toc-用户角色与权限矩阵">2.
+用户角色与权限矩阵</a>
+<ul>
+<li><a href="#模块访问权限" id="toc-模块访问权限">2.1
+模块访问权限</a></li>
+<li><a href="#敏感字段权限" id="toc-敏感字段权限">2.2
+敏感字段权限</a></li>
+<li><a href="#关键操作权限" id="toc-关键操作权限">2.3
+关键操作权限</a></li>
+</ul></li>
+<li><a href="#业务模型与核心公式" id="toc-业务模型与核心公式">3.
+业务模型与核心公式</a>
+<ul>
+<li><a href="#资金流4-个核心字段" id="toc-资金流4-个核心字段">3.1
+资金流：4 个核心字段</a></li>
+<li><a href="#三种利润口径并存" id="toc-三种利润口径并存">3.2
+三种利润口径并存</a></li>
+<li><a href="#驾驶舱口径-c-完整计算逻辑"
+id="toc-驾驶舱口径-c-完整计算逻辑">3.3 驾驶舱口径 C 完整计算逻辑
+⭐</a></li>
+<li><a href="#公司毛利率提升公式" id="toc-公司毛利率提升公式">3.4
+公司毛利率提升公式</a></li>
+</ul></li>
+<li><a href="#管理后台模块" id="toc-管理后台模块">4. 管理后台模块</a>
+<ul>
+<li><a href="#首页-dashboard" id="toc-首页-dashboard">4.1 首页
+<code>/dashboard</code></a></li>
+<li><a href="#项目和客户管理-project"
+id="toc-项目和客户管理-project">4.2 项目和客户管理
+<code>/project</code></a></li>
+<li><a href="#派单和工时管理-engineer"
+id="toc-派单和工时管理-engineer">4.3 派单和工时管理
+<code>/engineer</code></a></li>
+<li><a href="#利润管理-profit仅-admin-lead-finance"
+id="toc-利润管理-profit仅-admin-lead-finance">4.4 利润管理
+<code>/profit</code>（仅 admin / lead / finance）</a></li>
+<li><a href="#成本和支出管理-expense"
+id="toc-成本和支出管理-expense">4.5 成本和支出管理
+<code>/expense</code></a></li>
+<li><a href="#项目效率管理-efficiency"
+id="toc-项目效率管理-efficiency">4.6 项目效率管理
+<code>/efficiency</code></a></li>
+<li><a href="#fde-知识库-knowledge" id="toc-fde-知识库-knowledge">4.7
+FDE 知识库 <code>/knowledge</code></a></li>
+<li><a href="#培训管理-capability" id="toc-培训管理-capability">4.8
+培训管理 <code>/capability</code></a></li>
+<li><a href="#关键项目复盘管理-relationship"
+id="toc-关键项目复盘管理-relationship">4.9 关键项目复盘管理
+<code>/relationship</code></a></li>
+<li><a href="#系统设置-用户-users仅-admin"
+id="toc-系统设置-用户-users仅-admin">4.10 系统设置 · 用户
+<code>/users</code>（仅 admin）</a></li>
+</ul></li>
+<li><a href="#工程师端门户" id="toc-工程师端门户">5. 工程师端门户</a>
+<ul>
+<li><a href="#我的派单-my-assignments"
+id="toc-我的派单-my-assignments">5.1 我的派单
+<code>/my-assignments</code></a></li>
+<li><a href="#我的工时-my-timesheets"
+id="toc-我的工时-my-timesheets">5.2 我的工时
+<code>/my-timesheets</code></a></li>
+<li><a href="#我的支出申请-my-expenses"
+id="toc-我的支出申请-my-expenses">5.3 我的支出申请
+<code>/my-expenses</code></a></li>
+</ul></li>
+<li><a href="#驾驶舱大屏" id="toc-驾驶舱大屏">6. 驾驶舱（大屏）</a></li>
+<li><a href="#关键业务流程" id="toc-关键业务流程">7. 关键业务流程</a>
+<ul>
+<li><a href="#立项-中标-交付完整流程"
+id="toc-立项-中标-交付完整流程">7.1 立项 → 中标 → 交付完整流程</a></li>
+<li><a href="#派单流程" id="toc-派单流程">7.2 派单流程</a></li>
+<li><a href="#工时加权规则香港" id="toc-工时加权规则香港">7.3
+工时加权规则（香港）</a></li>
+<li><a href="#支出审批流" id="toc-支出审批流">7.4 支出审批流</a></li>
+<li><a href="#项目复盘流程" id="toc-项目复盘流程">7.5
+项目复盘流程</a></li>
+</ul></li>
+<li><a href="#常见-faq" id="toc-常见-faq">8. 常见 FAQ</a></li>
+<li><a href="#部署与运维要点" id="toc-部署与运维要点">9.
+部署与运维要点</a>
+<ul>
+<li><a href="#本地预览" id="toc-本地预览">9.1 本地预览</a></li>
+<li><a href="#内网-离线部署" id="toc-内网-离线部署">9.2 内网 /
+离线部署</a></li>
+<li><a href="#生产-天翼云-部署" id="toc-生产-天翼云-部署">9.3 生产
+(天翼云) 部署</a></li>
+<li><a href="#备份与恢复" id="toc-备份与恢复">9.4 备份与恢复</a></li>
+<li><a href="#升级流程" id="toc-升级流程">9.5 升级流程</a></li>
+<li><a href="#重要环境变量" id="toc-重要环境变量">9.6
+重要环境变量</a></li>
+</ul></li>
+<li><a href="#附录-文档维护" id="toc-附录-文档维护">附录 ·
+文档维护</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="fde-管理系统-用户手册v0.6-beta">FDE 管理系统 · 用户手册（v0.6
+beta）</h1>
+<blockquote>
+<p>适用版本：v0.6-beta（2026-05-24 freeze） 编写对象：管理后台用户 +
+工程师端用户 + 驾驶舱观看者 配套文档：<a
+href="../README.md">README.md</a> 业务定位 · <a
+href="../PLAN.md">PLAN.md</a> 开发阶段 · <a
+href="deployment.md">docs/deployment.md</a> 部署</p>
+</blockquote>
+<hr />
+<h2 id="目录">目录</h2>
+<ol type="1">
+<li><a href="#1-系统总览">系统总览</a></li>
+<li><a href="#2-用户角色与权限矩阵">用户角色与权限矩阵</a></li>
+<li><a href="#3-业务模型与核心公式">业务模型与核心公式</a></li>
+<li><a href="#4-管理后台模块">管理后台模块</a> — 10 个 sidebar
+模块逐一说明</li>
+<li><a href="#5-工程师端门户">工程师端门户</a></li>
+<li><a href="#6-驾驶舱大屏">驾驶舱（大屏）</a></li>
+<li><a href="#7-关键业务流程">关键业务流程</a></li>
+<li><a href="#8-常见-faq">常见 FAQ</a></li>
+<li><a href="#9-部署与运维要点">部署与运维要点</a></li>
+</ol>
+<hr />
+<h2 id="系统总览">1. 系统总览</h2>
+<p><strong>定位</strong>：中国电信国际香港分公司 · FDE（Field Delivery
+Engineer）团队的外包工程师<strong>内化管理平台</strong>。把”外包给
+vendor 服务”的传统模式，转成”团队自管派工 + 数据沉淀 +
+驾驶舱给老板看”。</p>
+<p><strong>三个前端</strong>：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>端</th>
+<th>地址（dev）</th>
+<th>给谁看</th>
+<th>主要功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>管理后台（admin-web）</td>
+<td>http://localhost:5173</td>
+<td>admin / lead / pm / finance / engineer / vendor 6 类用户</td>
+<td>录入 + 审批 + 看报表</td>
+</tr>
+<tr>
+<td>工程师门户（同一 admin-web，按角色裁剪）</td>
+<td>http://localhost:5173</td>
+<td>engineer 角色</td>
+<td>只能看「我的派单 / 工时 / 支出」</td>
+</tr>
+<tr>
+<td>驾驶舱（cockpit-screen）</td>
+<td>http://localhost:5174</td>
+<td>老板、客户来访演示</td>
+<td>5 个 Tab 大屏，<strong>永不展示团队真实利润</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>默认账号</strong>（seed_demo 创建）：</p>
+<table>
+<thead>
+<tr>
+<th>用户名</th>
+<th>密码</th>
+<th>角色</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td><code>admin123</code></td>
+<td>lead（团队负责人，看全部）</td>
+</tr>
+<tr>
+<td><code>finance</code></td>
+<td><code>fin123</code></td>
+<td>finance</td>
+</tr>
+<tr>
+<td><code>pm1</code></td>
+<td><code>pm123</code></td>
+<td>pm</td>
+</tr>
+<tr>
+<td><code>eng1</code></td>
+<td><code>eng123</code></td>
+<td>engineer</td>
+</tr>
+<tr>
+<td><code>v1</code>～<code>v4</code></td>
+<td><code>demo123</code></td>
+<td>vendor（各对应一家 vendor 公司）</td>
+</tr>
+</tbody>
+</table>
+<p>驾驶舱访问需要带 <code>X-Cockpit-Token: cockpit-dev-token</code>
+头（默认前端已带）。</p>
+<hr />
+<h2 id="用户角色与权限矩阵">2. 用户角色与权限矩阵</h2>
+<p>系统有 <strong>6 个角色</strong>：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>角色</th>
+<th>中文</th>
+<th>主要职责</th>
+<th>关联实体</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>超级管理员</td>
+<td>全权限，仅一个内部账号</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>lead</code></td>
+<td>团队负责人</td>
+<td>看全部利润、改业务策略</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>pm</code></td>
+<td>项目经理</td>
+<td>立项、派单、改项目、审支出（不看利润）</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>finance</code></td>
+<td>财务</td>
+<td>审支出、看利润、出报表</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>engineer</code></td>
+<td>基层工程师</td>
+<td>看自己派单、提工时、申支出</td>
+<td><code>User.engineer_id → engineers</code></td>
+</tr>
+<tr>
+<td><code>vendor</code></td>
+<td>Vendor 公司联系人</td>
+<td>提交 vendor 名下支出（不审批）</td>
+<td><code>User.vendor_id → vendors</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="模块访问权限">2.1 模块访问权限</h3>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th>模块</th>
+<th>admin</th>
+<th>lead</th>
+<th>pm</th>
+<th>finance</th>
+<th>engineer</th>
+<th>vendor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>首页</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅（精简）</td>
+<td>❌（直接落 /expense）</td>
+</tr>
+<tr>
+<td>项目和客户管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>派单和工时管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>利润管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>成本和支出管理（看全部 + 审批）</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>成本和支出管理（<strong>只看本 vendor 的，只能提交</strong>）</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>项目效率管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>FDE 知识库</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅（不看机密项）</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>培训管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅（独占看成本字段）</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>关键项目复盘管理</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>系统设置 · 用户</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>我的派单 / 工时 / 支出申请</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>✅</td>
+<td>❌</td>
+</tr>
+</tbody>
+</table>
+<h3 id="敏感字段权限">2.2 敏感字段权限</h3>
+<table>
+<thead>
+<tr>
+<th>字段</th>
+<th>看得到的角色</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工程师月服务费 <code>monthly_cost_to_telecom</code></td>
+<td>admin / lead / finance</td>
+</tr>
+<tr>
+<td>证件号明文（解密 + 审计日志）</td>
+<td>admin / lead</td>
+</tr>
+<tr>
+<td>项目「团队真实利润」</td>
+<td>admin / lead / finance</td>
+</tr>
+<tr>
+<td>培训记录的「成本」字段</td>
+<td>admin / lead / finance</td>
+</tr>
+<tr>
+<td>知识资产 confidential 级</td>
+<td>admin / lead / pm / finance</td>
+</tr>
+</tbody>
+</table>
+<h3 id="关键操作权限">2.3 关键操作权限</h3>
+<table>
+<thead>
+<tr>
+<th>操作</th>
+<th>谁能做</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>创建 / 切换 <code>no_revenue</code> 项目</td>
+<td>仅 admin / lead</td>
+</tr>
+<tr>
+<td>转移销售归属（生成 SalesTransferLog）</td>
+<td>仅 admin / lead</td>
+</tr>
+<tr>
+<td>删除项目 / 用户 / vendor</td>
+<td>仅 admin / lead</td>
+</tr>
+<tr>
+<td>创建支出申请</td>
+<td>engineer（自己提）/ vendor（vendor 端提）/ pm（代提）</td>
+</tr>
+<tr>
+<td>审批支出（approve / reject / mark paid）</td>
+<td>admin / lead / finance</td>
+</tr>
+<tr>
+<td>创建 vendor 用户 + 绑定 vendor_id</td>
+<td>仅 admin</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="业务模型与核心公式">3. 业务模型与核心公式</h2>
+<blockquote>
+<p>⚠️
+本节是整个系统的「灵魂」，<strong>业务模型若改要先改这里</strong>。已
+freeze 状态见 <a href="../README.md#17">README §1.7</a>。</p>
+</blockquote>
+<h3 id="资金流4-个核心字段">3.1 资金流：4 个核心字段</h3>
+<p>每个有收入项目都有 4 个数字：</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>字段</th>
+<th>中文</th>
+<th>数据库位置</th>
+<th>谁录入</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gross_amount</code></td>
+<td>客户付款（含税总价）</td>
+<td><code>project_revenues.gross_amount</code></td>
+<td>finance 收款时填</td>
+</tr>
+<tr>
+<td><code>non_service_expense</code></td>
+<td>非服务开销（硬件 / 软件 / 通行费等）</td>
+<td><code>project_revenues.non_service_expense</code></td>
+<td>finance 录入</td>
+</tr>
+<tr>
+<td><code>amount</code>（team_revenue）</td>
+<td>团队入账</td>
+<td><code>project_revenues.amount</code></td>
+<td>finance 录入</td>
+</tr>
+<tr>
+<td><code>outsource_benchmark_amount</code></td>
+<td>外包估算（如果走老外包要多少）</td>
+<td><code>projects.outsource_benchmark_amount</code></td>
+<td>sales 立项时填，<strong>只能填真实 vendor 询价</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>典型比例</strong>（每笔项目大约符合）： -
+<code>non_service_expense ≈ 70% × gross_amount</code> -
+<code>team_revenue ≈ 20% × gross_amount</code>（这部分由团队拿） - 剩
+<code>~10%</code> 是公司毛利（差额）</p>
+<h3 id="三种利润口径并存">3.2 三种利润口径并存</h3>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th>口径</th>
+<th>谁看</th>
+<th>公式</th>
+<th>永不出现的字段</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A</strong> 团队整体利润</td>
+<td>admin / lead / finance</td>
+<td><code>VSF − Σ 全部支出（含外包工程师支出）</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>B</strong> 销售-项目-客户维度</td>
+<td>admin / lead / finance</td>
+<td><code>团队入账 − VSF</code>（有收入）/
+<code>0 − 外包估算</code>（no_revenue）</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>C</strong> 驾驶舱降本</td>
+<td>所有人 + 老板</td>
+<td><code>外包估算 − 团队入账</code>（won）/
+<code>外包估算</code>（no_revenue 已完成）</td>
+<td>绝对不能出现 revenue/cost/margin 等 A/B 关键字</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>🔒 CI 守门：<code>tests/test_cockpit_isolation.py</code> 强制断言
+<code>/api/cockpit/*</code> 接口的 JSON response <strong>不含</strong>
+<code>revenue / cost / margin / team_margin / vendor_fees</code>
+等字段名。</p>
+</blockquote>
+<h3 id="驾驶舱口径-c-完整计算逻辑">3.3 驾驶舱口径 C 完整计算逻辑 ⭐</h3>
+<p>文件：<a
+href="../backend/app/services/profit.py">backend/app/services/profit.py</a>
+的 <code>compute_cockpit_savings_and_value()</code>。</p>
+<h4
+id="有收入项目project_kind_revenue">有收入项目（PROJECT_KIND_REVENUE）</h4>
+<p><strong>门槛</strong>：<code>bid_outcome == 'won'</code>（已中标，团队默认会拿到
+team revenue）。</p>
+<pre><code>savings = Σ (outsource_benchmark_amount − Σ project_revenues.amount)
+         per project where bid_outcome=&#39;won&#39;</code></pre>
+<h4
+id="无收入项目project_kind_no_revenue">无收入项目（PROJECT_KIND_NO_REVENUE）</h4>
+<p><strong>门槛</strong>：<code>status ∈ {closing, archived}</code>（已完成，不含立项
+/ 进行中 / cancelled）。</p>
+<pre><code>value_created = Σ outsource_benchmark_amount per project where status in {closing, archived}</code></pre>
+<h4 id="总值">总值</h4>
+<pre><code>total_c_view = savings + value_created</code></pre>
+<h4 id="bid_outcome-四种状态对-c-的影响"><code>bid_outcome</code>
+四种状态对 C 的影响</h4>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>含义</th>
+<th>计入 savings？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pending</code></td>
+<td>投标中 / 未定（默认）</td>
+<td>❌ 不计</td>
+</tr>
+<tr>
+<td><code>won</code></td>
+<td>已中标</td>
+<td>✅ 立即计入（无需等回款）</td>
+</tr>
+<tr>
+<td><code>lost</code></td>
+<td>已丢标</td>
+<td>❌ 不计</td>
+</tr>
+<tr>
+<td><code>escaped</code></td>
+<td>中标后跑单</td>
+<td>❌ 不计</td>
+</tr>
+</tbody>
+</table>
+<h4 id="实际操作流程">实际操作流程</h4>
+<pre><code>1. sales 拍报价 + 立项                  → bid_outcome=pending, 驾驶舱不动
+2. 投标中 ...                            → 不动
+3. 客户告知中标，sales 改 bid_outcome=won → 驾驶舱立即加 (benchmark − team_revenue)
+4. 财务录入 ProjectRevenue.amount       → 驾驶舱按新公式重算
+5. 项目正常交付 closing / archived       → 驾驶舱不变（已计入）
+6. 客户违约跑单，改 bid_outcome=escaped  → 驾驶舱立即扣除</code></pre>
+<p><strong>关键</strong>：v0.6 起，savings
+一旦中标即计入，<strong>不再按实收封顶</strong>（区别于 v0.4
+老逻辑）。</p>
+<h3 id="公司毛利率提升公式">3.4 公司毛利率提升公式</h3>
+<p>文件：<a
+href="../backend/app/services/profit.py">backend/app/services/profit.py</a>
+<code>compute_company_margin_lift()</code>。</p>
+<pre><code>老外包模式毛利率 = (gross − benchmark − non_service_expense) / gross
+                 # 没有 FDE 团队时，公司直接付外部 benchmark + non_service
+                 
+FDE 模式毛利率 = (gross − VSF − non_service_expense) / gross
+               # 团队自管，公司付 VSF（含团队真实利润）+ non_service
+               
+利润率提升 = FDE 毛利率 − 老外包毛利率   # 单位：百分点</code></pre>
+<p>实测 seed 数据：老外包 6.34%，FDE 9.54%，<strong>提升 +3.20
+个百分点</strong>。</p>
+<hr />
+<h2 id="管理后台模块">4. 管理后台模块</h2>
+<p>10 个模块按 sidebar 顺序排（角色不同看到的会少几项，见 §2.1）。</p>
+<h3 id="首页-dashboard">4.1 首页 <code>/dashboard</code></h3>
+<p>按 4 段呈现： 1.
+<strong>业务规模</strong>：在管项目数、已中标项目数、活跃客户数、本月支出
+2. <strong>利润健康</strong>（仅 lead / finance /
+admin）：团队真实利润、公司毛利率对比、月度趋势 3.
+<strong>风险预警</strong>：已中标缺报价、过期 VSF、逾期项目 4.
+<strong>快捷入口</strong>：到 5 大模块</p>
+<p>vendor / engineer 角色登录会直接跳到对应工作页（不看首页 KPI）。</p>
+<h3 id="项目和客户管理-project">4.2 项目和客户管理
+<code>/project</code></h3>
+<p>5 个 Tab：项目 / 客户 / 销售 / 收入 / 续单跟踪。</p>
+<ul>
+<li><strong>项目</strong>：核心实体，含
+kind（revenue/no_revenue）、status、bid_outcome、外包估算、对接工程师、摘要、互动留言等</li>
+<li><strong>客户（NeedParty）</strong>：哪些公司 /
+部门是需求方；可勾选「驾驶舱可见」决定 logo 是否上墙</li>
+<li><strong>销售（SalesPerson）</strong>：销售人员；项目立项时必须挂一个；停用人员不能再被分配</li>
+<li><strong>收入（ProjectRevenue）</strong>：finance 录入每笔回款 +
+gross_amount + non_service_expense</li>
+<li><strong>续单跟踪（RenewalAttempt）</strong>：每次续单的尝试（pending/won/lost
++ 6 类输因），驾驶舱算续单胜率</li>
+</ul>
+<p>操作：所有列表都支持 Excel 风格列可见性 + 列筛选下拉。</p>
+<h3 id="派单和工时管理-engineer">4.3 派单和工时管理
+<code>/engineer</code></h3>
+<p>4 个 Tab：</p>
+<ul>
+<li><strong>派单</strong>：把工程师派到项目（Assignment）。含计划 /
+实际工时、留言对话、接 / 拒流程</li>
+<li><strong>工时</strong>：工程师录入工时（自动按规则加权），admin/pm
+审批</li>
+<li><strong>工程师管理</strong>：engineers 表 CRUD，含证件号脱敏 +
+一键解密查看（带审计日志）</li>
+<li><strong>能力矩阵管理</strong>：技能（Skill）字典 — 认证名称 + 类别 +
+厂商 + L1/L2/L3 等级；支持批量导入</li>
+</ul>
+<p>工程师挂技能时引用 Skill
+字典；驾驶舱「团队能力视图」热力图就靠这里。</p>
+<h3 id="利润管理-profit仅-admin-lead-finance">4.4 利润管理
+<code>/profit</code>（仅 admin / lead / finance）</h3>
+<p>4 个 Tab：</p>
+<ul>
+<li><strong>整体</strong>：口径 A KPI（团队真实利润 = VSF − 全部支出）+
+公司毛利率提升公式（含老外包 vs FDE 对比）</li>
+<li><strong>按销售人员</strong>：口径 B
+分组，每个销售看自己经手项目的盈亏</li>
+<li><strong>按客户</strong>：口径 B 按需求方分组</li>
+<li><strong>驾驶舱对外</strong>：预览给驾驶舱用的口径 C 数字（与 cockpit
+screen 一致）</li>
+</ul>
+<blockquote>
+<p>💡 团队毛利略负是常见现象 — lost 项目的 pre-sales VSF
+已经付了但没收回。可通过 tooltip 解释。</p>
+</blockquote>
+<h3 id="成本和支出管理-expense">4.5 成本和支出管理
+<code>/expense</code></h3>
+<p>3 个 Tab（vendor 角色只看到第 1 个）：</p>
+<ul>
+<li><strong>Vendor 支出管理</strong>：8 类支出（耗材 / 分包 / 临时人力 /
+许可证 / 差旅 / 培训费 / 其他 /
+<strong>外包工程师支出</strong>）。审批流：pending → approved/rejected →
+paid</li>
+<li><strong>Vendor 服务费（VSF）</strong>：每月给 vendor
+的服务费记录，可挂项目</li>
+<li><strong>供应商（Supplier）</strong>：支出对应的发票方公司</li>
+</ul>
+<p><strong>vendor 角色规则</strong>： - 只能看到自己 vendor
+名下的支出记录 - 只能提交（创建），不能 approve/reject/paid - 顶栏其它
+tab 不显示</p>
+<h3 id="项目效率管理-efficiency">4.6 项目效率管理
+<code>/efficiency</code></h3>
+<p>KPI 4 个 + 在管项目进度表：</p>
+<ul>
+<li>在管项目数 / 本月完成 / 14 天内到期 / 累计已交付</li>
+<li>表格列：项目名、状态、<strong>对接工程师</strong>（内联编辑）、<strong>项目摘要</strong>（内联编辑）、计划止、到期标签、<strong>互动留言</strong></li>
+</ul>
+<p>互动留言 = admin ↔︎ 工程师评论流，催办 / 反馈 / 备注。</p>
+<h3 id="fde-知识库-knowledge">4.7 FDE 知识库
+<code>/knowledge</code></h3>
+<p>知识资产（KnowledgeAsset）CRUD + 跨项目复用（AssetReference）。</p>
+<ul>
+<li>7 个分类：代码片段 / 设计文档 / 技术方案 / 最佳实践 / 工艺标准 /
+问题解决手册 / 其他</li>
+<li>三级保密分级：public（全员可见） / internal（员工可见，engineer
+也能看） / confidential（管理层才能看，engineer 不可见）</li>
+<li>复用记录：填「这条资产被项目 X 引用，节省 N 工时」→
+驾驶舱算”复用节省总工时”</li>
+</ul>
+<h3 id="培训管理-capability">4.8 培训管理 <code>/capability</code></h3>
+<p>3 个 Tab：</p>
+<ul>
+<li><strong>成长曲线</strong>：季度快照（EngineerSkillSnapshot），SVG
+折线展示团队人均技能数趋势；admin 可一键拍快照</li>
+<li><strong>培训记录</strong>：TrainingRecord CRUD（成本字段仅
+lead/finance 看得到）</li>
+<li><strong>IDP 个人发展计划</strong>：每个工程师的 IDP CRUD（目标 /
+进度 / 状态）</li>
+</ul>
+<h3 id="关键项目复盘管理-relationship">4.9 关键项目复盘管理
+<code>/relationship</code></h3>
+<p>2 个 Tab：</p>
+<ul>
+<li><strong>项目复盘（ProjectRetrospective）</strong>：每个完成项目可填一份复盘报告（做对
+/ 要改 / 行动项 / 1-5 星满意度 / 闭环开关）</li>
+<li><strong>续单跟踪</strong>：见 §4.2 同款，这里以”客户视角”打开</li>
+</ul>
+<h3 id="系统设置-用户-users仅-admin">4.10 系统设置 · 用户
+<code>/users</code>（仅 admin）</h3>
+<p>用户 CRUD：</p>
+<ul>
+<li>创建用户：用户名 + 密码 + 角色</li>
+<li>engineer 角色要绑定 <code>engineer_id</code>（关联一条 engineers
+记录）</li>
+<li>vendor 角色要绑定 <code>vendor_id</code>（关联一家 vendor
+公司）</li>
+<li>改密码 / 改角色 / 停用</li>
+</ul>
+<hr />
+<h2 id="工程师端门户">5. 工程师端门户</h2>
+<p>engineer 角色登录后<strong>只看到 4 个菜单</strong>：首页 / 我的派单
+/ 我的工时 / 我的支出申请。后端守门：所有非 engineer 路由会被改写到
+<code>/dashboard</code>。</p>
+<h3 id="我的派单-my-assignments">5.1 我的派单
+<code>/my-assignments</code></h3>
+<p>显示当前用户名下的 Assignment 列表，按状态分组。</p>
+<ul>
+<li><strong>待接单</strong>：admin/pm
+派过来的新单，可点「接受」/「拒绝（带原因）」</li>
+<li><strong>进行中</strong>：可在内联对话区跟 PM 沟通（消息流）</li>
+<li><strong>已结束</strong>：归档查看</li>
+</ul>
+<h3 id="我的工时-my-timesheets">5.2 我的工时
+<code>/my-timesheets</code></h3>
+<p>录入工时（Timesheet）：日期 + 项目 + 工时数 +
+类别。系统自动按规则加权（见 §7.3）。</p>
+<ul>
+<li>提交后状态为 <code>pending</code>，等 pm/admin 审批</li>
+<li>已审批的不能再改</li>
+</ul>
+<h3 id="我的支出申请-my-expenses">5.3 我的支出申请
+<code>/my-expenses</code></h3>
+<p>创建支出申请（ExpenseRequest），见 §7.4 流程。看不到他人提交。</p>
+<hr />
+<h2 id="驾驶舱大屏">6. 驾驶舱（大屏）</h2>
+<p>地址：http://localhost:5174</p>
+<p>5 个 Tab，自动轮播（点右上角按钮开启），每 60 秒自动刷数据。</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>Tab</th>
+<th>名称</th>
+<th>主要展示</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>01</td>
+<td>总览视图</td>
+<td>KPI 五连 + HK 18 区项目分布地图 + 客户 logo 墙 + 数据健康面板</td>
+</tr>
+<tr>
+<td>02</td>
+<td>降本视图</td>
+<td>老外包 vs FDE 对比、节省金额排行、贡献 vendor 排行</td>
+</tr>
+<tr>
+<td>03</td>
+<td>项目进度视图</td>
+<td>在管 / 本月完成 / 14 天到期 / 累计交付 + 项目卡片墙 + 5 大效率
+KPI</td>
+</tr>
+<tr>
+<td>04</td>
+<td>技术沉淀视图</td>
+<td>累计知识资产 / 复用次数 / 节省工时 / 项目覆盖 + 分类分布 +
+<strong>最新沉淀滚动</strong></td>
+</tr>
+<tr>
+<td>05</td>
+<td>团队能力视图</td>
+<td><strong>工程师总数（含在职）</strong> + 累计证书 + 认证类别 +
+人均技能 + Top 持证 + 6×3 热力图</td>
+</tr>
+</tbody>
+</table>
+<p><strong>口径</strong>：所有 Tab 数字均走
+<code>/api/cockpit/*</code>，由 CI 守门确保不含 A/B 字段。</p>
+<p><strong>配色规范</strong>： - 主色：<code>--cockpit-accent</code> 青
+<code>#00e5ff</code> - 紫色：<code>--cockpit-accent-2</code>
+<code>#7c4dff</code> - 粉红 brag：<code>--cockpit-accent-3</code>
+<code>#ff4081</code>（最重要数字） - 金黄
+brag-2：<code>--cockpit-accent-gold</code> <code>#ffe082</code>（次重要
+/ 成长指标） - 绿色 growth：<code>--cockpit-accent-green</code>
+<code>#67ff8a</code>（正向 delta）</p>
+<hr />
+<h2 id="关键业务流程">7. 关键业务流程</h2>
+<h3 id="立项-中标-交付完整流程">7.1 立项 → 中标 → 交付完整流程</h3>
+<pre><code>1. sales 在 /project 新增项目，填外包估算（必须真实询价依据）
+   → kind=revenue (默认), bid_outcome=pending
+   
+2. 投标过程中，sales 可以改报价（外包估算）
+
+3. 客户中标通知到达：
+   sales 把 bid_outcome 改 won → 驾驶舱降本数字立即跳升
+   
+4. PM 在 /engineer 派单（Assignment），工程师在工程师端「接单」
+   
+5. 工程师在 /engineer 端录工时（按周或按月）
+   PM/admin 审批工时
+   
+6. 项目过程中产生外部支出：
+   工程师 / vendor 提交 expense → finance/lead 审批 → 付款
+   
+7. 客户分期付款时，finance 在 /project 收入 Tab 录入 ProjectRevenue
+   含 gross_amount / amount(team_revenue) / non_service_expense
+   
+8. 项目交付完成：sales 改 status 为 closing / archived
+   
+9. PM/lead 在 /relationship 写复盘报告（含满意度）
+   
+10. 客户考虑续单：在 /project 续单 Tab 创建 RenewalAttempt 跟踪</code></pre>
+<h3 id="派单流程">7.2 派单流程</h3>
+<pre><code>PM 创建 Assignment（指定工程师 + 项目 + 计划工时 + 起止日期）
+  ↓ status = &#39;proposed&#39;
+工程师收到推送（站内信 / 飞书，Phase 4）
+  ↓
+工程师在「我的派单」里：
+  ├── 接受 → status = &#39;active&#39;，开始记工时
+  └── 拒绝 → 必须填原因，状态回到 PM 看，PM 改派或撤销
+  
+project 完成时：
+  PM 把 Assignment 改 status = &#39;ended&#39;</code></pre>
+<h3 id="工时加权规则香港">7.3 工时加权规则（香港）</h3>
+<table>
+<thead>
+<tr>
+<th>时段</th>
+<th>系数</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>工作日白天（周一～周五，09:00-18:00）</td>
+<td>1.0×</td>
+<td>标准工时</td>
+</tr>
+<tr>
+<td>工作日晚上（周一～周五，18:00 后）</td>
+<td>1.5×</td>
+<td>加班</td>
+</tr>
+<tr>
+<td>非工作日（周六 / 周日 / 香港公众假期）</td>
+<td>1.5×</td>
+<td>加班</td>
+</tr>
+</tbody>
+</table>
+<p>工程师录入时填实际工时和类别，系统自动算加权工时。审批 =
+锁定，不能再改。</p>
+<h3 id="支出审批流">7.4 支出审批流</h3>
+<pre><code>提交（engineer / vendor / pm）
+  → status = &#39;pending&#39;
+       ↓
+  审批（admin / lead / finance）
+       ├── approve → status = &#39;approved&#39;
+       │       ↓
+       │   财务付款标记
+       │   → status = &#39;paid&#39;
+       │
+       └── reject (带 reject_reason) → status = &#39;rejected&#39;
+                                       不进 cost 累计</code></pre>
+<p><strong>vendor 角色特殊规则</strong>：只能提交（不能
+approve/reject/paid），只看到自己 vendor 公司名下的记录。</p>
+<h3 id="项目复盘流程">7.5 项目复盘流程</h3>
+<pre><code>项目 closing / archived 后：
+  PM 或 lead 在 /relationship 创建 ProjectRetrospective
+    ├── 做对的事
+    ├── 要改的事
+    ├── 行动项列表（每项有责任人 + ddl）
+    ├── 客户满意度 1-5 星
+    └── 闭环开关：行动项全部跟到完成时勾上
+  
+驾驶舱 Tab 5（项目进度视图）按&quot;闭环率&quot;算团队执行力</code></pre>
+<hr />
+<h2 id="常见-faq">8. 常见 FAQ</h2>
+<p><strong>Q：新员工入职怎么开账号？</strong> A：admin 在
+<code>/users</code> 新增用户。若是基层工程师，先在
+<code>/engineer</code> 工程师管理建一条 engineers 记录，再创建 User
+时绑定 <code>engineer_id</code>。给 vendor 联系人开账号同理，绑
+<code>vendor_id</code>。</p>
+<p><strong>Q：项目跑单了（escape）怎么操作？</strong> A：在
+<code>/project</code> 把项目的 <code>bid_outcome</code> 改成
+<code>escaped</code>。驾驶舱的 savings
+会立即减去这个项目原本的贡献。原有的 VSF
+和支出<strong>不会</strong>自动撤回（已发生的成本就是发生了），所以团队真实利润会显得偏低
+— 这是真实账。</p>
+<p><strong>Q：客户回款分期怎么录？</strong> A：在 <code>/project</code>
+→ 收入 Tab，<strong>每收一笔录一条
+ProjectRevenue</strong>。同一项目可以有多条。<code>gross_amount</code>（客户总价）和
+<code>non_service_expense</code>（非服务开销）按每笔填，系统累加。</p>
+<p><strong>Q：培训费应该走哪个支出类型？</strong> A：用
+<code>training</code>
+类型（外部培训费）。如果是「给某个工程师的专项培训」可在
+<code>/capability</code> → 培训记录 Tab 关联到 IDP 计划。</p>
+<p><strong>Q：vendor 给我们一个新公司的工程师，怎么挂？</strong> A：先在
+vendor 列表加这家公司，再在工程师管理新增工程师 + 选 vendor +
+选签约形态（vendor 直签 / vendor
+通过劳务公司）。如果走劳务公司还要填劳务公司名字。</p>
+<p><strong>Q：能力矩阵的 L1/L2/L3 是什么意思？</strong>
+A：基于厂商认证等级，L1=初级 / L2=中级 / L3=高级。例如
+CCNA=L1，CCNP=L2，CCIE=L3。能力矩阵热力图按「认证类别 ×
+等级」展示团队覆盖。</p>
+<p><strong>Q：驾驶舱数字怎么实时刷？</strong> A：每个 Tab 自动 60 秒重新
+fetch 一次。手动刷新浏览器也立即拉新数据。</p>
+<p><strong>Q：忘记密码怎么办？</strong> A：让 admin 在
+<code>/users</code> 重置该用户密码即可（系统暂无邮件找回流程，Phase 4
+加）。</p>
+<p><strong>Q：可以批量导入认证目录吗？</strong>
+A：<code>/engineer</code> 能力矩阵管理 → 「批量导入」按钮，按「分类 +
+厂商, 名称, 等级」格式粘贴多行即可。</p>
+<p><strong>Q：怎么看「这个项目到底赚了多少」？</strong> A：去
+<code>/profit</code> → 按客户 Tab，找到这个客户，展开看每个项目的
+revenue / cost / margin。注意这是口径 B 数字（团队入账 −
+VSF），不等于公司总利润。</p>
+<hr />
+<h2 id="部署与运维要点">9. 部署与运维要点</h2>
+<h3 id="本地预览">9.1 本地预览</h3>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> docker-compose.local.yml up <span class="at">--build</span></span></code></pre></div>
+<p>详见 <a
+href="../docker-compose.local.yml">docker-compose.local.yml</a>
+顶部注释。</p>
+<h3 id="内网-离线部署">9.2 内网 / 离线部署</h3>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 本机 export</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> save manpower-management-platform-<span class="dt">{backend</span><span class="op">,</span><span class="dt">admin-web</span><span class="op">,</span><span class="dt">cockpit-screen}</span> <span class="dt">\</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  postgres:16-alpine <span class="kw">|</span> <span class="fu">gzip</span> <span class="op">&gt;</span> manpower-images.tar.gz</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 目标机</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a><span class="fu">gunzip</span> <span class="at">-c</span> manpower-images.tar.gz <span class="kw">|</span> <span class="ex">docker</span> load</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> compose <span class="at">-f</span> docker-compose.offline.yml up <span class="at">-d</span></span></code></pre></div>
+<p>详见 <a
+href="../docker-compose.offline.yml">docker-compose.offline.yml</a>。</p>
+<h3 id="生产-天翼云-部署">9.3 生产 (天翼云) 部署</h3>
+<p>详见 <a href="deployment_ctyun.md">docs/deployment_ctyun.md</a> 和 <a
+href="../docker-compose.prod.yml">docker-compose.prod.yml</a>。</p>
+<p>要点： - <code>.env.production</code> 必须改：<code>JWT_SECRET</code>
+/ <code>FIELD_ENCRYPTION_KEY</code> / <code>POSTGRES_PASSWORD</code> /
+<code>DEFAULT_ADMIN_PASSWORD</code> / <code>COCKPIT_TOKEN</code> -
+<code>COCKPIT_ALLOWED_IPS</code> 配领导出口 IP 白名单，或者只通过 token
+控制 - 数据备份：prod compose 含 pg-backup service，每日凌晨
+pg_dump，保留 30 天 - HTTPS：nginx 配 <code>nginx/certs/</code> 放 Let’s
+Encrypt 证书</p>
+<h3 id="备份与恢复">9.4 备份与恢复</h3>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 备份</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec manpower-pg pg_dump <span class="at">-U</span> manpower <span class="at">-d</span> manpower <span class="at">-Fc</span> <span class="op">&gt;</span> backup-<span class="va">$(</span><span class="fu">date</span> +%F<span class="va">)</span>.dump</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 恢复</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="ex">docker</span> exec <span class="at">-i</span> manpower-pg pg_restore <span class="at">-U</span> manpower <span class="at">-d</span> manpower <span class="at">-c</span> <span class="op">&lt;</span> backup-2026-05-24.dump</span></code></pre></div>
+<h3 id="升级流程">9.5 升级流程</h3>
+<ol type="1">
+<li><code>git pull</code> 拉新代码</li>
+<li><code>docker compose -f docker-compose.prod.yml build</code></li>
+<li><code>docker compose -f docker-compose.prod.yml up -d</code></li>
+<li>容器启动会自动跑
+<code>alembic upgrade head</code>（已存量数据不会丢）</li>
+<li>看日志确认 migration 全部
+apply：<code>docker compose logs backend | grep alembic</code></li>
+</ol>
+<h3 id="重要环境变量">9.6 重要环境变量</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>变量</th>
+<th>用途</th>
+<th>必改？</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>postgres 连接串</td>
+<td>改</td>
+</tr>
+<tr>
+<td><code>JWT_SECRET</code></td>
+<td>JWT 签名密钥</td>
+<td><strong>必改</strong></td>
+</tr>
+<tr>
+<td><code>FIELD_ENCRYPTION_KEY</code></td>
+<td>证件号等敏感字段对称加密</td>
+<td><strong>必改</strong>（且改后老数据解不开）</td>
+</tr>
+<tr>
+<td><code>DEFAULT_ADMIN_USERNAME/PASSWORD</code></td>
+<td>首次启动创建的 admin 账号</td>
+<td><strong>必改密码</strong></td>
+</tr>
+<tr>
+<td><code>COCKPIT_ALLOWED_IPS</code></td>
+<td>驾驶舱 IP 白名单（逗号分隔）</td>
+<td>按需</td>
+</tr>
+<tr>
+<td><code>COCKPIT_TOKEN</code></td>
+<td>白名单外的兜底 token</td>
+<td><strong>必改</strong></td>
+</tr>
+<tr>
+<td><code>CORS_ORIGINS</code></td>
+<td>允许的前端来源</td>
+<td>改</td>
+</tr>
+<tr>
+<td><code>UPLOAD_DIR</code></td>
+<td>上传文件目录</td>
+<td>默认即可</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="附录-文档维护">附录 · 文档维护</h2>
+<ul>
+<li>业务模型若变 → 先改 <a href="../README.md#17">README
+§1.7</a>，再改本手册 §3</li>
+<li>新增模块 → 在本手册 §4 加一节，更新 §2.1 权限表</li>
+<li>新增角色 → 改 §2，影响 §4 表格、权限矩阵</li>
+<li>驾驶舱 Tab 数变 → 改 §6，同步前端 <a
+href="../cockpit-screen/src/components/CockpitFrame.vue">CockpitFrame.vue</a></li>
+</ul>
+</body>
+</html>
