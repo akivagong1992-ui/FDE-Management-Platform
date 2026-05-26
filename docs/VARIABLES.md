@@ -403,6 +403,8 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 
 **典型数字**：老外包 ~6%，FDE ~10%，提升 +3-5 个百分点。
 
+**驾驶舱限定版**（`/api/cockpit/margin-lift-pct`）：只暴露 3 个 `_pct` 字段 + `counted_projects` + `unit:"%"`，藏掉 admin 版的所有绝对金额（gross / team_revenue / non_service / benchmark / outsource_margin / fde_margin / extra_profit）。理由：领导拿到 `gross` + 任何 `_pct` 都能反推 `team_revenue + non_service`，进而估算 vendor markup（≈ team 真实利润上限），违反 A 口径隔离。三个 `_pct` 是无量纲比例，无金额、无可反推路径。
+
 ---
 
 ### 2.5 Helper 函数（关键差异）
@@ -478,6 +480,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 | 端点 | 功能 | 关键返回字段 |
 |---|---|---|
 | `/savings-and-value` | C 口径核心：降本 + 创造价值 | savings_from_revenue_projects, value_created_from_no_revenue_projects, total_c_view |
+| `/margin-lift-pct` | **D 限定版**：仅 3 个百分率 + 项目数（不暴露任何绝对金额）| outsource_margin_pct, fde_margin_pct, margin_lift_pct, counted_projects |
 | `/overview` | 总览 KPI | active_projects, team_size, on_time_delivery_rate, capability_by_category |
 | `/project-board` | 项目看板（地区分布）| by_status, by_district, items (项目名/状态/地区)|
 | `/profit-compare` | C 扩展（Top 项目 + Vendor 排名）| top_savings_projects, top_value_projects, vendor_contribution_rank |

@@ -32,6 +32,18 @@ export const getOverview = () => http.get<OverviewKpi>('/overview').then((r) => 
 export const getSavingsAndValue = () =>
   http.get<SavingsAndValue>('/savings-and-value').then((r) => r.data)
 
+// D 限定版（口径 D · 公司毛利率提升）— 仅 3 个百分率 + 项目数
+// 刻意不暴露 gross / team_revenue / non_service / benchmark 等绝对金额
+export interface MarginLiftPct {
+  outsource_margin_pct: number
+  fde_margin_pct: number
+  margin_lift_pct: number
+  counted_projects: number
+  unit: string
+}
+export const getMarginLiftPct = () =>
+  http.get<MarginLiftPct>('/margin-lift-pct').then((r) => r.data)
+
 export interface RecentAsset {
   id: number
   title: string

@@ -212,9 +212,11 @@ no_revenue 项目（业务模型修正：吃掉的机会成本）：
 - benchmark **永远来自真实询价**（`benchmark_basis ∈ {vendor_quote, historical_avg}`）；没询价就空
 - API：`/api/cockpit/savings-and-value` + `/api/cockpit/profit-compare`
 
-#### 口径 D · 公司毛利率提升（admin/lead/finance 专享，**绝不驾驶舱**）
+#### 口径 D · 公司毛利率提升（admin 全量；驾驶舱仅暴露 3 个 `_pct` 字段）
 
 **用途**：C-suite 决策——对比"传统外包"vs"FDE 内化"公司层级毛利率差异。
+
+**驾驶舱限定版** `/api/cockpit/margin-lift-pct`：只返回 `outsource_margin_pct / fde_margin_pct / margin_lift_pct + counted_projects + unit`，刻意藏掉 gross / team_revenue / non_service / benchmark / extra_profit 等绝对金额，避免侧信道反推 A 口径。
 
 **公式**（2026-05-24 校准含非服务开销）：
 ```
@@ -335,6 +337,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 |---|---|
 | `/overview` | 4 大 KPI + capability_by_category |
 | `/savings-and-value` | C 口径核心：savings + value_created + total_c_view |
+| `/margin-lift-pct` | **D 限定版**：仅 3 个百分率（老外包/FDE 毛利率 + 提升幅度）+ 项目数，**藏掉所有绝对金额** |
 | `/data-health` | 数据健康面板（隔离守门状态）|
 | `/project-board` | 项目看板 + 地区分布 |
 | `/profit-compare` | C 扩展：top_savings_projects + Vendor 贡献分摊 |

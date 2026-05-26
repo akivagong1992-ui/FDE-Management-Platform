@@ -95,6 +95,28 @@ def test_cockpit_savings_and_value_isolation() -> None:
         assert not hits, f"Cockpit /savings-and-value leaks A/B-tier fields: {hits}"
 
 
+def test_cockpit_margin_lift_pct_isolation() -> None:
+    """D 限定版：仅 3 个百分率 + 项目数，绝不暴露任何绝对金额。"""
+    with TestClient(app) as c:
+        r = c.get("/api/cockpit/margin-lift-pct", headers=COCKPIT_HEADERS)
+        assert r.status_code == 200
+        body = r.json()
+        # 必含的 3 个百分率
+        assert "outsource_margin_pct" in body
+        assert "fde_margin_pct" in body
+        assert "margin_lift_pct" in body
+        # 绝对金额字段绝不可出现
+        for k in (
+            "total_gross_revenue", "total_team_revenue", "total_outsource_benchmark",
+            "total_actual_cost", "total_non_service_expense",
+            "outsource_margin", "fde_margin", "extra_profit",
+        ):
+            assert k not in body, f"D 限定版泄露绝对金额字段: {k}"
+        # FORBIDDEN_PATTERNS 全量隔离
+        hits = _walk_for_forbidden(body)
+        assert not hits, f"Cockpit /margin-lift-pct leaks A/B-tier fields: {hits}"
+
+
 # ── Phase 3 bulk · 5 new aggregation endpoints ─────────────────────────
 
 def _assert_isolation(client: TestClient, path: str) -> None:
