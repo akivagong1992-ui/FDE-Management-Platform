@@ -19,7 +19,6 @@ function fmt10k(n: number | undefined | null): string {
 
 const cSavings10k = computed(() => (data.value?.total_savings ?? 0) / 10000)
 const cValue10k = computed(() => (data.value?.total_value_created ?? 0) / 10000)
-const cTotal10k = computed(() => (data.value?.total_c_view ?? 0) / 10000)
 
 const maxSavings = computed(() => Math.max(1, ...(data.value?.top_savings_projects || []).map((p) => p.savings)))
 const maxValue = computed(() => Math.max(1, ...(data.value?.top_value_projects || []).map((p) => p.value_created)))
@@ -40,30 +39,13 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="cValue10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card brag">
-        <div class="kpi-label">合计 (口径 C)</div>
-        <div class="kpi-value glow-text"><CountNumber :value="cTotal10k" :decimals="1" /><span class="unit">万 HKD</span></div>
-      </div>
-    </div>
-
-    <div class="panel margin-lift-band">
-      <div class="band-title">
-        公司毛利率对比
-        <span class="band-sub">基于 {{ marginLift?.counted_projects ?? 0 }} 个已中标项目</span>
-      </div>
-      <div class="band-row">
-        <div class="band-cell">
-          <div class="band-label">老外包模式毛利率</div>
-          <div class="band-num"><CountNumber :value="marginLift?.outsource_margin_pct ?? 0" :decimals="2" /><span class="pct">%</span></div>
-        </div>
-        <div class="band-arrow">→</div>
-        <div class="band-cell">
-          <div class="band-label">FDE 模式毛利率</div>
-          <div class="band-num accent"><CountNumber :value="marginLift?.fde_margin_pct ?? 0" :decimals="2" /><span class="pct">%</span></div>
-        </div>
-        <div class="band-arrow">＝</div>
-        <div class="band-cell brag-cell">
-          <div class="band-label">利润率提升</div>
-          <div class="band-num brag-num">+<CountNumber :value="marginLift?.margin_lift_pct ?? 0" :decimals="2" /><span class="pct">个百分点</span></div>
+        <div class="kpi-label">公司利润率提升 (FDE vs 老外包)</div>
+        <div class="kpi-value glow-text">+<CountNumber :value="marginLift?.margin_lift_pct ?? 0" :decimals="2" /><span class="unit">个百分点</span></div>
+        <div class="kpi-sub">
+          老外包 <CountNumber :value="marginLift?.outsource_margin_pct ?? 0" :decimals="2" />%
+          →
+          FDE <CountNumber :value="marginLift?.fde_margin_pct ?? 0" :decimals="2" />%
+          <span class="kpi-sub-dim">· 基于 {{ marginLift?.counted_projects ?? 0 }} 个已中标项目</span>
         </div>
       </div>
     </div>
@@ -162,20 +144,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .rank-name { color: var(--cockpit-text); }
 .rank-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); text-align: right; font-size: 13px; }
 
-/* D 限定版 · 公司毛利率提升（只 3 个百分率，藏所有绝对金额） */
-.margin-lift-band { padding: 16px 24px; }
-.band-title { color: var(--cockpit-text); font-size: 14px; display: flex; align-items: baseline; gap: 12px; }
-.band-sub { color: var(--cockpit-text-dim); font-size: 11px; }
-.band-row { display: flex; align-items: center; justify-content: space-around; margin-top: 10px; gap: 12px; }
-.band-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.band-label { color: var(--cockpit-text-dim); font-size: 12px; }
-.band-num {
-  font-family: 'Courier New', monospace; font-weight: 700; font-size: 28px;
-  color: var(--cockpit-text);
+/* D 限定版 · 公司利润率提升卡的副文案（粉色 brag 卡内） */
+.kpi-sub {
+  margin-top: 8px;
+  color: var(--cockpit-text); font-size: 12px;
+  font-family: 'Courier New', monospace;
 }
-.band-num.accent { color: var(--cockpit-accent); text-shadow: 0 0 6px var(--cockpit-accent); }
-.band-num.brag-num { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
-.band-arrow { color: var(--cockpit-text-dim); font-size: 22px; font-weight: 300; }
-.brag-cell { padding: 0 16px; }
-.pct { font-size: 0.55em; margin-left: 4px; color: var(--cockpit-text-dim); font-weight: normal; }
+.kpi-sub-dim { color: var(--cockpit-text-dim); margin-left: 6px; }
 </style>
