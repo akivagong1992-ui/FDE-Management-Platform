@@ -156,14 +156,16 @@ amount / vendor_quote_amount ≈ 0.80-0.90（FDE 比外包便宜 10-20%）
 
 ---
 
-### 1.9 NeedParty — 需求方/客户
+### 1.9 NeedParty — 外部客户
 
 | 字段 | 类型 | 业务含义 |
 |---|---|---|
-| `name` | unique | 客户/部门名 |
-| `party_type` | enum | `internal_dept`（电信内部）/ `external_company`（外部合同方）|
+| `name` | unique | 客户公司名 |
+| `party_type` | str (自由) | 客户类型，前端 CLIENT_TYPES 下拉约束：外资企业 / 港企 / 跨国公司 / ...（schema 默认 `"外资企业"`；model 旧默认 `internal_dept` 为历史遗留）|
 | `show_in_cockpit` | bool=False | 是否在驾驶舱「已交付客户」区展示 |
 | `logo_path` | str? | Logo 文件 |
+
+⚠️ **项目来源全部对外**（PLAN §0 A3）：电信HK 承接外部客户合同，不含集团内部工程订单。旧 `NP_TYPE_INTERNAL = "internal_dept"` 常量虽在 model 文件保留，但已不应用于新数据。
 
 ---
 
@@ -445,7 +447,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 | `Assignment.approval_status` | pending / accepted / rejected |
 | `Timesheet.approval_status` | pending / approved / rejected |
 | `IDP.status` | draft / in_progress / completed / cancelled |
-| `NeedParty.party_type` | internal_dept / external_company |
+| `NeedParty.party_type` | 自由字符串，前端 CLIENT_TYPES 下拉：外资企业 / 港企 / 跨国公司 / ...（`internal_dept` 旧常量已不用） |
 | `Vendor.cooperation_status` | active / paused / closed |
 | `User.role` | admin / lead / pm / finance / engineer / vendor |
 

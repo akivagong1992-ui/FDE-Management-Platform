@@ -19,7 +19,7 @@
 |---|---|---|
 | A1 | **业务视角** | 甲方用工方（电信HK 自用） — 已锁定 |
 | A2 | **供人结构** | 「电信 → Vendor → 劳务公司 → 工程师」三层链路，项目服务费形式 — 已锁定 |
-| A3 | **项目来源** | 主要是电信集团内部工程订单；少量对外项目 |
+| A3 | **项目来源** | 全部对外项目（电信HK 承接外部客户合同），不含集团内部工程订单 |
 | A4 | **利润口径** | **四种口径并存**（详见 §4.3）：A 团队真实利润 / B 销售-客户维度 / C 驾驶舱降本+创造价值 / D 公司毛利率提升。**驾驶舱仅暴露 C，CI 强制守门** |
 | A4b | **资金流 4 字段** | ProjectRevenue 4 必填金额：`gross_amount`（客户付款总额）/ `non_service_expense`（非服务开销 ~70%）/ `amount`（团队入账 ~20% ≈ VSF）/ `vendor_quote_amount`（服务商报价） |
 | A4c | **Vendor pass-through** | 团队入账 ≈ 100% pass-through 给 Vendor；Vendor 用 VSF 付全部运营支出（含 6 类外部支出 + 给工程师/劳务公司的钱）；Vendor markup ≈ 团队真实利润 |
@@ -132,7 +132,7 @@
 ## 4. 功能模块清单（**严格按 README §3 的 8 大维度组织**）
 
 ### 4.1 项目管理（README §3 维度 1）
-- 项目立项：名称、**需求方 NeedParty**（电信内部部门 / 外部合同方）、**销售人员 SalesPerson**、起止、负责 PM、预算
+- 项目立项：名称、**需求方 NeedParty**（外部客户公司，前端按 CLIENT_TYPES 下拉：外资企业 / 港企 / 跨国公司 / 等）、**销售人员 SalesPerson**、起止、负责 PM、预算
 - **项目分类**（见 README §1.6）：
   - `kind = revenue` — 有收入项目（默认）
   - `kind = no_revenue` — 无收入项目，必填"估算创造价值"（`value_created` 字段，单位 HKD）+ 依据说明
@@ -295,7 +295,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 - **给驾驶舱**：累计获得证书数、技能矩阵热力图、季度能力成长指数
 
 ### 4.9 需求方关系 / 项目复盘（README §3 维度 8 ⭐新）
-- **需求方档案**：电信内部部门/外部合同方、对接人、合作历史
+- **需求方档案**：外部客户公司（按 CLIENT_TYPES 分类）、对接人、合作历史
 - **项目验收满意度问卷**：5 维度评分（交付质量/进度/沟通/响应/创新）+ 文字反馈
 - **复盘会议记录**：什么做对了 / 什么要改进 / 行动项及负责人
 - **行动项闭环**：跟踪到完成，统计闭环率
@@ -372,7 +372,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 ### 5.2 客户 / 销售（3 张）
 | 表 | 用途 | 关键字段 |
 |---|---|---|
-| `need_parties` | 需求方/客户档案 | party_type ∈ {internal_dept, external_company} + show_in_cockpit + logo_path |
+| `need_parties` | 外部客户档案 | party_type（自由字符串，前端 CLIENT_TYPES 下拉：外资企业/港企/跨国/...）+ show_in_cockpit + logo_path |
 | `sales_persons` | 销售人员档案 | is_active（离职 → false） |
 | `sales_transfer_logs` | 销售归属转移审计 | from / to / reason / operator |
 
