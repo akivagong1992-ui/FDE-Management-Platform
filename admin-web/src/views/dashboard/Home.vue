@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getOverall, type OverallProfit } from '@/api/profit'
+import {
+  getOverall, getBySalesPerson, getByNeedParty,
+  type OverallProfit, type BySalesRow, type ByNeedPartyRow,
+} from '@/api/profit'
 import { listProjects, type BidOutcome, type Project } from '@/api/projects'
 import { listRevenues, type ProjectRevenue } from '@/api/projectRevenues'
+import { listExpenses, type ExpenseRequest } from '@/api/expenses'
+import { listFees, type VendorServiceFee } from '@/api/vendorServiceFees'
 import { fmtWan } from '@/utils/format'
 
-const cockpit = axios.create({ baseURL: '/api/cockpit', timeout: 10000 })
-const router = useRouter()
+const cockpit = axios.create({
+  baseURL: '/api/cockpit', timeout: 10000,
+  headers: { 'X-Cockpit-Token': 'cockpit-dev-token' },
+})
 const auth = useAuthStore()
 const canSeeMargin = computed(() => ['lead', 'finance', 'admin'].includes(auth.role || ''))
 
@@ -25,18 +31,16 @@ interface SavingsAndValue {
   total_value_created: number
   total_c_view: number
 }
-interface EfficiencyStats {
-  due_soon_count: number
-  due_soon: { project_id: number; name: string; days_to_due: number; overdue: boolean }[]
-  on_time_rate: number
-}
 
 const overview = ref<OverviewKpi | null>(null)
 const savings = ref<SavingsAndValue | null>(null)
 const profit = ref<OverallProfit | null>(null)
-const efficiency = ref<EfficiencyStats | null>(null)
 const projects = ref<Project[]>([])
 const revenues = ref<ProjectRevenue[]>([])
+const expenses = ref<ExpenseRequest[]>([])
+const vsfs = ref<VendorServiceFee[]>([])
+const bySales = ref<BySalesRow[]>([])
+const byClient = ref<ByNeedPartyRow[]>([])
 const loading = ref(true)
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,18 +53,31 @@ const BID_OUTCOME_LABEL: Record<BidOutcome, string> = {
 const BID_COLORS: Record<BidOutcome, string> = {
   won: '#67c23a', pending: '#909399', lost: '#f56c6c', escaped: '#e6a23c',
 }
+const EXPENSE_TYPE_LABEL: Record<string, string> = {
+  material: '耗材',
+  subcontract: '对外分包高级服务',
+  temp_labor: '临时人力补充',
+  license: '第三方平台 / 许可证',
+  travel: '差旅 / 外勤',
+  training: '外部培训费',
+  other: '其他',
+  outsource_engineer: '外包工程师支出',
+}
 
 async function load() {
   loading.value = true
   const tasks: Promise<unknown>[] = [
     cockpit.get<OverviewKpi>('/overview').then((r) => (overview.value = r.data)).catch(() => {}),
     cockpit.get<SavingsAndValue>('/savings-and-value').then((r) => (savings.value = r.data)).catch(() => {}),
-    cockpit.get<EfficiencyStats>('/efficiency-stats').then((r) => (efficiency.value = r.data)).catch(() => {}),
     listProjects().then((p) => (projects.value = p)).catch(() => {}),
     listRevenues().then((r) => (revenues.value = r)).catch(() => {}),
+    listExpenses().then((r) => (expenses.value = r)).catch(() => {}),
+    listFees().then((r) => (vsfs.value = r)).catch(() => {}),
   ]
   if (canSeeMargin.value) {
     tasks.push(getOverall().then((p) => (profit.value = p)).catch(() => {}))
+    tasks.push(getBySalesPerson().then((r) => (bySales.value = r)).catch(() => {}))
+    tasks.push(getByNeedParty().then((r) => (byClient.value = r)).catch(() => {}))
   }
   await Promise.all(tasks)
   loading.value = false
@@ -70,22 +87,23 @@ onMounted(load)
 
 const wan = (n: number | null | undefined) => fmtWan(n)
 
-// ─ Section 1 KPIs ───────────────────────────────────────────
+// ─ KPI 计算 ──────────────────────────────────────────────────
 const wonInProgress = computed(() =>
   projects.value.filter(
     (p) => p.bid_outcome === 'won' && ['drafting', 'in_progress', 'accepting'].includes(p.status),
   ).length,
 )
 
-const wonWithoutBench = computed(() =>
-  projects.value.filter(
-    (p) => p.bid_outcome === 'won' && p.kind === 'revenue' && p.outsource_benchmark_amount == null,
-  ).length,
+// 销售欠款 = ∑ |margin| where margin < 0 by sales（B 口径，"销售打白工"金额）
+const salesDebt = computed(() =>
+  bySales.value.reduce((acc, s) => acc + (s.margin < 0 ? -s.margin : 0), 0),
+)
+// 客户欠款 = ∑ |margin| where margin < 0 by client（B 口径，"客户给的钱不够本"金额）
+const clientDebt = computed(() =>
+  byClient.value.reduce((acc, c) => acc + (c.margin < 0 ? -c.margin : 0), 0),
 )
 
-const riskCount = computed(() => (efficiency.value?.due_soon_count ?? 0) + wonWithoutBench.value)
-
-// ─ Section 2 · 项目盘面 ─────────────────────────────────────
+// ─ 项目盘面 ──────────────────────────────────────────────────
 const bidOutcomeStats = computed(() => {
   const counts: Record<BidOutcome, number> = { won: 0, pending: 0, lost: 0, escaped: 0 }
   for (const p of projects.value) {
@@ -99,7 +117,6 @@ const statusMax = computed(() =>
   Math.max(1, ...(overview.value?.by_status || []).map((x) => x.count)),
 )
 
-// ─ Section 3 · 财务 ─────────────────────────────────────────
 // 最近 6 个月（YYYY-MM）的累计团队入账
 const revenueTrend = computed(() => {
   const buckets: Record<string, number> = {}
@@ -133,77 +150,100 @@ const topCustomers = computed(() => {
     .sort((a, b) => b.team_revenue - a.team_revenue)
     .slice(0, 5)
 })
+
+// 成本开销排名（按 expense_type 分组，不含 rejected）
+const topExpensesByType = computed(() => {
+  const agg: Record<string, { code: string; label: string; total: number; count: number }> = {}
+  for (const e of expenses.value) {
+    if (e.status === 'rejected') continue
+    const code = e.expense_type
+    const label = e.expense_type_label || EXPENSE_TYPE_LABEL[code] || code
+    if (!agg[code]) agg[code] = { code, label, total: 0, count: 0 }
+    agg[code].total += Number(e.amount || 0)
+    agg[code].count += 1
+  }
+  return Object.values(agg)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+})
+
+// Vendor 收入项目排名（按 Vendor 公司分组 VSF 金额）
+const topVendorsByIncome = computed(() => {
+  const agg: Record<number, { vendor_id: number; name: string; total: number; count: number }> = {}
+  for (const v of vsfs.value) {
+    const vid = v.vendor_id
+    const name = v.vendor_name || `Vendor #${vid}`
+    if (!agg[vid]) agg[vid] = { vendor_id: vid, name, total: 0, count: 0 }
+    agg[vid].total += Number(v.amount || 0)
+    agg[vid].count += 1
+  }
+  return Object.values(agg)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5)
+})
+
+const maxExpenseType = computed(() => Math.max(1, ...topExpensesByType.value.map((x) => x.total)))
+const maxVendorIncome = computed(() => Math.max(1, ...topVendorsByIncome.value.map((x) => x.total)))
 </script>
 
 <template>
   <div class="dashboard" v-loading="loading">
-    <!-- ① 6 KPI 横排 ─────────────────────────────────────── -->
+    <!-- ① 8 KPI 横排 ─────────────────────────────────────── -->
     <el-row :gutter="12" class="kpi-row">
-      <el-col :span="4">
+      <el-col :span="3">
         <el-card shadow="hover" class="kpi-card">
           <div class="kpi-label">在管项目</div>
           <div class="kpi-value">{{ overview?.active_projects ?? '—' }}</div>
-          <div class="kpi-sub">进行中 / 验收 / 收尾</div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col :span="3">
         <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">已中标待执行</div>
+          <div class="kpi-label">中标待执行</div>
           <div class="kpi-value" style="color: #67c23a">{{ wonInProgress }}</div>
-          <div class="kpi-sub">需派工程师跟进</div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col v-if="canSeeMargin" :span="3">
         <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">累计降本 (HKD 万)</div>
-          <div class="kpi-value" style="color: #e6a23c">{{ wan(savings?.total_c_view) }}</div>
-          <div class="kpi-sub">C 口径 · 含无收入项目</div>
-        </el-card>
-      </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">
-            团队真实利润 (HKD 万)
-            <el-tooltip v-if="canSeeMargin" placement="top">
-              <template #content>
-                <div style="max-width: 320px; line-height: 1.6">
-                  <strong>= VSF − 全部支出</strong>（vendor markup 视角）<br /><br />
-                  vendor 是受控壳，它从 VSF 自留的 markup = 团队真实利润。<br /><br />
-                  <span style="color: #e6a23c">⚠</span> 依赖「外包工程师支出」录入完整度；未录全 → 数字偏高。
-                </div>
-              </template>
-              <span style="cursor: help; color: #c0c4cc; font-size: 11px; margin-left: 2px">ⓘ</span>
-            </el-tooltip>
-            <el-tag v-if="!canSeeMargin" size="small" type="info" style="margin-left: 4px">无权限</el-tag>
-          </div>
+          <div class="kpi-label">团队利润 (万)</div>
           <div class="kpi-value"
-               :style="canSeeMargin && (profit?.team_margin ?? 0) < 0 ? { color: '#f56c6c' } : { color: '#67c23a' }">
-            {{ canSeeMargin ? wan(profit?.team_margin) : '—' }}
+               :style="(profit?.team_margin ?? 0) < 0 ? { color: '#f56c6c' } : { color: '#67c23a' }">
+            {{ wan(profit?.team_margin) }}
           </div>
-          <div class="kpi-sub">vendor markup · lead/finance/admin</div>
         </el-card>
       </el-col>
-      <el-col :span="4">
+      <el-col v-if="canSeeMargin" :span="3">
+        <el-card shadow="hover" class="kpi-card" :class="{ alert: salesDebt > 0 }">
+          <div class="kpi-label">销售欠款 (万)</div>
+          <div class="kpi-value" :style="{ color: salesDebt > 0 ? '#f56c6c' : '#909399' }">
+            {{ wan(salesDebt) }}
+          </div>
+        </el-card>
+      </el-col>
+      <el-col v-if="canSeeMargin" :span="3">
+        <el-card shadow="hover" class="kpi-card" :class="{ alert: clientDebt > 0 }">
+          <div class="kpi-label">客户欠款 (万)</div>
+          <div class="kpi-value" :style="{ color: clientDebt > 0 ? '#f56c6c' : '#909399' }">
+            {{ wan(clientDebt) }}
+          </div>
+        </el-card>
+      </el-col>
+      <el-col v-if="canSeeMargin" :span="3">
         <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">团队规模</div>
-          <div class="kpi-value">{{ overview?.team_size ?? '—' }}</div>
-          <div class="kpi-sub">在职工程师</div>
+          <div class="kpi-label">服务费支出 (万)</div>
+          <div class="kpi-value" style="color: #409eff">{{ wan(profit?.total_vendor_service_fees) }}</div>
         </el-card>
       </el-col>
-      <el-col :span="4">
-        <el-card shadow="hover" class="kpi-card" :class="{ alert: riskCount > 0 }">
-          <div class="kpi-label">风险预警</div>
-          <div class="kpi-value" :style="{ color: riskCount > 0 ? '#f56c6c' : '#67c23a' }">
-            {{ riskCount }}
-          </div>
-          <div class="kpi-sub">即将到期 + 缺报价</div>
+      <el-col v-if="canSeeMargin" :span="3">
+        <el-card shadow="hover" class="kpi-card">
+          <div class="kpi-label">vendor 支出 (万)</div>
+          <div class="kpi-value" style="color: #e6a23c">{{ wan(profit?.total_external_expenses) }}</div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- ②③ 项目盘面 + 财务 ─────────────────────────────────── -->
     <el-row :gutter="16" class="middle-row">
-      <el-col :span="14">
+      <el-col :span="canSeeMargin ? 14 : 24">
         <el-card class="block-card">
           <template #header>
             <span class="card-title">项目盘面</span>
@@ -253,11 +293,11 @@ const topCustomers = computed(() => {
         </el-card>
       </el-col>
 
-      <el-col :span="10">
-        <el-card class="block-card" style="margin-bottom: 16px">
+      <el-col v-if="canSeeMargin" :span="10">
+        <el-card class="block-card">
           <template #header>
             <span class="card-title">近 6 月团队入账</span>
-            <span class="card-sub">按 recognized_date 月度聚合</span>
+            <span class="card-sub">按 recognized_date 月度聚合（万 HKD）</span>
           </template>
           <div v-if="!revenueTrend.length" class="empty">暂无收入记录</div>
           <div v-else class="trend-chart">
@@ -268,7 +308,12 @@ const topCustomers = computed(() => {
             </div>
           </div>
         </el-card>
+      </el-col>
+    </el-row>
 
+    <!-- ④ 三大排名榜 ─────────────────────────────────────── -->
+    <el-row v-if="canSeeMargin" :gutter="16">
+      <el-col :span="8">
         <el-card class="block-card">
           <template #header>
             <span class="card-title">客户 Top 5 入账</span>
@@ -285,64 +330,67 @@ const topCustomers = computed(() => {
           </div>
         </el-card>
       </el-col>
-    </el-row>
 
-    <!-- ④ 风险预警 + 关键指标横排 ─────────────────────────── -->
-    <el-card class="block-card risk-card">
-      <template #header><span class="card-title">⚠️ 风险与关键指标</span></template>
-      <el-row :gutter="12">
-        <el-col :span="6">
-          <div
-            class="risk-item"
-            :class="{ alert: (efficiency?.due_soon_count ?? 0) > 0 }"
-            @click="router.push('/project')"
-          >
-            <div class="risk-num">{{ efficiency?.due_soon_count ?? 0 }}</div>
-            <div class="risk-label">14 天内到期项目</div>
-            <div class="risk-sub">含已逾期，需要催办</div>
+      <el-col :span="8">
+        <el-card class="block-card">
+          <template #header>
+            <span class="card-title">成本开销 Top 5</span>
+            <span class="card-sub">按支出类型聚合（万 HKD）</span>
+          </template>
+          <div v-if="!topExpensesByType.length" class="empty">暂无支出</div>
+          <div v-else class="rank-list">
+            <div v-for="(e, i) in topExpensesByType" :key="e.code" class="rank-row-bar">
+              <span class="rank-no" :class="`rank-${i + 1}`">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="rank-name">{{ e.label }}</span>
+              <div class="rank-bar">
+                <div class="rank-bar-fill expense"
+                     :style="{ width: `${(e.total / maxExpenseType) * 100}%` }" />
+              </div>
+              <span class="rank-amount expense">{{ wan(e.total) }}</span>
+            </div>
           </div>
-        </el-col>
-        <el-col :span="6">
-          <div
-            class="risk-item"
-            :class="{ alert: wonWithoutBench > 0 }"
-            @click="router.push('/project')"
-          >
-            <div class="risk-num">{{ wonWithoutBench }}</div>
-            <div class="risk-label">已中标缺报价</div>
-            <div class="risk-sub">savings 暂被低估</div>
+        </el-card>
+      </el-col>
+
+      <el-col :span="8">
+        <el-card class="block-card">
+          <template #header>
+            <span class="card-title">Vendor 收入 Top 5</span>
+            <span class="card-sub">VSF 累计（万 HKD）</span>
+          </template>
+          <div v-if="!topVendorsByIncome.length" class="empty">暂无 VSF 记录</div>
+          <div v-else class="rank-list">
+            <div v-for="(v, i) in topVendorsByIncome" :key="v.vendor_id" class="rank-row-bar">
+              <span class="rank-no" :class="`rank-${i + 1}`">{{ String(i + 1).padStart(2, '0') }}</span>
+              <span class="rank-name">{{ v.name }}</span>
+              <div class="rank-bar">
+                <div class="rank-bar-fill vendor"
+                     :style="{ width: `${(v.total / maxVendorIncome) * 100}%` }" />
+              </div>
+              <span class="rank-amount">{{ wan(v.total) }}</span>
+            </div>
           </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="risk-item positive">
-            <div class="risk-num">{{ ((efficiency?.on_time_rate ?? 0) * 100).toFixed(0) }}%</div>
-            <div class="risk-label">按时交付率</div>
-            <div class="risk-sub">已 close/archived 项目</div>
-          </div>
-        </el-col>
-        <el-col :span="6">
-          <div class="risk-item positive">
-            <div class="risk-num">{{ overview?.delivered_clients?.length ?? 0 }}</div>
-            <div class="risk-label">已交付客户</div>
-            <div class="risk-sub">累计累积</div>
-          </div>
-        </el-col>
-      </el-row>
-    </el-card>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <style scoped>
 .dashboard { display: flex; flex-direction: column; gap: 16px; }
 
-/* ─ KPI cards (slim, 6 in a row) ───────── */
+/* ─ KPI cards (8 in a row, slim) ──────── */
 .kpi-card { padding: 4px 6px; }
 .kpi-card.alert { border-color: #fbc4c4; background: linear-gradient(180deg, #fff8f8 0%, #fff 100%); }
-.kpi-label { color: #909399; font-size: 12px; display: flex; align-items: center; }
-.kpi-value { font-size: 26px; font-weight: 600; margin-top: 6px; color: #303133; line-height: 1.1; }
+.kpi-label {
+  color: #909399; font-size: 12px;
+  display: flex; align-items: center;
+  min-height: 18px; white-space: nowrap;
+}
+.kpi-value { font-size: 24px; font-weight: 600; margin-top: 6px; color: #303133; line-height: 1.1; }
 .kpi-sub { color: #c0c4cc; font-size: 11px; margin-top: 4px; }
 
-/* ─ Middle row (project board + finance) ─ */
+/* ─ Cards ─ */
 .block-card { height: 100%; }
 .card-title { font-weight: 600; color: #303133; }
 .card-sub { color: #909399; font-size: 12px; margin-left: 8px; font-weight: normal; }
@@ -400,10 +448,14 @@ const topCustomers = computed(() => {
 }
 .trend-x { color: #909399; font-size: 11px; margin-top: 6px; }
 
-/* customer rank */
+/* ─ rank lists ─ */
 .rank-list { display: flex; flex-direction: column; gap: 10px; }
 .rank-row {
   display: grid; grid-template-columns: 36px 1fr 70px 80px; gap: 8px;
+  align-items: center; font-size: 13px;
+}
+.rank-row-bar {
+  display: grid; grid-template-columns: 36px 100px 1fr 80px; gap: 8px;
   align-items: center; font-size: 13px;
 }
 .rank-no {
@@ -419,25 +471,17 @@ const topCustomers = computed(() => {
   font-family: 'Courier New', monospace; color: #67c23a;
   font-weight: 600; text-align: right;
 }
-
-/* risk row */
-.risk-item {
-  padding: 16px; border-radius: 6px; background: #fafbfc;
-  cursor: pointer; transition: all 0.2s;
-  border: 1px solid transparent;
+.rank-amount.expense { color: #e6a23c; }
+.rank-bar {
+  height: 10px; background: #f0f2f5; border-radius: 999px; overflow: hidden;
 }
-.risk-item:hover { background: #f5f7fa; transform: translateY(-1px); }
-.risk-item.alert {
-  background: linear-gradient(180deg, #fff5f5 0%, #fff 100%);
-  border-color: #fbc4c4;
+.rank-bar-fill {
+  height: 100%; transition: width 0.6s ease;
 }
-.risk-item.positive { cursor: default; }
-.risk-item.positive:hover { transform: none; background: #fafbfc; }
-.risk-num {
-  font-size: 28px; font-weight: 600; color: #303133; line-height: 1;
+.rank-bar-fill.expense {
+  background: linear-gradient(90deg, #f78989, #e6a23c);
 }
-.risk-item.alert .risk-num { color: #f56c6c; }
-.risk-item.positive .risk-num { color: #67c23a; }
-.risk-label { color: #606266; font-size: 13px; margin-top: 6px; font-weight: 500; }
-.risk-sub { color: #c0c4cc; font-size: 11px; margin-top: 2px; }
+.rank-bar-fill.vendor {
+  background: linear-gradient(90deg, #409eff, #00bcd4);
+}
 </style>

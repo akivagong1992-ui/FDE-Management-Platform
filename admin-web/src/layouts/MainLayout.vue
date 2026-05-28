@@ -11,6 +11,7 @@ const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => (route.meta?.title as string) || 'FDE管理系统')
 const isEngineer = computed(() => auth.role === 'engineer')
 const isVendor = computed(() => auth.role === 'vendor')
+const isPm = computed(() => auth.role === 'pm')
 
 function handleLogout() {
   auth.logout()
@@ -36,19 +37,31 @@ function handleLogout() {
           <el-menu-item index="/expense"><span>成本和支出管理</span></el-menu-item>
         </template>
 
-        <!-- 工程师视角：只看自己的派单 / 工时 / 支出 -->
+        <!-- 工程师视角：只看自己的派单 / 工时 / 支出 / 档期 -->
         <template v-else-if="isEngineer">
-          <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
-          <el-menu-item index="/my-assignments"><span>📥 我的派单</span></el-menu-item>
-          <el-menu-item index="/my-timesheets"><span>⏱ 我的工时</span></el-menu-item>
-          <el-menu-item index="/my-expenses"><span>💰 我的支出申请</span></el-menu-item>
+          <el-menu-item index="/my-assignments"><span>我的派单</span></el-menu-item>
+          <el-menu-item index="/my-timesheets"><span>我的工时</span></el-menu-item>
+          <el-menu-item index="/my-expenses"><span>我的支出</span></el-menu-item>
+          <el-menu-item index="/availability"><span>我的档期</span></el-menu-item>
         </template>
 
-        <!-- 管理者视角（pm / lead / admin / finance）-->
+        <!-- PM 视角：项目执行相关 7 项，不含财务/用户/派单 -->
+        <template v-else-if="isPm">
+          <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
+          <el-menu-item index="/project"><span>项目和客户管理</span></el-menu-item>
+          <el-menu-item index="/availability"><span>工程师档期</span></el-menu-item>
+          <el-menu-item index="/efficiency"><span>项目效率管理</span></el-menu-item>
+          <el-menu-item index="/knowledge"><span>FDE知识库</span></el-menu-item>
+          <el-menu-item index="/capability"><span>培训管理</span></el-menu-item>
+          <el-menu-item index="/relationship"><span>关键项目复盘管理</span></el-menu-item>
+        </template>
+
+        <!-- lead / admin / finance：全部菜单 -->
         <template v-else>
           <el-menu-item index="/dashboard"><span>首页</span></el-menu-item>
           <el-menu-item index="/project"><span>项目和客户管理</span></el-menu-item>
           <el-menu-item index="/engineer"><span>派单和工时管理</span></el-menu-item>
+          <el-menu-item index="/availability"><span>工程师档期</span></el-menu-item>
           <el-menu-item index="/profit"><span>利润管理</span></el-menu-item>
           <el-menu-item index="/expense"><span>成本和支出管理</span></el-menu-item>
           <el-menu-item index="/efficiency"><span>项目效率管理</span></el-menu-item>

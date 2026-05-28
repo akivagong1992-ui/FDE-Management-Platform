@@ -25,16 +25,22 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/my-expenses/MyExpenses.vue'),
         meta: { title: '我的支出申请', engineerOnly: true },
       },
+      // 两侧共享：engineer 看自己，PM/Lead 看全部（后端按 role 过滤）
+      {
+        path: 'availability',
+        component: () => import('@/views/availability/EngineerAvailability.vue'),
+        meta: { title: '工程师档期' },
+      },
       // 管理者侧（pm / lead / admin / finance）
       { path: 'project', component: () => import('@/views/project/Index.vue'), meta: { title: '项目和客户管理', pmSide: true } },
-      { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '派单和工时管理', pmSide: true } },
-      { path: 'profit', component: () => import('@/views/profit/Index.vue'), meta: { title: '利润管理', pmSide: true } },
-      { path: 'expense', component: () => import('@/views/expense/Index.vue'), meta: { title: '成本和支出管理', pmSide: true } },
+      { path: 'engineer', component: () => import('@/views/engineer/Index.vue'), meta: { title: '派单和工时管理', pmSide: true, notForPm: true } },
+      { path: 'profit', component: () => import('@/views/profit/Index.vue'), meta: { title: '利润管理', pmSide: true, notForPm: true } },
+      { path: 'expense', component: () => import('@/views/expense/Index.vue'), meta: { title: '成本和支出管理', pmSide: true, notForPm: true } },
       { path: 'efficiency', component: () => import('@/views/efficiency/Index.vue'), meta: { title: '项目效率管理', pmSide: true } },
       { path: 'knowledge', component: () => import('@/views/knowledge/Index.vue'), meta: { title: 'FDE知识库', pmSide: true } },
       { path: 'capability', component: () => import('@/views/capability/Index.vue'), meta: { title: '培训管理', pmSide: true } },
       { path: 'relationship', component: () => import('@/views/relationship/Index.vue'), meta: { title: '关键项目复盘管理', pmSide: true } },
-      { path: 'users', component: () => import('@/views/users/UserManage.vue'), meta: { title: '用户管理', pmSide: true } },
+      { path: 'users', component: () => import('@/views/users/UserManage.vue'), meta: { title: '用户管理', pmSide: true, notForPm: true } },
     ],
   },
 ]
@@ -49,12 +55,16 @@ router.beforeEach((to) => {
   // role 守门
   const role = auth.role
   if (role === 'engineer') {
-    // engineer 只能进首页 + 我的派单
+    // engineer 不能看团队财务面板，默认落在我的派单
     if (to.meta.pmSide) return { path: '/my-assignments' }
-    if (to.path === '/' || to.path === '/dashboard') return true
+    if (to.path === '/' || to.path === '/dashboard') return { path: '/my-assignments' }
   } else if (role === 'vendor') {
     // vendor 只能进「成本和支出管理」一页；其它路径全部跳转过去
     if (to.path !== '/expense') return { path: '/expense' }
+  } else if (role === 'pm') {
+    // PM 不能进财务/派单/用户类页面
+    if (to.meta.engineerOnly) return { path: '/dashboard' }
+    if (to.meta.notForPm) return { path: '/dashboard' }
   } else {
     // 非 engineer 角色访问 engineer-only 页面 → 退回首页
     if (to.meta.engineerOnly) return { path: '/dashboard' }

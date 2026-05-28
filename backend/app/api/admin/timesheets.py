@@ -265,7 +265,7 @@ async def delete_timesheet(
 async def approve_timesheet(
     ts_id: int,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "finance", "pm")),
+    user: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> TimesheetOut:
     t = await db.get(Timesheet, ts_id)
     if not t:
@@ -285,7 +285,7 @@ async def reject_timesheet(
     ts_id: int,
     payload: TimesheetReject,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "finance", "pm")),
+    user: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> TimesheetOut:
     t = await db.get(Timesheet, ts_id)
     if not t:
@@ -339,7 +339,7 @@ async def download_template(
 async def import_excel(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> ImportResult:
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="仅支持 .xlsx / .xls 文件")

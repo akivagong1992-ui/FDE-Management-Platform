@@ -115,7 +115,7 @@ async def reveal_engineer_id(
 async def create_engineer(
     payload: EngineerCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> EngineerOut:
     if not await db.get(Vendor, payload.vendor_id):
         raise HTTPException(status_code=400, detail="Vendor 不存在")
@@ -149,7 +149,7 @@ async def update_engineer(
     engineer_id: int,
     payload: EngineerUpdate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    user: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> EngineerOut:
     e = await db.get(Engineer, engineer_id)
     if not e:
@@ -185,7 +185,7 @@ async def attach_skill(
     engineer_id: int,
     payload: EngineerSkillItem,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> EngineerSkillOut:
     e = await db.get(Engineer, engineer_id)
     if not e:
@@ -227,7 +227,7 @@ async def detach_skill(
     engineer_id: int,
     es_id: int,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> None:
     es = await db.get(EngineerSkill, es_id)
     if not es or es.engineer_id != engineer_id:
@@ -243,7 +243,7 @@ async def add_certificate(
     engineer_id: int,
     payload: CertificateIn,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> CertificateOut:
     e = await db.get(Engineer, engineer_id)
     if not e:
@@ -260,7 +260,7 @@ async def delete_certificate(
     engineer_id: int,
     cert_id: int,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> None:
     c = await db.get(Certificate, cert_id)
     if not c or c.engineer_id != engineer_id:

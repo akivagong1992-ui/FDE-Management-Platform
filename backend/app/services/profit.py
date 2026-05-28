@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
+from app.models.expense import EXPENSE_STATUS_PAID, ExpenseRequest
 from app.models.need_party import NeedParty
 from app.models.project import (
     PROJECT_BID_OUTCOME_WON,
@@ -34,13 +34,20 @@ def _dec(x) -> Decimal:
     return Decimal(str(x)) if x is not None else ZERO
 
 
+def _dec_or_none(x) -> Decimal | None:
+    """与 _dec 不同：NULL 保留为 None，让调用方显式判断是否跳过聚合。
+    用于 benchmark：缺失代表"没询价"，禁止当 0 计入对外口径（README §1.7.4）。
+    """
+    return Decimal(str(x)) if x is not None else None
+
+
 # ── Cost helpers ───────────────────────────────────────────────────────
 
 async def _project_costs(db: AsyncSession) -> dict[int, Decimal]:
-    """Return {project_id: total_cost_in_HKD}. Cost = Vendor service fees + non-rejected external expenses.
+    """Return {project_id: total_cost_in_HKD}. Cost = Vendor service fees + paid external expenses.
 
-    用于口径 A / B（真实利润对账）。口径 C 用 _project_vsf() 即可——6 类支出
-    本来就是 vendor 从团队入账的钱里支付，已含在 VSF，再减一次 = 重复扣除。
+    口径 A/B 采用现金基础：只有 status=paid 的报销才计入成本，
+    pending/approved 视为"未确定支出"，避免未审批的草稿单拉低毛利。
     """
     costs: dict[int, Decimal] = defaultdict(lambda: ZERO)
 
@@ -54,7 +61,7 @@ async def _project_costs(db: AsyncSession) -> dict[int, Decimal]:
 
     exp_rows = (await db.execute(
         select(ExpenseRequest.project_id, func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.status != EXPENSE_STATUS_REJECTED)
+        .where(ExpenseRequest.status == EXPENSE_STATUS_PAID)
         .group_by(ExpenseRequest.project_id)
     )).all()
     for pid, total in exp_rows:
@@ -105,6 +112,7 @@ async def compute_overall(db: AsyncSession) -> dict:
       - 公式：team_margin = VSF − Σ 全部支出
       - 「外包工程师支出」是 vendor 给工程师/劳务公司的钱，由 admin 手动录入
         （没录则 team_margin 看起来偏高，需录全后才反映真实 markup）
+      - 现金基础：支出仅计 status=paid 的报销，pending/approved 不计入。
     """
     revenue = (await db.execute(
         select(func.coalesce(func.sum(ProjectRevenue.amount), 0))
@@ -116,7 +124,7 @@ async def compute_overall(db: AsyncSession) -> dict:
 
     expenses = (await db.execute(
         select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
-        .where(ExpenseRequest.status != EXPENSE_STATUS_REJECTED)
+        .where(ExpenseRequest.status == EXPENSE_STATUS_PAID)
     )).scalar_one()
 
     revenue_d = _dec(revenue)
@@ -153,12 +161,19 @@ async def compute_per_project(db: AsyncSession) -> list[dict]:
 
     out = []
     for p in rows:
+        has_benchmark = True
         if p.kind == PROJECT_KIND_REVENUE:
             revenue = revs.get(p.id, ZERO)
             cost = costs.get(p.id, ZERO)
         else:  # no_revenue — 用 benchmark 作为机会成本
             revenue = ZERO
-            cost = _dec(p.outsource_benchmark_amount)
+            bench = _dec_or_none(p.outsource_benchmark_amount)
+            if bench is None:
+                # 没询价 → 机会成本未知，cost=0 保持聚合可加；前端识别 has_benchmark 显示"—"
+                cost = ZERO
+                has_benchmark = False
+            else:
+                cost = bench
         out.append({
             "project_id": p.id,
             "project_name": p.name,
@@ -172,6 +187,7 @@ async def compute_per_project(db: AsyncSession) -> list[dict]:
             "revenue": float(revenue),
             "cost": float(cost),
             "margin": float(revenue - cost),
+            "has_benchmark": has_benchmark,
         })
     return out
 
@@ -274,11 +290,17 @@ async def compute_company_margin_lift(db: AsyncSession) -> dict:
     total_actual = ZERO
     total_non_service = ZERO
     counted = 0
+    skipped_missing_benchmark = 0
     for p in projects:
+        bench = _dec_or_none(p.outsource_benchmark_amount)
+        if bench is None:
+            # 跳过没估过的项目——苹果对苹果原则。否则 bench=0 会让老外包毛利率看起来虚高，
+            # 提升幅度被低估。计数透明告知。
+            skipped_missing_benchmark += 1
+            continue
         team_recv = team_rev.get(p.id, ZERO)
         gross_recv = gross_rev.get(p.id, team_recv)
         nse = non_service.get(p.id, ZERO)
-        bench = _dec(p.outsource_benchmark_amount)
         total_gross += gross_recv
         total_team += team_recv
         total_benchmark += bench
@@ -303,6 +325,7 @@ async def compute_company_margin_lift(db: AsyncSession) -> dict:
 
     return {
         "counted_projects": counted,
+        "skipped_missing_benchmark": skipped_missing_benchmark,
         "total_gross_revenue": float(total_gross),
         "total_team_revenue": float(total_team),
         "total_outsource_benchmark": float(total_benchmark),
@@ -347,8 +370,13 @@ async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
 
     savings = ZERO
     counted_revenue_projects = 0
+    skipped_rev_missing_benchmark = 0
     for p in rev_projects:
-        bench = _dec(p.outsource_benchmark_amount)
+        bench = _dec_or_none(p.outsource_benchmark_amount)
+        if bench is None:
+            # 跳过：没估过外包报价 → savings 无法计算，否则会出现负数（=−team_share）拉低驾驶舱
+            skipped_rev_missing_benchmark += 1
+            continue
         team_share = team_revenue_by_pid.get(p.id, ZERO)
         savings += bench - team_share
         counted_revenue_projects += 1
@@ -360,7 +388,16 @@ async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
             Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
         )
     )).scalars().all()
-    value_created = sum((_dec(p.outsource_benchmark_amount) for p in no_rev_rows), ZERO)
+    value_created = ZERO
+    counted_no_rev_projects = 0
+    skipped_no_rev_missing_benchmark = 0
+    for p in no_rev_rows:
+        bench = _dec_or_none(p.outsource_benchmark_amount)
+        if bench is None:
+            skipped_no_rev_missing_benchmark += 1
+            continue
+        value_created += bench
+        counted_no_rev_projects += 1
 
     total_c = savings + value_created
     return {
@@ -369,7 +406,9 @@ async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
         "total_c_view": float(total_c),
         # 信息透明：让前端能展示「N 个项目计入 / 总报价 M」给老板看
         "revenue_project_count": counted_revenue_projects,
-        "no_revenue_project_count": len(no_rev_rows),
+        "no_revenue_project_count": counted_no_rev_projects,
+        "skipped_revenue_missing_benchmark": skipped_rev_missing_benchmark,
+        "skipped_no_revenue_missing_benchmark": skipped_no_rev_missing_benchmark,
         "currency": "HKD",
         # NOTE: by design this response carries NO field named like
         # "revenue", "cost", "margin", "team_margin", "vendor_fees" or similar

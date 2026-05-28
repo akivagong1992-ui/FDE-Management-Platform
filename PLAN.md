@@ -85,7 +85,7 @@
 | 团队负责人（你） | 全权限 | 管理后台 |
 | 项目经理 (PM) | 自己负责的项目立项/派单/工时/支出 | 管理后台 |
 | 财务 | 预算、Vendor服务费、成本、利润、报表 | 管理后台 |
-| 工程师本人（Phase 3+） | 查派单、提工时、申领支出 | 管理后台精简视图 / Phase 4 H5 |
+| 工程师本人（已实现 ✅）| 查派单、提工时、申领支出 | 管理后台精简视图 (`/my-assignments` / `/my-timesheets` / `/my-expenses`) / Phase 4 H5 |
 | 上级领导 | 看大屏 | 驾驶舱 |
 
 权限粒度：**角色 + 数据范围**（PM 只看自己项目）+ **金额字段独立权限位**（非财务/负责人不可见 Vendor 服务费、真实人工成本）。
@@ -133,7 +133,7 @@
 
 ### 4.1 项目管理（README §3 维度 1）
 - 项目立项：名称、**需求方 NeedParty**（外部客户公司，前端按 CLIENT_TYPES 下拉：外资企业 / 港企 / 跨国公司 / 等）、**销售人员 SalesPerson**、起止、负责 PM、预算
-- **项目分类**（见 README §1.6）：
+- **项目分类**（见 README §1.7）：
   - `kind = revenue` — 有收入项目（默认）
   - `kind = no_revenue` — 无收入项目，必填"估算创造价值"（`value_created` 字段，单位 HKD）+ 依据说明
 - 状态机：`立项 → 进行中 → 验收 → 收尾 → 归档`
@@ -146,9 +146,9 @@
 ### 4.2 员工派单（README §3 维度 3）
 - **Vendor 档案**：公司信息、对接人、合作模式、协议、付款条件
 - **工程师档案**（**归属 Vendor**）：个人信息、签约形态（Vendor 直签/Vendor 通过劳务公司）、紧急联系人
-- **技能矩阵**：编程语言、网络/通信/安全等领域、等级 L1~L5
+- **技能矩阵**：编程语言、网络/通信/安全等领域、等级 **L1~L3**（v0.5.0 从 L1~L5 砍至 3 级）
 - **Vendor 服务单价 / 估算 Vendor 真实成本**（仅财务/负责人可见；与 §4.3 联动）
-- **资源利用率子维度**（合并 E）：档期视图、本月/季度负载占比、闲置率、满负荷预警
+- **资源利用率子维度**（合并 E，Phase 1d 待办）：档期视图、本月/季度负载占比、闲置率、满负荷预警
 - **派单 Assignment**：工程师 × 项目 × 时段 × 角色 × 工时占比
 - **状态机**：`储备 → 待入场 → 在场 → 离场`
 - **给驾驶舱**：团队规模、能力矩阵、满负荷率、Vendor 分布
@@ -225,13 +225,13 @@ bench       = Σ Project.outsource_benchmark_amount 外部报价
 team_rev    = Σ ProjectRevenue.amount              FDE 模式团队入账
 non_service = Σ ProjectRevenue.non_service_expense 硬件/第三方/物料
 
-老外包毛利率 = (gross − bench − non_service) / gross
-FDE 毛利率   = (gross − team_rev − non_service) / gross
-利润率提升   = FDE − 老外包 = (bench − team_rev) / gross
+服务商模式毛利率 = (gross − bench − non_service) / gross
+FDE模式毛利率   = (gross − team_rev − non_service) / gross
+利润率提升   = FDE模式 − 服务商模式 = (bench − team_rev) / gross
 多挣 extra   = bench − team_rev
 ```
 - 门槛：`kind=revenue` AND `bid_outcome=won` AND 有 ProjectRevenue
-- 典型数字：老外包 ~6%，FDE ~10%，提升 +3-5 个百分点
+- 典型数字：服务商模式 ~6%，FDE模式 ~10%，提升 +3-5 个百分点
 - 显示位置：admin → 利润管理 → "FDE 利润率对比"卡
 
 #### 共用基础数据（ProjectRevenue 4 字段）
@@ -435,7 +435,7 @@ FDE 毛利率   = (gross − team_rev − non_service) / gross
 | ORM | SQLAlchemy 2.x + Alembic | 业务实体多，严谨迁移 |
 | 数据库 | **PostgreSQL 16** | 关系复杂、事务、报表、JSONB（知识资产 metadata） |
 | 全文搜索 | PG 自带 `pg_trgm` + `tsvector`（Phase 4 可升 Meilisearch） | 知识资产检索够用 |
-| 缓存/队列 | Redis 7 + RQ | 驾驶舱预聚合缓存 + 月结/通知/快照任务 |
+| 缓存/队列 | Redis 7 + RQ（预聚合缓存预留，当前未启用）| 驾驶舱预聚合缓存 + 月结/通知/快照任务 |
 | 管理后台前端 | **Vue 3 + Vite + Element Plus + Pinia** | ERP 风、中文生态 |
 | 驾驶舱前端 | **Vue 3 + Vite + DataV-Vue3 + ECharts** | 大屏组件库 + 地图 |
 | 鉴权 | JWT (admin) / IP白名单+token (cockpit) | 简单可控 |
@@ -492,15 +492,13 @@ Manpower-management-platform/
 ├── cockpit-screen/            ← ② 驾驶舱大屏（DataV + ECharts）
 │   ├── src/
 │   │   ├── api/
-│   │   ├── views/             # 8 个 Tab
-│   │   │   ├── overview/
-│   │   │   ├── project-map/
+│   │   ├── views/             # 5 可见 Tab + 1 隐藏（v0.5 收敛后）
+│   │   │   ├── overview/      # 含 HK 地图（原 project-map 并入此处）
 │   │   │   ├── profit-compare/
-│   │   │   ├── engineer/
 │   │   │   ├── efficiency/
-│   │   │   ├── knowledge/     # ⭐新
-│   │   │   ├── capability/    # ⭐新
-│   │   │   └── relationship/  # ⭐新
+│   │   │   ├── knowledge/
+│   │   │   ├── capability/
+│   │   │   └── engineer/      # 从 nav 隐藏，URL 直访可用
 │   │   ├── components/
 │   │   ├── assets/
 │   │   ├── stores/
@@ -561,11 +559,11 @@ Manpower-management-platform/
 - [x] 工时唯一约束 (engineer × project × work_date)
 - [x] 工时审核字段铺底（approve API 已就绪，UI 在 Phase 1d 加）
 
-**1d — 收尾**（待办）
+**1d — 收尾**（部分完成）
 - [ ] 档期视图（工程师月度负载占比可视化）
 - [ ] 利用率指标（闲置率、满负荷预警）
-- [ ] 项目看板 / 甘特图
-- [ ] 工时审核 UI
+- [x] 项目看板 / 甘特图（驾驶舱 `/api/cockpit/project-board` 已有；admin 端复盘/项目列表可查进度）
+- [x] 工时审核 UI（admin `/timesheets` 已实现 approve / reject）
 
 **交付**：能"建一个 Vendor、登记工程师、立一个项目（带销售/客户/类型）、派人、记工时"
 
@@ -651,7 +649,7 @@ Manpower-management-platform/
 - [ ] 工程师 H5/小程序：查派单、提工时、申领支出、查培训
 - [ ] 企微/飞书集成（消息推送、扫码登录）
 - [ ] 电子合同集成（如 DocuSign HK / e签宝）
-- [ ] 报表导出 Excel/PDF
+- [ ] 报表导出 Excel/PDF（⚠️ 工时模板 Excel 下载已支持；其他模块的报表导出待办）
 - [ ] 繁中 / 英文 i18n
 - [ ] Meilisearch 升级知识资产全文检索
 
@@ -674,7 +672,7 @@ Manpower-management-platform/
 
 ## 9. 非功能性考虑
 
-- **数据安全**：身份证号、银行卡号、薪资字段 DB 层加密（AES-GCM）
+- **数据安全**：身份证号 (`id_doc_number_enc`) DB 层 AES-GCM 加密；薪资 / VSF / non_service_expense 等敏感金额字段走角色权限控制（无 DB 加密）
 - **权限**：金额字段独立权限位；**Vendor 真实人工成本**仅负责人可见
 - **审计**：所有金额变更写 AuditLog
 - **知识资产保密**：按 A10 分级访问；机密资产仅团队成员可见

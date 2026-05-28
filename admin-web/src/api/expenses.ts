@@ -1,6 +1,7 @@
 import http from './http'
 
 export type ExpenseStatus = 'pending' | 'approved' | 'rejected' | 'paid'
+export type ApprovalStage = 'vendor' | 'lead'
 
 export interface ExpenseRequest {
   id: number
@@ -8,6 +9,10 @@ export interface ExpenseRequest {
   project_name?: string | null
   supplier_id?: number | null
   supplier_name?: string | null
+  vendor_id?: number | null
+  vendor_name?: string | null
+  engineer_id?: number | null
+  engineer_name?: string | null
   expense_type: string
   expense_type_label?: string | null
   title: string
@@ -16,7 +21,11 @@ export interface ExpenseRequest {
   expense_date?: string | null
   description?: string | null
   status: ExpenseStatus
+  approval_stage: ApprovalStage
   requested_by_user_id?: number | null
+  vendor_approved_by_user_id?: number | null
+  vendor_approved_at?: string | null
+  vendor_approval_note?: string | null
   approved_by_user_id?: number | null
   approved_at?: string | null
   approval_note?: string | null
@@ -28,6 +37,8 @@ export interface ExpenseRequest {
 export interface ExpensePayload {
   project_id: number
   supplier_id?: number | null
+  engineer_id?: number | null
+  vendor_id?: number | null  // engineer 自提时必填
   expense_type: string
   title: string
   amount: number

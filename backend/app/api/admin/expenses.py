@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.models.data_dict import DataDict
+from app.models.engineer import Engineer
 from app.models.expense import (
+    APPROVAL_STAGE_LEAD,
+    APPROVAL_STAGE_VENDOR,
     EXPENSE_STATUS_APPROVED,
     EXPENSE_STATUS_PAID,
     EXPENSE_STATUS_PENDING,
@@ -65,6 +68,8 @@ async def _to_out(db: AsyncSession, e: ExpenseRequest) -> ExpenseRequestOut:
         supplier_name=e.supplier.name if e.supplier else None,
         vendor_id=e.vendor_id,
         vendor_name=await _vendor_name(db, e.vendor_id),
+        engineer_id=e.engineer_id,
+        engineer_name=e.engineer.full_name if e.engineer else None,
         expense_type=e.expense_type,
         expense_type_label=await _label_for_type(db, e.expense_type),
         title=e.title,
@@ -73,7 +78,11 @@ async def _to_out(db: AsyncSession, e: ExpenseRequest) -> ExpenseRequestOut:
         expense_date=e.expense_date,
         description=e.description,
         status=e.status,
+        approval_stage=e.approval_stage,
         requested_by_user_id=e.requested_by_user_id,
+        vendor_approved_by_user_id=e.vendor_approved_by_user_id,
+        vendor_approved_at=e.vendor_approved_at,
+        vendor_approval_note=e.vendor_approval_note,
         approved_by_user_id=e.approved_by_user_id,
         approved_at=e.approved_at,
         approval_note=e.approval_note,
@@ -125,14 +134,11 @@ async def create_expense(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
 ) -> ExpenseRequestOut:
-    # 用户 2026-05-25 策略：只有 vendor 角色可以提交支出申请
-    # admin/lead/pm/finance 只做审批，不再自己提交
+    # vendor 替工程师录入 / engineer 自己提交垫付报销；admin/lead/pm/finance 只审批
     role = user.get("role")
-    if role != VENDOR_ROLE:
-        raise HTTPException(status_code=403, detail="只有 vendor 角色可以提交支出申请")
-    vendor_id = user.get("vendor_id")
-    if not vendor_id:
-        raise HTTPException(status_code=400, detail="vendor 账号未挂 vendor 公司，无法提交")
+    if role not in (VENDOR_ROLE, ENGINEER_ROLE):
+        raise HTTPException(status_code=403, detail="只有 vendor 或 engineer 可以提交支出申请")
+
     if not await db.get(Project, payload.project_id):
         raise HTTPException(status_code=400, detail="项目不存在")
     if payload.supplier_id is not None and not await db.get(Supplier, payload.supplier_id):
@@ -140,9 +146,38 @@ async def create_expense(
     if not await _label_for_type(db, payload.expense_type):
         raise HTTPException(status_code=400, detail=f"支出类型 '{payload.expense_type}' 不在字典中")
 
+    if role == ENGINEER_ROLE:
+        # 工程师自由选 vendor 报账；engineer_id 强制 = 本人
+        engineer_id_from_jwt = user.get("engineer_id")
+        if not engineer_id_from_jwt:
+            raise HTTPException(status_code=400, detail="工程师账号未关联 engineer 档案，无法提交")
+        if not await db.get(Engineer, engineer_id_from_jwt):
+            raise HTTPException(status_code=400, detail="工程师档案不存在")
+        if payload.vendor_id is None:
+            raise HTTPException(status_code=400, detail="请选择本笔报销由哪个 vendor 公司经办")
+        if not await db.get(Vendor, payload.vendor_id):
+            raise HTTPException(status_code=400, detail="vendor 公司不存在")
+        engineer_id = engineer_id_from_jwt
+        vendor_id = payload.vendor_id
+        approval_stage = APPROVAL_STAGE_VENDOR  # 等所选 vendor 先批
+    else:  # VENDOR_ROLE
+        vendor_id = user.get("vendor_id")
+        if not vendor_id:
+            raise HTTPException(status_code=400, detail="vendor 账号未挂 vendor 公司，无法提交")
+        engineer_id = payload.engineer_id
+        if engineer_id is not None:
+            eng = await db.get(Engineer, engineer_id)
+            if not eng:
+                raise HTTPException(status_code=400, detail="工程师不存在")
+            if eng.vendor_id != vendor_id:
+                raise HTTPException(status_code=403, detail="不能为其他 vendor 公司的工程师提交报销")
+        approval_stage = APPROVAL_STAGE_LEAD  # vendor 自提跳过 vendor 阶段
+
     e = ExpenseRequest(**payload.model_dump(), status=EXPENSE_STATUS_PENDING)
     e.requested_by_user_id = await _user_id_from_jwt(db, user)
-    e.vendor_id = vendor_id  # 自动绑定提交方的 vendor 公司
+    e.vendor_id = vendor_id
+    e.engineer_id = engineer_id
+    e.approval_stage = approval_stage
     db.add(e)
     await db.commit()
     await db.refresh(e)
@@ -154,7 +189,7 @@ async def update_expense(
     eid: int,
     payload: ExpenseRequestUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> ExpenseRequestOut:
     e = await db.get(ExpenseRequest, eid)
     if not e:
@@ -168,22 +203,49 @@ async def update_expense(
     return await _to_out(db, e)
 
 
+def _check_stage_authority(e: ExpenseRequest, user: dict) -> None:
+    """根据当前 approval_stage + 调用者 role 判断能否操作。否则 403。"""
+    role = user.get("role")
+    if e.approval_stage == APPROVAL_STAGE_VENDOR:
+        # vendor 阶段：限 vendor 角色 + 必须是经办的 vendor 公司
+        if role != VENDOR_ROLE:
+            raise HTTPException(status_code=403, detail="vendor 阶段只能由经办 vendor 操作")
+        if user.get("vendor_id") != e.vendor_id:
+            raise HTTPException(status_code=403, detail="只能审批本 vendor 名下的报销")
+    elif e.approval_stage == APPROVAL_STAGE_LEAD:
+        if role not in {"admin", "lead", "finance"}:
+            raise HTTPException(status_code=403, detail="lead 阶段限 admin/lead/finance 操作")
+    else:
+        raise HTTPException(status_code=400, detail=f"未知审批阶段 {e.approval_stage}")
+
+
 @router.post("/{eid}/approve", response_model=ExpenseRequestOut)
 async def approve_expense(
     eid: int,
     payload: ApprovalAction,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRequestOut:
     e = await db.get(ExpenseRequest, eid)
     if not e:
         raise HTTPException(status_code=404, detail="支出单不存在")
     if e.status != EXPENSE_STATUS_PENDING:
         raise HTTPException(status_code=400, detail=f"当前状态 {e.status} 不可批准")
-    e.status = EXPENSE_STATUS_APPROVED
-    e.approved_by_user_id = await _user_id_from_jwt(db, user)
-    e.approved_at = datetime.utcnow()
-    e.approval_note = payload.approval_note
+    _check_stage_authority(e, user)
+
+    now = datetime.utcnow()
+    uid = await _user_id_from_jwt(db, user)
+    if e.approval_stage == APPROVAL_STAGE_VENDOR:
+        # vendor 批了 → 进入 lead 阶段，仍 pending
+        e.vendor_approved_by_user_id = uid
+        e.vendor_approved_at = now
+        e.vendor_approval_note = payload.approval_note
+        e.approval_stage = APPROVAL_STAGE_LEAD
+    else:  # APPROVAL_STAGE_LEAD
+        e.approved_by_user_id = uid
+        e.approved_at = now
+        e.approval_note = payload.approval_note
+        e.status = EXPENSE_STATUS_APPROVED
     await db.commit()
     await db.refresh(e)
     return await _to_out(db, e)
@@ -194,17 +256,27 @@ async def reject_expense(
     eid: int,
     payload: ApprovalAction,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "finance")),
+    user: dict = Depends(get_current_user),
 ) -> ExpenseRequestOut:
     e = await db.get(ExpenseRequest, eid)
     if not e:
         raise HTTPException(status_code=404, detail="支出单不存在")
     if e.status != EXPENSE_STATUS_PENDING:
         raise HTTPException(status_code=400, detail=f"当前状态 {e.status} 不可驳回")
+    _check_stage_authority(e, user)
+
+    now = datetime.utcnow()
+    uid = await _user_id_from_jwt(db, user)
+    if e.approval_stage == APPROVAL_STAGE_VENDOR:
+        # vendor 驳回 = 终态 rejected；记到 vendor_approved_* 字段
+        e.vendor_approved_by_user_id = uid
+        e.vendor_approved_at = now
+        e.vendor_approval_note = payload.approval_note
+    else:  # APPROVAL_STAGE_LEAD
+        e.approved_by_user_id = uid
+        e.approved_at = now
+        e.approval_note = payload.approval_note
     e.status = EXPENSE_STATUS_REJECTED
-    e.approved_by_user_id = await _user_id_from_jwt(db, user)
-    e.approved_at = datetime.utcnow()
-    e.approval_note = payload.approval_note
     await db.commit()
     await db.refresh(e)
     return await _to_out(db, e)

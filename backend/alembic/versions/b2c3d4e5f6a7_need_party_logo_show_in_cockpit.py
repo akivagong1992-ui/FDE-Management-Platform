@@ -18,7 +18,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     with op.batch_alter_table("need_parties") as batch:
-        batch.add_column(sa.Column("show_in_cockpit", sa.Boolean(), nullable=False, server_default=sa.text("0")))
+        batch.add_column(sa.Column("show_in_cockpit", sa.Boolean(), nullable=False, server_default=sa.text("false")))
         batch.add_column(sa.Column("logo_path", sa.String(length=255), nullable=True))
 
 

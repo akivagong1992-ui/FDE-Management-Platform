@@ -8,18 +8,32 @@ import {
 } from '@/api/expenses'
 import { listSuppliers, type Supplier } from '@/api/suppliers'
 import { listProjects, type Project } from '@/api/projects'
+import { listEngineers, type Engineer } from '@/api/engineers'
+import { listVendors, type Vendor } from '@/api/vendors'
 import { listDict, type DictItem } from '@/api/dataDict'
 import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
 import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 import { fmt2 } from '@/utils/format'
 
 const auth = useAuthStore()
-const isApprover = computed(() => ['admin', 'lead', 'finance'].includes(auth.role || ''))
+const isLeadApprover = computed(() => ['admin', 'lead', 'finance'].includes(auth.role || ''))
 const isVendor = computed(() => auth.role === 'vendor')
+const isEngineer = computed(() => auth.role === 'engineer')
+const canSubmit = computed(() => isVendor.value || isEngineer.value)
+
+// 哪些行当前用户能审批（按 stage + role）
+function canApproveRow(r: ExpenseRequest): boolean {
+  if (r.status !== 'pending') return false
+  if (r.approval_stage === 'vendor') return isVendor.value && r.vendor_id === auth.vendorId
+  if (r.approval_stage === 'lead') return isLeadApprover.value
+  return false
+}
 
 const rows = ref<ExpenseRequest[]>([])
 const suppliers = ref<Supplier[]>([])
 const projects = ref<Project[]>([])
+const engineers = ref<Engineer[]>([])
+const vendors = ref<Vendor[]>([])
 const types = ref<DictItem[]>([])
 const loading = ref(false)
 const filter = reactive<{ project_id?: number; expense_type?: string; status_filter?: ExpenseStatus }>({})
@@ -27,12 +41,14 @@ const filter = reactive<{ project_id?: number; expense_type?: string; status_fil
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<ExpensePayload>({
-  project_id: 0, supplier_id: null, expense_type: 'material', title: '', amount: 0,
+  project_id: 0, supplier_id: null, engineer_id: null, vendor_id: null,
+  expense_type: 'material', title: '', amount: 0,
   expense_date: new Date().toISOString().slice(0, 10), description: '',
 })
 
 const STATUS_LABEL: Record<string, string> = { pending: '待审批', approved: '已批准', rejected: '已驳回', paid: '已支付' }
 const STATUS_TYPE: Record<string, string> = { pending: 'warning', approved: 'success', rejected: 'info', paid: '' }
+const STAGE_LABEL: Record<string, string> = { vendor: 'Vendor 审批', lead: 'Lead 审批' }
 
 async function load() {
   loading.value = true
@@ -41,6 +57,13 @@ async function load() {
     if (suppliers.value.length === 0) suppliers.value = await listSuppliers()
     if (projects.value.length === 0) projects.value = await listProjects()
     if (types.value.length === 0) types.value = await listDict('expense_type')
+    if (engineers.value.length === 0) {
+      const params = auth.vendorId ? { vendor_id: auth.vendorId } : undefined
+      engineers.value = await listEngineers(params)
+    }
+    if (vendors.value.length === 0 && isEngineer.value) {
+      vendors.value = await listVendors()
+    }
   } finally {
     loading.value = false
   }
@@ -50,7 +73,9 @@ function openCreate() {
   editingId.value = null
   Object.assign(form, {
     project_id: projects.value[0]?.id || 0,
-    supplier_id: null, expense_type: 'material', title: '', amount: 0,
+    supplier_id: null, engineer_id: null,
+    vendor_id: isEngineer.value ? (vendors.value[0]?.id || null) : null,
+    expense_type: 'material', title: '', amount: 0,
     expense_date: new Date().toISOString().slice(0, 10), description: '',
   })
   dialog.value = true
@@ -59,7 +84,8 @@ function openCreate() {
 function openEdit(e: ExpenseRequest) {
   editingId.value = e.id
   Object.assign(form, {
-    project_id: e.project_id, supplier_id: e.supplier_id,
+    project_id: e.project_id, supplier_id: e.supplier_id, engineer_id: e.engineer_id ?? null,
+    vendor_id: e.vendor_id ?? null,
     expense_type: e.expense_type, title: e.title,
     amount: Number(e.amount), expense_date: e.expense_date || undefined,
     description: e.description || '',
@@ -72,9 +98,22 @@ async function onSubmit() {
     ElMessage.warning('项目 / 标题 / 金额 必填')
     return
   }
-  if (editingId.value === null) await createExpense(form)
-  else await updateExpense(editingId.value, form)
-  ElMessage.success('已保存（待审批）')
+  if (isEngineer.value && !form.vendor_id) {
+    ElMessage.warning('请选择提交给哪个 Vendor 审批')
+    return
+  }
+  if (editingId.value === null) {
+    await createExpense(form)
+    if (isEngineer.value) {
+      const v = vendors.value.find((x) => x.id === form.vendor_id)
+      ElMessage.success(`已提交给 ${v?.name || 'Vendor'} 审批`)
+    } else {
+      ElMessage.success('已保存（待 Lead 审批）')
+    }
+  } else {
+    await updateExpense(editingId.value, form)
+    ElMessage.success('已保存')
+  }
   dialog.value = false
   await load()
 }
@@ -116,12 +155,15 @@ const COL_DEFS = [
   { key: 'title', label: '标题' },
   { key: 'project_name', label: '项目' },
   { key: 'supplier_name', label: '供应商' },
+  { key: 'engineer_name', label: '受益工程师' },
+  { key: 'vendor_name', label: '经办 Vendor' },
   { key: 'amount', label: '金额' },
   { key: 'expense_date', label: '发生日' },
   { key: 'status', label: '状态' },
+  { key: 'approval_stage', label: '审批阶段' },
 ]
 const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
-const FILTERABLE_KEYS = ['expense_type', 'title', 'project_name', 'supplier_name', 'status']
+const FILTERABLE_KEYS = ['expense_type', 'title', 'project_name', 'supplier_name', 'engineer_name', 'vendor_name', 'status', 'approval_stage']
 const filters = ref<Record<string, Set<string | number>>>(
   Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
 )
@@ -129,6 +171,7 @@ function cellText(r: ExpenseRequest, key: string): string {
   switch (key) {
     case 'expense_type': return r.expense_type_label || r.expense_type || ''
     case 'status': return STATUS_LABEL[r.status] || r.status
+    case 'approval_stage': return STAGE_LABEL[r.approval_stage] || r.approval_stage
     default: {
       const v = (r as unknown as Record<string, unknown>)[key]
       return v == null ? '' : String(v)
@@ -158,7 +201,7 @@ onMounted(load)
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
       <div style="flex: 1" />
       <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
-      <el-button v-if="isVendor" type="primary" @click="openCreate">新增支出申请</el-button>
+      <el-button v-if="canSubmit" type="primary" @click="openCreate">新增支出申请</el-button>
     </div>
 
     <el-table :data="filteredRows" v-loading="loading" stripe>
@@ -193,6 +236,20 @@ onMounted(load)
         </template>
         <template #default="{ row }">{{ row.supplier_name }}</template>
       </el-table-column>
+      <el-table-column v-if="visibleCols.has('engineer_name')" label="受益工程师" width="130">
+        <template #header>
+          受益工程师
+          <ColumnFilterMenu :options="distinctValues('engineer_name')" v-model="filters.engineer_name" />
+        </template>
+        <template #default="{ row }">{{ row.engineer_name || '—' }}</template>
+      </el-table-column>
+      <el-table-column v-if="visibleCols.has('vendor_name')" label="经办 Vendor" width="160">
+        <template #header>
+          经办 Vendor
+          <ColumnFilterMenu :options="distinctValues('vendor_name')" v-model="filters.vendor_name" />
+        </template>
+        <template #default="{ row }">{{ row.vendor_name || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="visibleCols.has('amount')" label="金额" width="120">
         <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
       </el-table-column>
@@ -206,18 +263,28 @@ onMounted(load)
           <el-tag :type="STATUS_TYPE[row.status] as any">{{ STATUS_LABEL[row.status] }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column v-if="visibleCols.has('approval_stage')" label="审批阶段" width="120">
+        <template #header>
+          审批阶段
+          <ColumnFilterMenu :options="distinctValues('approval_stage')" v-model="filters.approval_stage" />
+        </template>
+        <template #default="{ row }">
+          <el-tag v-if="row.status === 'pending'" :type="row.approval_stage === 'vendor' ? 'warning' : 'primary'">
+            {{ STAGE_LABEL[row.approval_stage] }}
+          </el-tag>
+          <span v-else>—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="260" fixed="right">
         <template #default="{ row }">
-          <!-- vendor 可编辑/删除自己 pending 的；不能审批 -->
-          <el-button v-if="isVendor && row.status === 'pending'" link size="small" @click="openEdit(row)">编辑</el-button>
-          <el-button v-if="isVendor && row.status === 'pending'" link type="danger" size="small" @click="onDelete(row)">撤回</el-button>
-          <!-- approver 看见审批按钮 -->
-          <template v-if="isApprover && row.status === 'pending'">
+          <el-button v-if="isVendor && row.status === 'pending' && row.approval_stage === 'lead'" link size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button v-if="isVendor && row.status === 'pending' && row.approval_stage === 'lead'" link type="danger" size="small" @click="onDelete(row)">撤回</el-button>
+          <template v-if="canApproveRow(row)">
             <el-button link type="success" size="small" @click="onApprove(row)">批准</el-button>
             <el-button link type="warning" size="small" @click="onReject(row)">驳回</el-button>
           </template>
-          <el-button v-if="isApprover && row.status === 'approved'" link type="primary" size="small" @click="onMarkPaid(row)">标记已付</el-button>
-          <el-button v-if="isApprover" link type="danger" size="small" @click="onDelete(row)">删除</el-button>
+          <el-button v-if="isLeadApprover && row.status === 'approved'" link type="primary" size="small" @click="onMarkPaid(row)">标记已付</el-button>
+          <el-button v-if="isLeadApprover" link type="danger" size="small" @click="onDelete(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -238,6 +305,19 @@ onMounted(load)
           <el-select v-model="form.supplier_id" clearable filterable placeholder="可选" style="width: 100%">
             <el-option v-for="s in suppliers" :key="s.id" :label="s.name" :value="s.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item v-if="!isEngineer" label="受益工程师">
+          <el-select v-model="form.engineer_id" clearable filterable placeholder="可选（差旅/培训等垫付时填）" style="width: 100%">
+            <el-option v-for="g in engineers" :key="g.id" :label="g.full_name" :value="g.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="isEngineer" label="提交给哪个 Vendor 审批" required>
+          <el-select v-model="form.vendor_id" filterable placeholder="选择 Vendor" style="width: 100%">
+            <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
+          </el-select>
+          <div style="font-size: 12px; color: #909399; line-height: 1.4; margin-top: 4px">
+            该 Vendor 先审批，通过后再到 Lead 审批；驳回即终态。
+          </div>
         </el-form-item>
         <el-form-item label="标题" required><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="金额 (HKD)" required>

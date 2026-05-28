@@ -33,7 +33,7 @@ def upgrade() -> None:
     # 兼容旧 is_approved：true 行迁移为 approved，否则 pending
     op.execute("""
         UPDATE timesheets
-        SET approval_status = CASE WHEN is_approved = 1 THEN 'approved' ELSE 'pending' END,
+        SET approval_status = CASE WHEN is_approved = TRUE THEN 'approved' ELSE 'pending' END,
             reviewed_at = approved_at
     """)
 

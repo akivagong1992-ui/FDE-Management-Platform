@@ -6,6 +6,7 @@ import {
   type ExpensePayload, type ExpenseRequest, type ExpenseStatus,
 } from '@/api/expenses'
 import { listProjects, type Project } from '@/api/projects'
+import { listVendors, type Vendor } from '@/api/vendors'
 import { listDict, type DictItem } from '@/api/dataDict'
 import { fmt2 } from '@/utils/format'
 
@@ -15,9 +16,11 @@ const STATUS_LABEL: Record<ExpenseStatus, string> = {
 const STATUS_TYPE: Record<ExpenseStatus, 'warning' | 'success' | 'danger' | 'info'> = {
   pending: 'warning', approved: 'success', rejected: 'danger', paid: 'info',
 }
+const STAGE_LABEL: Record<string, string> = { vendor: 'Vendor 审批', lead: 'Lead 审批' }
 
 const rows = ref<ExpenseRequest[]>([])
 const projects = ref<Project[]>([])
+const vendors = ref<Vendor[]>([])
 const types = ref<DictItem[]>([])
 const loading = ref(false)
 const tab = ref<'all' | ExpenseStatus>('all')
@@ -25,7 +28,8 @@ const tab = ref<'all' | ExpenseStatus>('all')
 const dialog = ref(false)
 const today = () => new Date().toISOString().slice(0, 10)
 const form = reactive<ExpensePayload>({
-  project_id: 0, supplier_id: null, expense_type: 'material',
+  project_id: 0, supplier_id: null, vendor_id: null,
+  expense_type: 'material',
   title: '', amount: 0,
   expense_date: today(), description: '',
 })
@@ -35,6 +39,7 @@ async function load() {
   try {
     rows.value = await listExpenses()
     if (projects.value.length === 0) projects.value = await listProjects()
+    if (vendors.value.length === 0) vendors.value = await listVendors()
     if (types.value.length === 0) types.value = await listDict('expense_type')
   } finally {
     loading.value = false
@@ -60,6 +65,7 @@ function openCreate() {
   Object.assign(form, {
     project_id: projects.value[0]?.id || 0,
     supplier_id: null,
+    vendor_id: vendors.value[0]?.id || null,
     expense_type: types.value[0]?.code || 'material',
     title: '', amount: 0,
     expense_date: today(), description: '',
@@ -69,6 +75,7 @@ function openCreate() {
 
 async function onSubmit() {
   if (!form.project_id) { ElMessage.warning('请选择项目'); return }
+  if (!form.vendor_id) { ElMessage.warning('请选择提交给哪个 Vendor 审批'); return }
   if (!form.expense_type) { ElMessage.warning('请选择支出类型'); return }
   if (!form.title.trim()) { ElMessage.warning('标题必填'); return }
   if (!form.amount || form.amount <= 0) { ElMessage.warning('金额必须 > 0'); return }
@@ -76,7 +83,8 @@ async function onSubmit() {
   if (!payload.supplier_id) payload.supplier_id = null
   if (!payload.description) payload.description = null
   await createExpense(payload)
-  ElMessage.success('已提交支出申请，等管理者审批')
+  const v = vendors.value.find((x) => x.id === form.vendor_id)
+  ElMessage.success(`已提交给 ${v?.name || 'Vendor'} 审批`)
   dialog.value = false
   await load()
 }
@@ -133,6 +141,12 @@ onMounted(load)
           <strong>HK$ {{ fmt2(row.amount) }}</strong>
         </template>
       </el-table-column>
+      <el-table-column label="经办 Vendor" min-width="140">
+        <template #default="{ row }">
+          <span v-if="row.vendor_name">{{ row.vendor_name }}</span>
+          <span v-else style="color: #c0c4cc">—</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="90">
         <template #default="{ row }">
           <el-tag :type="STATUS_TYPE[row.status as ExpenseStatus]" size="small">
@@ -140,27 +154,45 @@ onMounted(load)
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="管理者批注 / 拒绝理由" min-width="200">
+      <el-table-column label="当前审批方" width="120">
         <template #default="{ row }">
-          <span v-if="row.status === 'rejected' && row.approval_note"
-                style="color: #f56c6c; font-size: 13px">
-            ✗ {{ row.approval_note }}
-          </span>
-          <span v-else-if="row.status === 'approved' && row.approval_note"
-                style="color: #67c23a; font-size: 13px">
-            ✓ {{ row.approval_note }}
-          </span>
-          <span v-else style="color: #c0c4cc; font-size: 12px">—</span>
+          <el-tag v-if="row.status === 'pending'"
+                  :type="row.approval_stage === 'vendor' ? 'warning' : 'primary'" size="small">
+            {{ STAGE_LABEL[row.approval_stage] || row.approval_stage }}
+          </el-tag>
+          <span v-else style="color: #c0c4cc">—</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="批注 / 拒绝理由" min-width="200">
+        <template #default="{ row }">
+          <div v-if="row.vendor_approval_note" style="font-size: 12px"
+               :style="{ color: row.status === 'rejected' && row.approval_stage === 'vendor' ? '#f56c6c' : '#67c23a' }">
+            Vendor: {{ row.vendor_approval_note }}
+          </div>
+          <div v-if="row.approval_note" style="font-size: 12px"
+               :style="{ color: row.status === 'rejected' ? '#f56c6c' : '#67c23a' }">
+            Lead: {{ row.approval_note }}
+          </div>
+          <span v-if="!row.vendor_approval_note && !row.approval_note"
+                style="color: #c0c4cc; font-size: 12px">—</span>
         </template>
       </el-table-column>
     </el-table>
 
     <el-dialog v-model="dialog" title="申请支出" width="600px">
-      <el-form :model="form" label-width="90px">
+      <el-form :model="form" label-width="100px">
         <el-form-item label="项目" required>
           <el-select v-model="form.project_id" filterable style="width: 100%">
             <el-option v-for="p in projects" :key="p.id" :label="p.name" :value="p.id" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="审批 Vendor" required>
+          <el-select v-model="form.vendor_id" filterable placeholder="选择 Vendor" style="width: 100%">
+            <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
+          </el-select>
+          <div style="font-size: 12px; color: #909399; line-height: 1.4; margin-top: 4px">
+            该 Vendor 先审批，通过后再到 Lead 审批；驳回即终态。
+          </div>
         </el-form-item>
         <el-row :gutter="12">
           <el-col :span="12">
@@ -188,7 +220,7 @@ onMounted(load)
         </el-form-item>
         <el-alert type="info" :closable="false" show-icon style="margin-top: 4px">
           <template #title>
-            提交后状态为「待审」。管理者批准 / 拒绝后，结果与批注/拒绝理由会显示在列表
+            两段式审批：所选 Vendor 先审批，通过后由 Lead 审批；任一段驳回即终态
           </template>
         </el-alert>
       </el-form>

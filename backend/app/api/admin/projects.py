@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
 from app.models.engineer import Engineer
-from app.models.expense import EXPENSE_STATUS_REJECTED, ExpenseRequest
+from app.models.expense import EXPENSE_STATUS_PAID, ExpenseRequest
 from app.models.need_party import NeedParty
 from app.models.project import (
     PROJECT_BID_OUTCOME_WON,
@@ -321,21 +321,20 @@ async def cost_breakdown(
         .where(VendorServiceFee.project_id == project_id)
     )).scalar_one()
 
-    # External expenses (exclude rejected)
+    # External expenses (cash basis: only paid count as cost)
     expenses_total = (await db.execute(
         select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
         .where(
             ExpenseRequest.project_id == project_id,
-            ExpenseRequest.status != EXPENSE_STATUS_REJECTED,
+            ExpenseRequest.status == EXPENSE_STATUS_PAID,
         )
     )).scalar_one()
 
-    # Break down by expense_type
     by_type_rows = (await db.execute(
         select(ExpenseRequest.expense_type, func.coalesce(func.sum(ExpenseRequest.amount), 0))
         .where(
             ExpenseRequest.project_id == project_id,
-            ExpenseRequest.status != EXPENSE_STATUS_REJECTED,
+            ExpenseRequest.status == EXPENSE_STATUS_PAID,
         )
         .group_by(ExpenseRequest.expense_type)
     )).all()

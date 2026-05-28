@@ -19,13 +19,13 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     with op.batch_alter_table("timesheets") as batch:
         batch.add_column(sa.Column("has_morning", sa.Boolean(),
-                                   nullable=False, server_default=sa.text("0")))
+                                   nullable=False, server_default=sa.text("false")))
         batch.add_column(sa.Column("has_afternoon", sa.Boolean(),
-                                   nullable=False, server_default=sa.text("0")))
+                                   nullable=False, server_default=sa.text("false")))
         batch.add_column(sa.Column("has_evening", sa.Boolean(),
-                                   nullable=False, server_default=sa.text("0")))
+                                   nullable=False, server_default=sa.text("false")))
         batch.add_column(sa.Column("is_workday", sa.Boolean(),
-                                   nullable=False, server_default=sa.text("1")))
+                                   nullable=False, server_default=sa.text("true")))
         batch.add_column(sa.Column("natural_days", sa.Numeric(4, 2),
                                    nullable=False, server_default="0"))
         batch.add_column(sa.Column("weighted_days", sa.Numeric(4, 2),
@@ -34,16 +34,20 @@ def upgrade() -> None:
     # 将旧 person_days 的语义迁移到 weighted_days（视作 1.0× 倍率历史值）
     # 同时按 person_days 大致还原 slot 选择（启发式）：
     # ≥1.5 → 整天+晚上、≥1.0 → 上下午、≥0.5 → 上午
-    op.execute("""
+    # SQLite 用 strftime('%w', date)；Postgres 用 EXTRACT(DOW FROM date)
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        weekday_expr = "EXTRACT(DOW FROM work_date) IN (0, 6)"
+    else:  # sqlite
+        weekday_expr = "strftime('%w', work_date) IN ('0', '6')"
+    op.execute(f"""
         UPDATE timesheets SET
           weighted_days = COALESCE(person_days, 0),
           natural_days  = COALESCE(person_days, 0),
-          has_morning   = CASE WHEN person_days >= 0.5 THEN 1 ELSE 0 END,
-          has_afternoon = CASE WHEN person_days >= 1.0 THEN 1 ELSE 0 END,
-          has_evening   = CASE WHEN person_days >= 1.5 THEN 1 ELSE 0 END,
-          is_workday    = CASE
-              WHEN strftime('%w', work_date) IN ('0', '6') THEN 0 ELSE 1
-          END
+          has_morning   = CASE WHEN person_days >= 0.5 THEN TRUE ELSE FALSE END,
+          has_afternoon = CASE WHEN person_days >= 1.0 THEN TRUE ELSE FALSE END,
+          has_evening   = CASE WHEN person_days >= 1.5 THEN TRUE ELSE FALSE END,
+          is_workday    = CASE WHEN {weekday_expr} THEN FALSE ELSE TRUE END
         WHERE 1 = 1
     """)
 

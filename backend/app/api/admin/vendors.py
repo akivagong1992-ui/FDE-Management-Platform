@@ -23,7 +23,7 @@ async def list_vendors(
 async def create_vendor(
     payload: VendorCreate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> VendorOut:
     if (await db.execute(select(Vendor).where(Vendor.name == payload.name))).scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Vendor 名称已存在")
@@ -39,7 +39,7 @@ async def update_vendor(
     vendor_id: int,
     payload: VendorUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm", "finance")),
+    _: dict = Depends(require_role("admin", "lead", "finance")),
 ) -> VendorOut:
     v = await db.get(Vendor, vendor_id)
     if not v:

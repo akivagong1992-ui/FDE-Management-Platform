@@ -6,7 +6,10 @@ import { updateProject } from '@/api/projects'
 import { listEngineers, type Engineer } from '@/api/engineers'
 import ProjectInteractionDrawer from './ProjectInteractionDrawer.vue'
 
-const cockpit = axios.create({ baseURL: '/api/cockpit', timeout: 10000 })
+const cockpit = axios.create({
+  baseURL: '/api/cockpit', timeout: 10000,
+  headers: { 'X-Cockpit-Token': 'cockpit-dev-token' },
+})
 
 interface InProgressProject {
   project_id: number

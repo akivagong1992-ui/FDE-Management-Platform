@@ -104,9 +104,12 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
     team_revenue_by_pid: dict[int, float] = {pid: float(amt) for pid, amt in rev_rows}
 
     # Top savings: savings = outsource_benchmark − 团队入账
+    # 跳过没估过 benchmark 的项目（README §1.7.4: 没询价就空，不能当 0 计算）
     rev_with_savings = []
     for p in rev_projects:
-        bench = float(p.outsource_benchmark_amount or 0)
+        if p.outsource_benchmark_amount is None:
+            continue
+        bench = float(p.outsource_benchmark_amount)
         team_share = team_revenue_by_pid.get(p.id, 0.0)
         savings = bench - team_share
         rev_with_savings.append({
@@ -117,11 +120,12 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
         })
     rev_with_savings.sort(key=lambda x: -x["savings"])
 
-    # Top value_created on no-revenue projects
+    # Top value_created on no-revenue projects（同样跳过缺 benchmark 的）
     no_rev_with_value = sorted(
         [
-            {"project_id": p.id, "name": p.name, "value_created": float(p.outsource_benchmark_amount or 0)}
+            {"project_id": p.id, "name": p.name, "value_created": float(p.outsource_benchmark_amount)}
             for p in no_rev_projects
+            if p.outsource_benchmark_amount is not None
         ],
         key=lambda x: -x["value_created"],
     )

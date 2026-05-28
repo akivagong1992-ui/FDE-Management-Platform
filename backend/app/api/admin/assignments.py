@@ -146,7 +146,7 @@ async def list_messages(
 async def create_assignment(
     payload: AssignmentCreate,
     db: AsyncSession = Depends(get_db),
-    user: dict = Depends(require_role("admin", "lead", "pm")),
+    user: dict = Depends(require_role("admin", "lead")),
 ) -> AssignmentOut:
     eng = await db.get(Engineer, payload.engineer_id)
     if not eng:
@@ -187,7 +187,7 @@ async def update_assignment(
     assignment_id: int,
     payload: AssignmentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> AssignmentOut:
     a = await db.get(Assignment, assignment_id)
     if not a:
@@ -204,7 +204,7 @@ async def end_assignment(
     assignment_id: int,
     actual_end_date: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead", "pm")),
+    _: dict = Depends(require_role("admin", "lead")),
 ) -> AssignmentOut:
     from datetime import date as date_cls
 
