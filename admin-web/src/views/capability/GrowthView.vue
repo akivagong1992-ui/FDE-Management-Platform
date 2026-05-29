@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { teamTrend, triggerSnapshot, type TeamTrendPoint } from '@/api/capability'
+import { listEngineers, type Engineer, type EngineerSkillRow } from '@/api/engineers'
+import { triggerSnapshot } from '@/api/capability'
 
-const trend = ref<TeamTrendPoint[]>([])
+const engineers = ref<Engineer[]>([])
 const loading = ref(false)
 const taking = ref(false)
+const filterText = ref('')
 
 async function load() {
   loading.value = true
   try {
-    trend.value = await teamTrend()
+    engineers.value = await listEngineers({ status_filter: 'active' })
   } finally {
     loading.value = false
   }
@@ -18,153 +20,152 @@ async function load() {
 
 async function onTakeSnapshot() {
   await ElMessageBox.confirm(
-    '拍一份当下的团队能力快照（每位在职工程师当前持有认证数 + 平均难度）。' +
-    '同一天内重复拍会跳过已存在的快照。',
+    '拍一份当下的团队能力快照——记录每位在职工程师当前持有认证数和平均难度，' +
+    '用于驾驶舱 Tab 7「团队成长曲线」展示给领导看持续投入。同一天重复拍会跳过。',
     '拍当下快照', { type: 'info', confirmButtonText: '拍' },
   )
   taking.value = true
   try {
     const r = await triggerSnapshot()
     ElMessage.success(`快照已生成：新增 ${r.created} 份，跳过 ${r.skipped} 份（已存在同日）`)
-    await load()
   } finally {
     taking.value = false
   }
 }
 
-// Color palette aligned across KPI cards + chart lines
-const COLOR_SKILL = '#409eff'
-const COLOR_LEVEL = '#e6a23c'
-
-// Simple SVG line chart helpers
-const W = 700
-const H = 220
-const padding = { top: 16, right: 16, bottom: 30, left: 40 }
-const chartW = W - padding.left - padding.right
-const chartH = H - padding.top - padding.bottom
-
-function polyline(points: number[], maxY: number): { d: string; pts: { x: number; y: number; v: number }[] } {
-  if (points.length === 0) return { d: '', pts: [] }
-  const pts = points.map((v, i) => {
-    const x = padding.left + (chartW / Math.max(1, points.length - 1)) * i
-    const y = padding.top + chartH - (v / Math.max(1, maxY)) * chartH
-    return { x, y, v }
+// 按 vendor 然后 full_name 排序，过滤：搜工程师名 / vendor / 认证名
+const filtered = computed(() => {
+  const q = filterText.value.trim().toLowerCase()
+  const list = engineers.value.slice().sort((a, b) => {
+    const va = (a.vendor_name || '').localeCompare(b.vendor_name || '')
+    return va !== 0 ? va : a.full_name.localeCompare(b.full_name)
   })
-  const d = 'M ' + pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')
-  return { d, pts }
+  if (!q) return list
+  return list.filter((e) =>
+    e.full_name.toLowerCase().includes(q)
+    || (e.vendor_name || '').toLowerCase().includes(q)
+    || e.skills.some((s) => s.skill_name.toLowerCase().includes(q)
+                          || (s.skill_issuer || '').toLowerCase().includes(q)),
+  )
+})
+
+const totalSkillAssignments = computed(() =>
+  engineers.value.reduce((sum, e) => sum + e.skills.length, 0),
+)
+
+// 按 category 分组某工程师的 skills，便于展示
+function groupByCategory(skills: EngineerSkillRow[]): Record<string, EngineerSkillRow[]> {
+  const grouped: Record<string, EngineerSkillRow[]> = {}
+  for (const s of skills) {
+    const cat = s.skill_category || '其他'
+    if (!grouped[cat]) grouped[cat] = []
+    grouped[cat].push(s)
+  }
+  // 每组内按等级降序（L3 → L1）
+  for (const cat in grouped) {
+    grouped[cat].sort((a, b) => (b.skill_level || '').localeCompare(a.skill_level || ''))
+  }
+  return grouped
 }
 
-const skillSeries = computed(() => trend.value.map((p) => p.avg_skill_count))
-const levelSeries = computed(() => trend.value.map((p) => p.avg_skill_level))
-
-const skillLine = computed(() => polyline(skillSeries.value, Math.max(1, ...skillSeries.value)))
-const levelLine = computed(() => polyline(levelSeries.value, 3))
-
-const earliest = computed(() => trend.value[0])
-const latest = computed(() => trend.value[trend.value.length - 1])
+function levelTagType(level?: string | null): 'success' | 'warning' | 'info' {
+  if (level === 'L3') return 'success'
+  if (level === 'L2') return 'warning'
+  return 'info'
+}
 
 onMounted(load)
 </script>
 
 <template>
-  <div class="growth-page">
-    <!-- KPI 两件套 — 色彩与下方曲线一一对应 -->
-    <el-row :gutter="16" class="kpi-row">
-      <el-col :span="12">
-        <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">
-            <span class="dot" :style="{ background: COLOR_SKILL }" />
-            人均持有认证
-          </div>
-          <div class="kpi-value" :style="{ color: COLOR_SKILL }">
-            {{ latest?.avg_skill_count?.toFixed(2) ?? '—' }}
-          </div>
-          <div v-if="earliest && latest" class="kpi-delta">
-            ▲ +{{ (latest.avg_skill_count - earliest.avg_skill_count).toFixed(2) }} <span class="kpi-delta-since">vs 起点</span>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="hover" class="kpi-card">
-          <div class="kpi-label">
-            <span class="dot" :style="{ background: COLOR_LEVEL }" />
-            人均认证难度
-          </div>
-          <div class="kpi-value" :style="{ color: COLOR_LEVEL }">
-            L{{ latest?.avg_skill_level?.toFixed(2) ?? '—' }}
-          </div>
-          <div v-if="earliest && latest" class="kpi-delta">
-            ▲ +{{ (latest.avg_skill_level - earliest.avg_skill_level).toFixed(2) }} <span class="kpi-delta-since">vs 起点</span>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
+  <div class="cap-page" v-loading="loading">
+    <!-- 顶部 stats + 操作 -->
+    <div class="stats-bar">
+      <div class="stats">
+        <span><strong>{{ engineers.length }}</strong> 位在职工程师</span>
+        <span class="sep">·</span>
+        <span>共持有 <strong>{{ totalSkillAssignments }}</strong> 条认证</span>
+      </div>
+      <div class="ops">
+        <el-input v-model="filterText" placeholder="搜工程师名 / vendor / 认证名" clearable size="small"
+                  style="width: 280px" />
+        <el-button size="small" type="primary" plain :loading="taking" @click="onTakeSnapshot">
+          拍当下快照
+        </el-button>
+      </div>
+    </div>
 
-    <!-- 团队成长曲线 — 头部内联 legend + 拍快照按钮 -->
-    <el-card v-loading="loading" class="chart-card">
-      <template #header>
-        <div class="chart-header">
-          <span class="chart-title">
-            团队成长曲线
-            <span class="chart-sub">每次「拍快照」生成一个点，曲线 ≥ 2 个点起算</span>
-          </span>
-          <div class="header-right">
-            <div class="legend">
-              <span><span class="legend-dot" :style="{ background: COLOR_SKILL }" />人均持有认证</span>
-              <span><span class="legend-dot" :style="{ background: COLOR_LEVEL }" />人均认证难度 (L1–3)</span>
+    <!-- 工程师 × 认证清单 -->
+    <div v-if="filtered.length === 0" class="empty-state">
+      {{ engineers.length === 0 ? '暂无在职工程师' : '没有匹配的工程师 / 认证' }}
+    </div>
+    <div v-else class="eng-list">
+      <el-card v-for="e in filtered" :key="e.id" class="eng-card" shadow="never">
+        <div class="eng-head">
+          <div class="eng-name-block">
+            <span class="eng-name">{{ e.full_name }}</span>
+            <span class="eng-meta">{{ e.vendor_name }}</span>
+          </div>
+          <span class="eng-count">{{ e.skills.length }} 条认证</span>
+        </div>
+
+        <div v-if="e.skills.length === 0" class="no-skill">未挂载任何认证</div>
+        <div v-else class="skill-groups">
+          <div v-for="(items, cat) in groupByCategory(e.skills)" :key="cat" class="skill-group">
+            <span class="cat-label">{{ cat }}</span>
+            <div class="skill-tags">
+              <el-tag v-for="s in items" :key="s.id" :type="levelTagType(s.skill_level)" size="default"
+                      style="margin-right: 6px; margin-bottom: 4px">
+                <span style="font-weight: 600">{{ s.skill_level || '—' }}</span>
+                <span style="margin: 0 4px; color: #c0c4cc">|</span>
+                {{ s.skill_name }}
+                <span v-if="s.skill_issuer" style="margin-left: 6px; color: #909399; font-size: 11px">
+                  {{ s.skill_issuer }}
+                </span>
+              </el-tag>
             </div>
-            <el-button size="small" type="primary" :loading="taking" @click="onTakeSnapshot">
-              拍当下快照
-            </el-button>
           </div>
         </div>
-      </template>
-      <svg v-if="trend.length > 0" :viewBox="`0 0 ${W} ${H}`" style="width: 100%; max-height: 260px">
-        <line :x1="padding.left" :y1="H - padding.bottom" :x2="W - padding.right" :y2="H - padding.bottom"
-              stroke="#dcdfe6" stroke-width="1" />
-        <line :x1="padding.left" :y1="padding.top" :x2="padding.left" :y2="H - padding.bottom"
-              stroke="#dcdfe6" stroke-width="1" />
-        <path :d="skillLine.d" fill="none" :stroke="COLOR_SKILL" stroke-width="2" />
-        <circle v-for="(p, i) in skillLine.pts" :key="`s${i}`" :cx="p.x" :cy="p.y" r="3" :fill="COLOR_SKILL" />
-        <path :d="levelLine.d" fill="none" :stroke="COLOR_LEVEL" stroke-width="2" />
-        <circle v-for="(p, i) in levelLine.pts" :key="`l${i}`" :cx="p.x" :cy="p.y" r="3" :fill="COLOR_LEVEL" />
-        <text v-for="(p, i) in trend" :key="`x${i}`"
-              :x="padding.left + (chartW / Math.max(1, trend.length - 1)) * i" :y="H - 12"
-              text-anchor="middle" font-size="11" fill="#909399">
-          {{ p.snapshot_date.slice(2, 7) }}
-        </text>
-      </svg>
-      <el-empty v-else description="还没有快照，点右上「拍当下快照」开始记录" :image-size="80" />
-    </el-card>
+      </el-card>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.growth-page { display: flex; flex-direction: column; gap: 16px; }
+.cap-page { display: flex; flex-direction: column; gap: 12px; }
 
-.kpi-row { margin-bottom: 0; }
-.kpi-card { height: 100%; }
-.kpi-label {
-  display: flex; align-items: center; gap: 6px;
-  color: #909399; font-size: 13px;
-}
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-.kpi-value { font-size: 28px; font-weight: 600; margin-top: 10px; line-height: 1.2; }
-.kpi-delta { font-size: 12px; color: #67c23a; margin-top: 6px; }
-.kpi-delta-since { color: #c0c4cc; margin-left: 4px; }
-
-.chart-card { margin-top: 0; }
-.chart-header {
+.stats-bar {
   display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 4px 12px; border-bottom: 1px solid #ebeef5;
 }
-.chart-title { font-weight: 600; color: #303133; }
-.chart-sub { font-weight: normal; color: #909399; font-size: 12px; margin-left: 8px; }
-.header-right { display: flex; align-items: center; gap: 16px; }
-.legend {
-  display: flex; gap: 16px; font-size: 12px; color: #606266;
+.stats { color: #606266; font-size: 14px; }
+.stats strong { color: #303133; font-size: 16px; margin: 0 2px; }
+.sep { margin: 0 8px; color: #c0c4cc; }
+.ops { display: flex; gap: 8px; align-items: center; }
+
+.empty-state {
+  padding: 60px 0; text-align: center; color: #909399; font-size: 14px;
 }
-.legend-dot {
-  display: inline-block; width: 10px; height: 10px;
-  border-radius: 2px; margin-right: 4px; vertical-align: middle;
+
+.eng-list { display: flex; flex-direction: column; gap: 12px; }
+.eng-card { border: 1px solid #ebeef5; }
+.eng-card :deep(.el-card__body) { padding: 14px 18px; }
+
+.eng-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px;
 }
+.eng-name { font-weight: 600; color: #303133; font-size: 15px; }
+.eng-meta { color: #909399; font-size: 12px; margin-left: 10px; }
+.eng-count { color: #606266; font-size: 12px; }
+
+.no-skill { color: #c0c4cc; font-size: 13px; padding: 4px 0; }
+
+.skill-groups { display: flex; flex-direction: column; gap: 8px; }
+.skill-group { display: flex; align-items: flex-start; gap: 10px; }
+.cat-label {
+  min-width: 80px; padding-top: 4px;
+  color: #909399; font-size: 12px; font-weight: 500;
+}
+.skill-tags { flex: 1; }
 </style>
