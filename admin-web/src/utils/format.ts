@@ -23,12 +23,16 @@ export function fmtInt(n: Numlike): string {
   return new Intl.NumberFormat('en-HK', { maximumFractionDigits: 0 }).format(v)
 }
 
-/** 万元单位（驾驶舱 / Home KPI 大数字用）。n = 12345 → "1.2"。*/
+/** 万元单位（驾驶舱 / Home KPI 大数字用）。n = 12345, digits=2 → "1.23"；n = 30000, digits=2 → "3.00"。
+ * digits 同时作为最小 / 最大位数，强制对齐（避免 0.30 → "0.3" 这种掉零）。*/
 export function fmtWan(n: Numlike, digits = 1): string {
   if (n == null || n === '') return '—'
   const v = Number(n)
   if (!Number.isFinite(v)) return '—'
-  return (v / 10000).toLocaleString('en-HK', { maximumFractionDigits: digits })
+  return (v / 10000).toLocaleString('en-HK', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
 }
 
 /** "HK$ 12,345.67"。少数地方需要完整字符串时用。*/
