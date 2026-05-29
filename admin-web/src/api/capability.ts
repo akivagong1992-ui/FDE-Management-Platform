@@ -7,7 +7,6 @@ export interface SkillSnapshot {
   snapshot_date: string
   skill_count: number
   avg_level: number | string
-  cert_count: number
   level?: number | null
   created_at: string
 }
@@ -23,7 +22,6 @@ export interface TeamTrendPoint {
   engineer_count: number
   avg_skill_count: number
   avg_skill_level: number
-  avg_cert_count: number
 }
 
 export const listSnapshots = (engineer_id?: number) =>
