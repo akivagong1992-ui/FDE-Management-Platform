@@ -30,14 +30,16 @@ a { color: inherit; text-decoration: none; }
   text-shadow: 0 0 8px var(--cockpit-accent), 0 0 16px rgba(0, 229, 255, 0.5);
 }
 
+/* 1920×1080 base canvas — 直接用静态 px；viewport-relative (vw/vh) 在
+   scale wrapper 里失真，禁用。物理大小由 transform: scale() 适配大屏。 */
 .kpi-value {
-  font-size: clamp(28px, 3.2vw, 56px);
+  font-size: 52px;
   font-weight: 700;
   color: var(--cockpit-accent);
 }
 
 .kpi-label {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--cockpit-text-dim);
   letter-spacing: 2px;
 }
