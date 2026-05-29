@@ -161,10 +161,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 /* 在管项目进度表 — > 6 个自动滚动 */
 .progress-scroll-area {
-  flex: 1;
+  flex: 1;            /* 直接铺满 panel 剩余空间，不强制 N 行上限 */
   min-height: 0;
-  /* 上限：6 行 × 行高 ~80px + 5 个 gap × 14px ≈ 550px，超过自动滚动 */
-  max-height: 550px;
   overflow: hidden;
   position: relative;
   margin-top: 12px;
