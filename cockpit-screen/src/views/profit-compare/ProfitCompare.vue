@@ -39,7 +39,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="cValue10k" :decimals="1" /><span class="unit">万 HKD</span></div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">老外包毛利率</div>
+        <div class="kpi-label">服务商外包模式毛利率</div>
         <div class="kpi-value glow-text"><CountNumber :value="marginLift?.outsource_margin_pct ?? 0" :decimals="2" /><span class="unit">%</span></div>
       </div>
       <div class="panel kpi-card">
