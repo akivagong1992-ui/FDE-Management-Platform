@@ -84,16 +84,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-label">认证覆盖类别数</div>
         <div class="kpi-value glow-text"><CountNumber :value="heatmap.cats.length || 0" /></div>
       </div>
-      <div class="panel kpi-card brag-growth">
-        <div class="kpi-label">人均技能数（最新）</div>
-        <div class="kpi-value glow-text">
-          {{ trend?.series.at(-1)?.avg_skill_count.toFixed(1) ?? '—' }}
-          <span class="growth-delta" v-if="trend && trend.growth_delta.avg_skill_count > 0">
-            ▲ +{{ trend.growth_delta.avg_skill_count.toFixed(1) }}
-          </span>
-        </div>
-        <div class="kpi-sub">{{ trend?.snapshots_count ?? 0 }} 季度成长</div>
-      </div>
       <div class="panel kpi-card">
         <div class="kpi-label">Top 持证工程师</div>
         <div class="top-eng">
@@ -165,13 +155,10 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <style scoped>
 .grid { display: flex; flex-direction: column; height: 100%; gap: 16px; }
-.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; height: 140px; }
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px; }
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
 .kpi-card.brag .kpi-value { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
-.kpi-card.brag-growth { border-color: var(--cockpit-accent-gold); box-shadow: 0 0 18px rgba(255, 224, 130, 0.3); }
-.kpi-card.brag-growth .kpi-value { color: var(--cockpit-accent-gold); text-shadow: 0 0 8px var(--cockpit-accent-gold); }
-.growth-delta { font-size: 0.45em; color: var(--cockpit-accent-green); margin-left: 6px; font-family: 'Courier New', monospace; }
 .kpi-sub { color: var(--cockpit-text-dim); font-size: 11px; margin-top: 4px; }
 .legend { display: flex; gap: 12px; margin-top: 4px; color: var(--cockpit-text-dim); font-size: 11px; }
 .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: middle; }
