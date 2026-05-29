@@ -55,7 +55,6 @@ async function onDelete(v: Vendor) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'name', label: '名称' },
   { key: 'short_name', label: '简称' },
   { key: 'contact_person', label: '对接人' },

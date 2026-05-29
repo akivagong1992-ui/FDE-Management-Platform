@@ -107,7 +107,6 @@ const logoUrl = (path?: string | null) => (path ? `/api/uploads/${path}` : '')
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'logo_path', label: 'Logo' },
   { key: 'name', label: '名称' },
   { key: 'party_type', label: '类型' },

@@ -120,7 +120,6 @@ function openDetail(e: Engineer) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'full_name', label: '姓名' },
   { key: 'employment_form', label: '签约' },
   { key: 'vendor_name', label: 'Vendor' },

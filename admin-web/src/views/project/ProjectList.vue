@@ -27,7 +27,6 @@ const filter = reactive<{ kind?: ProjectKind; status_filter?: ProjectStatus; sal
 
 // ─ Column visibility + per-column filter (Excel-style) ──────────────
 const COL_DEFS: { key: string; label: string }[] = [
-  { key: 'id', label: 'ID' },
   { key: 'code', label: '编号' },
   { key: 'name', label: '项目名称' },
   { key: 'kind', label: '类型' },
@@ -39,6 +38,7 @@ const COL_DEFS: { key: string; label: string }[] = [
   { key: 'value_created_computed', label: '效益金额' },
   { key: 'planned_end_date', label: '计划完成' },
 ]
+// 默认隐藏 ID 列（仅作为内部主键，用户不需要看；可通过"显示列"菜单打开）
 const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
 
 // 仅枚举/字符串列支持 ▾ 过滤；金额/日期不处理
@@ -402,8 +402,9 @@ onMounted(load)
               <el-select v-model="form.bid_outcome" style="width: 100%">
                 <el-option v-for="o in BID_OUTCOME_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
-              <div style="color: #909399; font-size: 12px; margin-top: 4px">
-                <strong>已中标</strong> 才会计入驾驶舱降本
+              <div style="color: #909399; font-size: 12px; margin-top: 4px; line-height: 1.5">
+                必须同时满足 <strong>投标结果=已中标</strong> 且 <strong>已录入收入记录</strong>，
+                项目入账才计入团队收入 / 驾驶舱降本
               </div>
             </el-form-item>
           </el-col>

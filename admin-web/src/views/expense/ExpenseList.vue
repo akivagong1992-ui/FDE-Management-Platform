@@ -150,7 +150,6 @@ async function onDelete(e: ExpenseRequest) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'expense_type', label: '类型' },
   { key: 'title', label: '标题' },
   { key: 'project_name', label: '项目' },

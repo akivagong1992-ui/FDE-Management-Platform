@@ -291,26 +291,31 @@ onUnmounted(() => {
 /* 已交付客户 logo 矩阵 */
 .logo-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 12px; margin-top: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px; margin-top: 12px;
   align-content: flex-start;
 }
 .logo-tile {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  padding: 10px 6px;
-  min-height: 84px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding: 12px 8px 10px;
+  min-height: 120px;
   transition: transform 0.3s;
 }
 .logo-tile:hover { transform: scale(1.06); }
 .logo-img {
-  max-width: 90px; max-height: 48px;
+  width: 100%;
+  max-width: 140px;
+  height: 80px;
   object-fit: contain;
-  filter: brightness(1.15);
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 10px rgba(0, 200, 255, 0.15);
 }
 .logo-name {
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--cockpit-text-dim);
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--cockpit-text);
   text-align: center;
   letter-spacing: 0.5px;
   overflow: hidden;

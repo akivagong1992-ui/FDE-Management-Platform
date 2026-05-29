@@ -91,7 +91,6 @@ async function onSubmitImport() {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'name', label: '认证名称' },
   { key: 'category', label: '分类' },
   { key: 'issuer', label: '厂商' },

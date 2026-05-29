@@ -126,7 +126,6 @@ async function onDelRef(r: AssetReference) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'category', label: '分类' },
   { key: 'title', label: '标题' },
   { key: 'project_name', label: '来源项目' },

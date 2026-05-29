@@ -94,13 +94,25 @@ const wonInProgress = computed(() =>
   ).length,
 )
 
-// 销售欠款 = ∑ |margin| where margin < 0 by sales（B 口径，"销售打白工"金额）
+// 欠款仅算 status ∈ {accepting, closing, archived} 的项目：
+// 验收/收尾/已归档视为已交付，款项理应到位，负 margin 即为欠款
+// 进行中/草拟款项还在路上不算；cancelled 已取消不算
+const SETTLED_STATUS = new Set(['accepting', 'closing', 'archived'])
 const salesDebt = computed(() =>
-  bySales.value.reduce((acc, s) => acc + (s.margin < 0 ? -s.margin : 0), 0),
+  bySales.value.reduce((acc, s) => {
+    const settledMargin = s.projects
+      .filter((p) => SETTLED_STATUS.has(p.status))
+      .reduce((sum, p) => sum + p.margin, 0)
+    return acc + (settledMargin < 0 ? -settledMargin : 0)
+  }, 0),
 )
-// 客户欠款 = ∑ |margin| where margin < 0 by client（B 口径，"客户给的钱不够本"金额）
 const clientDebt = computed(() =>
-  byClient.value.reduce((acc, c) => acc + (c.margin < 0 ? -c.margin : 0), 0),
+  byClient.value.reduce((acc, c) => {
+    const settledMargin = c.projects
+      .filter((p) => SETTLED_STATUS.has(p.status))
+      .reduce((sum, p) => sum + p.margin, 0)
+    return acc + (settledMargin < 0 ? -settledMargin : 0)
+  }, 0),
 )
 
 // ─ 项目盘面 ──────────────────────────────────────────────────
@@ -118,10 +130,16 @@ const statusMax = computed(() =>
 )
 
 // 最近 6 个月（YYYY-MM）的累计团队入账
+// 仅算 kind=revenue 且 bid_outcome=won 的项目（与首页"团队利润"口径 A 一致）
 const revenueTrend = computed(() => {
+  const projMap: Record<number, Project> = {}
+  for (const p of projects.value) projMap[p.id] = p
+
   const buckets: Record<string, number> = {}
   for (const r of revenues.value) {
     if (!r.recognized_date) continue
+    const p = projMap[r.project_id]
+    if (!p || p.kind !== 'revenue' || p.bid_outcome !== 'won') continue
     const ym = r.recognized_date.slice(0, 7)
     buckets[ym] = (buckets[ym] || 0) + Number(r.amount || 0)
   }
@@ -131,7 +149,7 @@ const revenueTrend = computed(() => {
 
 const maxRevenue = computed(() => Math.max(1, ...revenueTrend.value.map((d) => d.amount)))
 
-// 客户 Top5（按累计团队入账）
+// 客户 Top5（按累计团队入账）—— 与口径 A 一致，仅算 won-revenue 项目
 const topCustomers = computed(() => {
   const projMap: Record<number, Project> = {}
   for (const p of projects.value) projMap[p.id] = p
@@ -139,7 +157,7 @@ const topCustomers = computed(() => {
   const agg: Record<string, { name: string; team_revenue: number; projects: Set<number> }> = {}
   for (const r of revenues.value) {
     const p = projMap[r.project_id]
-    if (!p) continue
+    if (!p || p.kind !== 'revenue' || p.bid_outcome !== 'won') continue
     const name = p.need_party_name || `#${p.need_party_id}`
     if (!agg[name]) agg[name] = { name, team_revenue: 0, projects: new Set() }
     agg[name].team_revenue += Number(r.amount || 0)

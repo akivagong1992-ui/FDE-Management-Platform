@@ -121,7 +121,6 @@ function openDrawer(a: Assignment) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'engineer_name', label: '工程师' },
   { key: 'project_name', label: '项目' },
   { key: 'role', label: '角色' },

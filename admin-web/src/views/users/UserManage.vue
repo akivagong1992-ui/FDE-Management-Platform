@@ -3,9 +3,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { listUsers, createUser, updateUser, deleteUser, type User, type UserPayload } from '@/api/users'
 import { listVendors, type Vendor } from '@/api/vendors'
+import { listEngineers, type Engineer } from '@/api/engineers'
 
 const users = ref<User[]>([])
 const vendors = ref<Vendor[]>([])
+const engineers = ref<Engineer[]>([])
 const loading = ref(false)
 
 const dialogVisible = ref(false)
@@ -18,6 +20,7 @@ const form = reactive<UserPayload>({
   role: 'pm',
   is_active: true,
   vendor_id: null,
+  engineer_id: null,
 })
 
 async function load() {
@@ -25,6 +28,7 @@ async function load() {
   try {
     users.value = await listUsers()
     if (vendors.value.length === 0) vendors.value = await listVendors()
+    if (engineers.value.length === 0) engineers.value = await listEngineers()
   } finally {
     loading.value = false
   }
@@ -34,7 +38,7 @@ function openCreate() {
   editingId.value = null
   Object.assign(form, {
     username: '', password: '', full_name: '', email: '',
-    role: 'pm', is_active: true, vendor_id: null,
+    role: 'pm', is_active: true, vendor_id: null, engineer_id: null,
   })
   dialogVisible.value = true
 }
@@ -49,6 +53,7 @@ function openEdit(u: User) {
     role: u.role,
     is_active: u.is_active,
     vendor_id: u.vendor_id ?? null,
+    engineer_id: u.engineer_id ?? null,
   })
   dialogVisible.value = true
 }
@@ -64,9 +69,15 @@ async function onSubmit() {
     ElMessage.warning('vendor 角色必须挂一个 Vendor 公司')
     return
   }
-  // 非 vendor 角色清掉 vendor_id 防止误带
+  if (form.role === 'engineer' && !form.engineer_id) {
+    ElMessage.warning('engineer 角色必须挂一个工程师档案，否则登录后看不到自己的派单/工时')
+    return
+  }
+  // 角色不匹配的关联字段清掉，防止误带
   const payload: Partial<UserPayload> = { ...form }
   if (payload.role !== 'vendor') payload.vendor_id = null
+  if (payload.role !== 'engineer') payload.engineer_id = null
+  // 空字符串后端 OptionalEmail 会自动转 None，不用前端处理
   if (editingId.value === null) {
     await createUser(payload as UserPayload)
     ElMessage.success('已创建')
@@ -156,6 +167,16 @@ onMounted(load)
           </el-select>
           <div style="color: #909399; font-size: 12px; margin-top: 4px">
             该用户登录后只能看/提交此 vendor 名下的支出申请
+          </div>
+        </el-form-item>
+        <el-form-item v-if="form.role === 'engineer'" label="挂工程师档案" required>
+          <el-select v-model="form.engineer_id" filterable placeholder="选一个工程师档案" style="width: 100%">
+            <el-option v-for="e in engineers" :key="e.id"
+                       :label="e.vendor_name ? `${e.full_name} (${e.vendor_name})` : e.full_name"
+                       :value="e.id" />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            登录后能看自己的派单 / 工时 / 支出申请；不挂则全部为空
           </div>
         </el-form-item>
         <el-form-item label="密码">
