@@ -9,7 +9,7 @@ const logoSrc = '/china-telecom-logo.png'
 
 const tabs = [
   { n: 1, path: '/overview', title: '总览视图' },
-  { n: 2, path: '/profit-compare', title: '降本视图' },
+  { n: 2, path: '/profit-compare', title: '降本增效视图' },
   // 工程师视图已并入团队能力视图，从 nav 隐藏（路由仍保留可直接访问）
   { n: 3, path: '/efficiency', title: '项目进度视图' },
   { n: 4, path: '/knowledge', title: '技术沉淀视图' },

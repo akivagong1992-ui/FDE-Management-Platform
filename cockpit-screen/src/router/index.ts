@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     redirect: '/overview',
     children: [
       { path: 'overview', component: () => import('@/views/overview/Overview.vue'), meta: { title: '总览视图', n: 1 } },
-      { path: 'profit-compare', component: () => import('@/views/profit-compare/ProfitCompare.vue'), meta: { title: '降本视图', n: 2 } },
+      { path: 'profit-compare', component: () => import('@/views/profit-compare/ProfitCompare.vue'), meta: { title: '降本增效视图', n: 2 } },
       // 工程师视图：从 nav 隐藏（工程师总数已并入团队能力视图），路由保留供直接 URL 访问
       { path: 'engineer', component: () => import('@/views/engineer/EngineerView.vue'), meta: { title: '工程师视图', hidden: true } },
       { path: 'efficiency', component: () => import('@/views/efficiency/Efficiency.vue'), meta: { title: '项目进度视图', n: 3 } },
