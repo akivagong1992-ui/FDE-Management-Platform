@@ -690,7 +690,7 @@ Manpower-management-platform/
 - **驾驶舱性能**：预聚合 + Redis 缓存 60s
 - **大屏分辨率**：默认 1920×1080，支持 4K 自适应
 - **国际化**：Phase 1~3 中文，Phase 4 加 i18n
-- **货币**：默认 HKD，UI `HK$`；DB numeric(18,2)
+- **货币**：默认 HKD，UI `HK$`；DB numeric(14,2)（与 §0 A5 一致）
 
 ---
 
@@ -703,7 +703,7 @@ Manpower-management-platform/
 | R3 | 外部支出审批流层级（单级/多级/按金额分级） | 支出模块复杂度 | Phase 2 前 |
 | R4 | 驾驶舱是否需要外网访问（领导出差） | 部署架构、鉴权 | Phase 3 前 |
 | R5 | 香港地图数据源（高德/百度/自有 GeoJSON） | 大屏地图 | Phase 3 前 |
-| R6 | **传统外包对标公式** — "如果当年走老外包要花多少"的估算依据 | 驾驶舱核心 brag 指标 | Phase 3 前（建议 Phase 0 给出初稿）|
+| ~~R6~~ ✅ | ~~**传统外包对标公式**~~ — **已解决**：Project 加 `outsource_benchmark_amount` + `benchmark_basis` 枚举（vendor_quote / historical_avg / industry_benchmark / manual_estimate）+ `benchmark_basis_note`；可信度在前端以彩色 tag 显示。落在 v0.4.3 + Phase 3-next-iii Round 1。 | — | — |
 | R7 | PDPO（香港隐私条例）合规要求清单 | 字段设计、加密、留存 | Phase 1 前 |
 | R8 | 数据初始量级（工程师/项目/月工时数） | 性能预算 | Phase 0 末 |
 | R9 | **Vendor 真实人工成本能否拿到** — 协议披露 / 用户估算 / 不拿（仅做表面服务费） | 三层透视是否成立、利润模块字段 | Phase 2 前 |
