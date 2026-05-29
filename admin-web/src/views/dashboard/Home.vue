@@ -85,7 +85,7 @@ async function load() {
 
 onMounted(load)
 
-const wan = (n: number | null | undefined) => fmtWan(n)
+const wan = (n: number | null | undefined) => fmtWan(n, 2)
 
 // ─ KPI 计算 ──────────────────────────────────────────────────
 const wonInProgress = computed(() =>
@@ -169,11 +169,11 @@ const topCustomers = computed(() => {
     .slice(0, 5)
 })
 
-// 成本开销排名（按 expense_type 分组，不含 rejected）
+// 成本开销排名（按 expense_type 分组，仅 status=paid——与口径 A 团队利润同口径）
 const topExpensesByType = computed(() => {
   const agg: Record<string, { code: string; label: string; total: number; count: number }> = {}
   for (const e of expenses.value) {
-    if (e.status === 'rejected') continue
+    if (e.status !== 'paid') continue
     const code = e.expense_type
     const label = e.expense_type_label || EXPENSE_TYPE_LABEL[code] || code
     if (!agg[code]) agg[code] = { code, label, total: 0, count: 0 }
@@ -353,7 +353,7 @@ const maxVendorIncome = computed(() => Math.max(1, ...topVendorsByIncome.value.m
         <el-card class="block-card">
           <template #header>
             <span class="card-title">成本开销 Top 5</span>
-            <span class="card-sub">按支出类型聚合（万 HKD）</span>
+            <span class="card-sub">按支出类型聚合 · 仅已付（万 HKD）</span>
           </template>
           <div v-if="!topExpensesByType.length" class="empty">暂无支出</div>
           <div v-else class="rank-list">
