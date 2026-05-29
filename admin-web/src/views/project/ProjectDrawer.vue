@@ -26,7 +26,7 @@ const transferForm = ref<{ to_sales_person_id: number | null; reason: TransferRe
 })
 
 const STATUS_LABEL: Record<string, string> = {
-  drafting: '立项', in_progress: '进行中', accepting: '验收', closing: '收尾', archived: '归档',
+  drafting: '立项', in_progress: '进行中', accepting: '验收', archived: '归档',
 }
 const BASIS_LABEL: Record<string, string> = {
   outsource_equiv: '等同外包服务所抵消的成本（默认）',

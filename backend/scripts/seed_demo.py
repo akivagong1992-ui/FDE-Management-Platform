@@ -316,8 +316,8 @@ async def main() -> None:
                 status = random.choice(["in_progress", "cancelled"])
             else:  # won
                 status = random.choices(
-                    ["in_progress", "accepting", "closing", "archived"],
-                    weights=[40, 15, 20, 25],
+                    ["in_progress", "accepting", "archived"],
+                    weights=[40, 35, 25],
                 )[0]
 
             planned_start = random_date_within(540, 60)
@@ -325,7 +325,7 @@ async def main() -> None:
             actual_start = (planned_start + timedelta(days=random.randint(-3, 7))
                             if bid_outcome in {"won", "escaped"} else None)
             actual_end = (planned_end + timedelta(days=random.randint(-15, 30))
-                          if status in {"closing", "archived"} else None)
+                          if status in {"accepting", "archived"} else None)
             # 70% 的项目随机派一个对接工程师
             contact_eng = random.choice(eng_objs) if random.random() < 0.7 else None
             summary_text = random.choice([
@@ -374,7 +374,7 @@ async def main() -> None:
                 outsource_benchmark_amount=benchmark,
                 value_created_basis="outsource_equiv",
                 value_created_note="自动 seed",
-                status=random.choices(["in_progress", "closing", "archived"], weights=[40, 20, 40])[0],
+                status=random.choices(["in_progress", "accepting", "archived"], weights=[40, 20, 40])[0],
                 # no_revenue 项目一般是公司内部审批立项，默认视为已"中标" 进入交付
                 bid_outcome="won",
                 planned_start_date=random_date_within(360, 30),
@@ -746,7 +746,7 @@ async def main() -> None:
 
         # ── Retrospectives ────────────────────────────────────────────
         retro_count = 0
-        finished_projects = [p for p in proj_objs if p.status in {"accepting", "closing", "archived"}]
+        finished_projects = [p for p in proj_objs if p.status in {"accepting", "archived"}]
         for p in finished_projects:
             if random.random() < 0.85:  # 85% of finished projects have retros
                 score = random.choices([3, 4, 4, 5, 5, 5], weights=[5, 20, 30, 20, 15, 10])[0]
@@ -882,12 +882,12 @@ async def main() -> None:
             ))
             renewal_attempt_count += 1
 
-        # Lost attempts — pick random archived/closing projects that DON'T already
+        # Lost attempts — pick random accepting/archived projects that DON'T already
         # have a successor; mark a "lost renewal attempt" with diverse reasons.
         successor_sources = {p.renewal_of_project_id for p in won_projects}
         finished_no_successor = [
             p for p in proj_objs
-            if p.status in {"closing", "archived"}
+            if p.status in {"accepting", "archived"}
             and p.kind == "revenue"
             and p.id not in successor_sources
         ]

@@ -16,7 +16,7 @@ function rowKey(r: ByNeedPartyRow): string { return String(r.need_party_id) }
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: '立项', in_progress: '进行中', accepting: '验收',
-  closing: '收尾', archived: '归档',
+  archived: '归档',
 }
 
 onMounted(load)

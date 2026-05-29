@@ -11,8 +11,8 @@ from app.core.database import get_db
 from app.models.engineer import Engineer
 from app.models.need_party import NeedParty
 from app.models.project import (
+    PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
-    PROJECT_STATUS_CLOSING,
     PROJECT_STATUS_DRAFTING,
     Project,
 )
@@ -33,10 +33,10 @@ async def overview_kpi(db: AsyncSession = Depends(get_db)) -> dict:
         select(func.count(Engineer.id)).where(Engineer.status == "active")
     )).scalar_one() or 0
 
-    # 按时交付率：已验收/收尾/归档 + 有 actual_end 的 / 其中按时的
+    # 按时交付率：已验收 / 归档 + 有 actual_end 的 / 其中按时的
     finished_q = (
         select(Project).where(
-            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
+            Project.status.in_([PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED]),
             Project.planned_end_date.is_not(None),
             Project.actual_end_date.is_not(None),
         )

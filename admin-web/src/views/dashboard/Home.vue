@@ -45,7 +45,7 @@ const loading = ref(true)
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: '草拟', in_progress: '进行中', accepting: '验收',
-  closing: '收尾', archived: '已归档', cancelled: '已取消',
+  archived: '已归档', cancelled: '已取消',
 }
 const BID_OUTCOME_LABEL: Record<BidOutcome, string> = {
   pending: '投标中', won: '已中标', lost: '已丢标', escaped: '中标后跑单',
@@ -94,10 +94,10 @@ const wonInProgress = computed(() =>
   ).length,
 )
 
-// 欠款仅算 status ∈ {accepting, closing, archived} 的项目：
-// 验收/收尾/已归档视为已交付，款项理应到位，负 margin 即为欠款
+// 欠款仅算 status ∈ {accepting, archived} 的项目：
+// 验收/已归档视为已交付，款项理应到位，负 margin 即为欠款
 // 进行中/草拟款项还在路上不算；cancelled 已取消不算
-const SETTLED_STATUS = new Set(['accepting', 'closing', 'archived'])
+const SETTLED_STATUS = new Set(['accepting', 'archived'])
 const salesDebt = computed(() =>
   bySales.value.reduce((acc, s) => {
     const settledMargin = s.projects

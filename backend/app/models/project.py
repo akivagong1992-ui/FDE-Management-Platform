@@ -28,11 +28,10 @@ BENCHMARK_BASIS_MANUAL = "manual_estimate"         # 经验估算（最弱）
 PROJECT_KIND_REVENUE = "revenue"          # 有收入项目
 PROJECT_KIND_NO_REVENUE = "no_revenue"    # 无收入项目（必须有 value_created_basis）
 
-# Status machine — 执行生命周期
+# Status machine — 执行生命周期（2026-05-29 砍 "收尾"：验收吸收其所有业务行为）
 PROJECT_STATUS_DRAFTING = "drafting"      # 立项
 PROJECT_STATUS_IN_PROGRESS = "in_progress"  # 进行中
-PROJECT_STATUS_ACCEPTING = "accepting"    # 验收
-PROJECT_STATUS_CLOSING = "closing"        # 收尾
+PROJECT_STATUS_ACCEPTING = "accepting"    # 验收（同时算已交付 + 仍在管 + 触发 no_revenue 效益）
 PROJECT_STATUS_ARCHIVED = "archived"      # 归档
 PROJECT_STATUS_CANCELLED = "cancelled"    # 跑单 / 中途取消（保留向后兼容；新数据用 bid_outcome=escaped）
 

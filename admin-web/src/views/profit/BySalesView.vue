@@ -16,7 +16,7 @@ function rowKey(r: BySalesRow): string { return String(r.sales_person_id) }
 
 const STATUS_LABEL: Record<string, string> = {
   drafting: '立项', in_progress: '进行中', accepting: '验收',
-  closing: '收尾', archived: '归档',
+  archived: '归档',
 }
 
 onMounted(load)

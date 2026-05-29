@@ -11,9 +11,9 @@ from app.models.project import (
     PROJECT_BID_OUTCOME_WON,
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
+    PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
     PROJECT_STATUS_CANCELLED,
-    PROJECT_STATUS_CLOSING,
     VALUE_BASIS_OUTSOURCE_EQUIV,
     Project,
     ProjectComment,
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 def _to_out(p: Project, *, team_revenue: float = 0.0, contact_engineer_name: str | None = None) -> ProjectOut:
     """与驾驶舱口径 C 一致的 value_created_computed：
-    - no_revenue：仅 status ∈ {closing, archived} 时 = outsource_benchmark
+    - no_revenue：仅 status ∈ {accepting, archived} 时 = outsource_benchmark
     - revenue：仅 bid_outcome == 'won'（已中标，默认团队拿到）时
                = outsource_benchmark − 团队入账（Σ ProjectRevenue.amount）
                不再 filter status=received（中标即视作已实现），不再按实收封顶
@@ -46,7 +46,7 @@ def _to_out(p: Project, *, team_revenue: float = 0.0, contact_engineer_name: str
     """
     computed = None
     if p.kind == PROJECT_KIND_NO_REVENUE:
-        if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}:
+        if p.status in {PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED}:
             computed = p.outsource_benchmark_amount
     elif p.kind == PROJECT_KIND_REVENUE:
         if p.bid_outcome == PROJECT_BID_OUTCOME_WON:

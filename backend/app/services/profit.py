@@ -17,9 +17,9 @@ from app.models.project import (
     PROJECT_BID_OUTCOME_WON,
     PROJECT_KIND_NO_REVENUE,
     PROJECT_KIND_REVENUE,
+    PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
     PROJECT_STATUS_CANCELLED,
-    PROJECT_STATUS_CLOSING,
     Project,
 )
 from app.models.project_revenue import ProjectRevenue
@@ -426,11 +426,11 @@ async def compute_cockpit_savings_and_value(db: AsyncSession) -> dict:
         savings += bench - team_share
         counted_revenue_projects += 1
 
-    # 3) 无收入项目：必须已完成（closing / archived），且非 cancelled
+    # 3) 无收入项目：必须已完成（accepting / archived），且非 cancelled
     no_rev_rows = (await db.execute(
         select(Project).where(
             Project.kind == PROJECT_KIND_NO_REVENUE,
-            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
+            Project.status.in_([PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED]),
         )
     )).scalars().all()
     value_created = ZERO

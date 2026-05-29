@@ -22,7 +22,6 @@ from app.models.project import (
     PROJECT_STATUS_ACCEPTING,
     PROJECT_STATUS_ARCHIVED,
     PROJECT_STATUS_CANCELLED,
-    PROJECT_STATUS_CLOSING,
     PROJECT_STATUS_IN_PROGRESS,
     Project,
     ProjectComment,
@@ -92,7 +91,7 @@ async def profit_compare(db: AsyncSession = Depends(get_db)) -> dict:
     no_rev_projects = (await db.execute(
         select(Project).where(
             Project.kind == PROJECT_KIND_NO_REVENUE,
-            Project.status.in_([PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED]),
+            Project.status.in_([PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED]),
         )
     )).scalars().all()
 
@@ -231,7 +230,7 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
     # On-time = projects with both planned_end and actual_end, where actual <= planned
     finished_with_dates = [
         p for p in projects
-        if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}
+        if p.status in {PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED}
         and p.planned_end_date and p.actual_end_date
     ]
     on_time = [p for p in finished_with_dates if p.actual_end_date <= p.planned_end_date]
@@ -275,13 +274,14 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
         if p.actual_end_date and p.actual_end_date >= month_start
     )
     delivered_total = sum(
-        1 for p in projects if p.status in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}
+        1 for p in projects if p.status in {PROJECT_STATUS_ACCEPTING, PROJECT_STATUS_ARCHIVED}
     )
 
-    # 在管池 = drafting/in_progress/accepting 的项目（已 closing/archived 不再"在管"）
+    # 在管池 = drafting/in_progress/accepting 的项目（已归档/已取消不再"在管"；
+    # 验收虽算"已交付"但仍在管 — 用户决定 2026-05-29）
     active_pool = [
         p for p in projects
-        if p.status not in {PROJECT_STATUS_CLOSING, PROJECT_STATUS_ARCHIVED}
+        if p.status not in {PROJECT_STATUS_ARCHIVED, PROJECT_STATUS_CANCELLED}
     ]
     due_soon_threshold = today + timedelta(days=14)
     due_soon_list = sorted(

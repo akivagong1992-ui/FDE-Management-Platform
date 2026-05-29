@@ -1,7 +1,7 @@
 import http from './http'
 
 export type ProjectKind = 'revenue' | 'no_revenue'
-export type ProjectStatus = 'drafting' | 'in_progress' | 'accepting' | 'closing' | 'archived' | 'cancelled'
+export type ProjectStatus = 'drafting' | 'in_progress' | 'accepting' | 'archived' | 'cancelled'
 export type BidOutcome = 'pending' | 'won' | 'lost' | 'escaped'
 
 export const BID_OUTCOME_LABELS: Record<BidOutcome, string> = {

@@ -33,12 +33,10 @@ interface EfficiencyStats {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  drafting: '立项', in_progress: '进行中', accepting: '验收',
-  closing: '收尾', archived: '归档',
+  drafting: '立项', in_progress: '进行中', accepting: '验收', archived: '归档',
 }
 const STATUS_TYPE: Record<string, 'primary' | 'success' | 'info' | 'warning' | 'danger'> = {
-  drafting: 'info', in_progress: 'primary', accepting: 'warning',
-  closing: 'success', archived: 'success',
+  drafting: 'info', in_progress: 'primary', accepting: 'warning', archived: 'success',
 }
 
 const stats = ref<EfficiencyStats | null>(null)
@@ -194,7 +192,7 @@ async function onDrawerRefreshed() {
         <el-card shadow="hover">
           <div class="kpi-label">累计已交付</div>
           <div class="kpi-value" style="color: #67c23a">{{ stats?.delivered_total ?? '—' }}</div>
-          <div class="kpi-sub">收尾 + 归档</div>
+          <div class="kpi-sub">验收 + 归档</div>
         </el-card>
       </el-col>
     </el-row>

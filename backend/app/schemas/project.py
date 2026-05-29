@@ -7,7 +7,7 @@ from app.schemas._common import OptionalStr
 
 
 PROJECT_KIND_PATTERN = "^(revenue|no_revenue)$"
-PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|closing|archived|cancelled)$"
+PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|archived|cancelled)$"
 PROJECT_BID_OUTCOME_PATTERN = "^(pending|won|lost|escaped)$"
 VALUE_BASIS_PATTERN = "^(outsource_equiv|other)$"
 TRANSFER_REASON_PATTERN = "^(resignation|role_change|other)$"

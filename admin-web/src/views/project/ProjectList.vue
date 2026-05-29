@@ -99,7 +99,6 @@ const STATUS_OPTIONS: { label: string; value: ProjectStatus }[] = [
   { label: '立项', value: 'drafting' },
   { label: '进行中', value: 'in_progress' },
   { label: '验收', value: 'accepting' },
-  { label: '收尾', value: 'closing' },
   { label: '归档', value: 'archived' },
   { label: '跑单 / 取消', value: 'cancelled' },
 ]
@@ -296,7 +295,7 @@ onMounted(load)
             <template #content>
               <div style="max-width: 280px; line-height: 1.5">
                 有收入项目：<strong>服务商价格 − 团队入账</strong>，须 <strong>投标结果=已中标</strong><br />
-                无收入项目：<strong>= 服务商价格</strong>（状态收尾/归档时）
+                无收入项目：<strong>= 服务商价格</strong>（状态验收/归档时）
               </div>
             </template>
             <span style="cursor: help">效益金额 (HKD) <span style="color: #909399; font-size: 11px">ⓘ</span></span>
@@ -360,7 +359,7 @@ onMounted(load)
             />
           </el-tooltip>
           <span style="margin-left: 12px; color: #909399; font-size: 13px">
-            勾选后：项目状态改为收尾或归档时，效益金额 = 服务商价格（计入驾驶舱降本）
+            勾选后：项目状态改为验收或归档时，效益金额 = 服务商价格（计入驾驶舱降本）
           </span>
         </el-form-item>
 

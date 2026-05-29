@@ -8,10 +8,10 @@ let timer: number | undefined
 
 async function load() { try { data.value = await getEfficiencyStats() } catch { /* keep */ } }
 
-// 状态漏斗顺序：立项 → 进行中 → 验收 → 收尾 → 归档
-const FUNNEL_ORDER = ['drafting', 'in_progress', 'accepting', 'closing', 'archived']
+// 状态漏斗顺序：立项 → 进行中 → 验收 → 归档
+const FUNNEL_ORDER = ['drafting', 'in_progress', 'accepting', 'archived']
 const STATUS_LABEL: Record<string, string> = {
-  drafting: '立项', in_progress: '进行中', accepting: '验收', closing: '收尾', archived: '归档',
+  drafting: '立项', in_progress: '进行中', accepting: '验收', archived: '归档',
 }
 
 const funnel = computed(() => {
@@ -25,8 +25,7 @@ const funnelMax = computed(() => Math.max(1, ...funnel.value.map((f) => f.count)
 const STATUS_PCT: Record<string, number> = {
   drafting: 0,
   in_progress: 50,
-  accepting: 80,
-  closing: 95,
+  accepting: 90,
   archived: 100,
   cancelled: 0,
 }
@@ -55,7 +54,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <div class="panel kpi-card">
         <div class="kpi-label">累计已交付</div>
         <div class="kpi-value glow-text"><CountNumber :value="data?.delivered_total ?? 0" /></div>
-        <div class="kpi-sub">收尾 + 归档</div>
+        <div class="kpi-sub">验收 + 归档</div>
       </div>
     </div>
 
