@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas._common import OptionalEmail
 
 
 class SupplierBase(BaseModel):
@@ -8,7 +10,7 @@ class SupplierBase(BaseModel):
     category: str | None = None  # 耗材/分包/临时人力/许可/差旅/综合
     contact_person: str | None = None
     contact_phone: str | None = None
-    contact_email: EmailStr | None = None
+    contact_email: OptionalEmail = None
     payment_terms: str | None = None
     is_active: bool = True
     notes: str | None = None
@@ -23,7 +25,7 @@ class SupplierUpdate(BaseModel):
     category: str | None = None
     contact_person: str | None = None
     contact_phone: str | None = None
-    contact_email: EmailStr | None = None
+    contact_email: OptionalEmail = None
     payment_terms: str | None = None
     is_active: bool | None = None
     notes: str | None = None

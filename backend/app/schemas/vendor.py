@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas._common import OptionalEmail
 
 
 class VendorBase(BaseModel):
@@ -8,7 +10,7 @@ class VendorBase(BaseModel):
     short_name: str | None = None
     contact_person: str | None = None
     contact_phone: str | None = None
-    contact_email: EmailStr | None = None
+    contact_email: OptionalEmail = None
     payment_terms: str | None = None
     cooperation_status: str = "active"
     notes: str | None = None
@@ -23,7 +25,7 @@ class VendorUpdate(BaseModel):
     short_name: str | None = None
     contact_person: str | None = None
     contact_phone: str | None = None
-    contact_email: EmailStr | None = None
+    contact_email: OptionalEmail = None
     payment_terms: str | None = None
     cooperation_status: str | None = None
     notes: str | None = None

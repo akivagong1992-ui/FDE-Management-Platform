@@ -1,13 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict
+
+from app.schemas._common import OptionalEmail
 
 
 class SalesPersonBase(BaseModel):
     name: str
     employee_id: str | None = None
     department: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     mobile: str | None = None
     is_active: bool = True
     notes: str | None = None
@@ -21,7 +23,7 @@ class SalesPersonUpdate(BaseModel):
     name: str | None = None
     employee_id: str | None = None
     department: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     mobile: str | None = None
     is_active: bool | None = None
     notes: str | None = None

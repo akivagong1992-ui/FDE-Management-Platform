@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._common import OptionalEmail
 from app.schemas.skill import EngineerSkillOut
 
 
@@ -32,7 +33,7 @@ class EngineerBase(BaseModel):
     gender: str | None = None
     birth_date: date | None = None
     mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
 
     id_doc_type: str | None = Field(default=None, pattern="^(HKID|passport|mainland_id)?$")
     status: str = "reserved"
@@ -56,7 +57,7 @@ class EngineerUpdate(BaseModel):
     gender: str | None = None
     birth_date: date | None = None
     mobile: str | None = None
-    email: EmailStr | None = None
+    email: OptionalEmail = None
     id_doc_type: str | None = None
     id_doc_number: str | None = None
     status: str | None = None

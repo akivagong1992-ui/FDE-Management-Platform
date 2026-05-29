@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._common import OptionalStr
+
 
 PROJECT_KIND_PATTERN = "^(revenue|no_revenue)$"
 PROJECT_STATUS_PATTERN = "^(drafting|in_progress|accepting|closing|archived|cancelled)$"
@@ -12,7 +14,7 @@ TRANSFER_REASON_PATTERN = "^(resignation|role_change|other)$"
 
 
 class ProjectBase(BaseModel):
-    code: str | None = None
+    code: OptionalStr = None
     name: str
     need_party_id: int
     sales_person_id: int
@@ -50,7 +52,7 @@ class ProjectCreate(ProjectBase):
 
 
 class ProjectUpdate(BaseModel):
-    code: str | None = None
+    code: OptionalStr = None
     name: str | None = None
     need_party_id: int | None = None
     # sales_person_id is NOT directly updatable — use POST /transfer-sales instead
