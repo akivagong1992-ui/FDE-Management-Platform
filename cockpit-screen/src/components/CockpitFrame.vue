@@ -117,15 +117,15 @@ onUnmounted(() => {
 .header-side.right { justify-content: flex-end; }
 .logo { height: 38px; width: auto; object-fit: contain; filter: brightness(1.1); }
 .header-center { flex: 0 0 auto; }
-.brand { font-size: 22px; font-weight: 700; letter-spacing: 4px; }
-.subtitle { color: var(--cockpit-text-dim); font-size: 13px; letter-spacing: 2px; }
-.time { font-family: 'Courier New', monospace; font-size: 18px; color: var(--cockpit-accent); }
+.brand { font-size: 28px; font-weight: 700; letter-spacing: 4px; }
+.subtitle { color: var(--cockpit-text-dim); font-size: 16px; letter-spacing: 2px; }
+.time { font-family: 'Courier New', monospace; font-size: 22px; color: var(--cockpit-accent); }
 .btn {
   background: transparent;
   color: var(--cockpit-accent);
   border: 1px solid var(--cockpit-border);
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 8px 18px;
+  font-size: 16px;
   cursor: pointer;
   border-radius: 10px;
 }
@@ -142,11 +142,11 @@ onUnmounted(() => {
   background: transparent;
   border: 1px solid transparent;
   color: var(--cockpit-text-dim);
-  padding: 10px;
+  padding: 14px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
+  gap: 12px;
+  font-size: 18px;
   cursor: pointer;
   border-radius: 10px;
   transition: all 0.2s;
@@ -161,10 +161,10 @@ onUnmounted(() => {
 .tab-n {
   font-family: 'Courier New', monospace;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 22px;
   opacity: 0.7;
 }
-.tab-title { letter-spacing: 1px; }
+.tab-title { letter-spacing: 2px; }
 
 .body {
   flex: 1;
