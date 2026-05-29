@@ -214,9 +214,9 @@ onMounted(load)
         </template>
       </el-table-column>
       <el-table-column v-if="visibleCols.has('id_doc_number_masked')" prop="id_doc_number_masked" label="证件号(脱敏)" width="130" />
-      <el-table-column v-if="isLead && visibleCols.has('monthly_cost_to_telecom')" label="月服务费" width="110">
+      <el-table-column v-if="isLead && visibleCols.has('monthly_cost_to_telecom')" label="月服务费 (HKD)" width="140" align="right">
         <template #default="{ row }">
-          <span v-if="row.monthly_cost_to_telecom">HK$ {{ row.monthly_cost_to_telecom }}</span>
+          <span v-if="row.monthly_cost_to_telecom">{{ row.monthly_cost_to_telecom }}</span>
           <span v-else style="color: #909399">—</span>
         </template>
       </el-table-column>

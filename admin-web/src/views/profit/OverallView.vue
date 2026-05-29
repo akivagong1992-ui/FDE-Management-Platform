@@ -118,9 +118,9 @@ onMounted(load)
         FDE 利润率对比
         <span style="color: #909399; font-size: 12px; font-weight: normal; margin-left: 8px">
           已中标项目 {{ lift.counted_projects }} 个 ·
-          客户付款 HK$ {{ fmt(lift.total_gross_revenue) }} ·
-          非服务开销 HK$ {{ fmt(lift.total_non_service_expense) }} ·
-          团队入账 HK$ {{ fmt(lift.total_team_revenue) }}
+          客户付款 {{ fmt(lift.total_gross_revenue) }} ·
+          非服务开销 {{ fmt(lift.total_non_service_expense) }} ·
+          团队入账 {{ fmt(lift.total_team_revenue) }}（HKD）
         </span>
       </div>
       <el-row :gutter="16">

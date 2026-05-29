@@ -122,8 +122,8 @@ function salesNameById(id: number): string {
       </el-descriptions>
 
       <el-descriptions :column="1" border title="价值估算（C 口径）" style="margin-top: 16px">
-        <el-descriptions-item label="传统外包模式估算">
-          <span v-if="project.outsource_benchmark_amount">HK$ {{ fmt2(project.outsource_benchmark_amount) }}</span>
+        <el-descriptions-item label="传统外包模式估算 (HKD)">
+          <span v-if="project.outsource_benchmark_amount">{{ fmt2(project.outsource_benchmark_amount) }}</span>
           <span v-else style="color: #909399">—</span>
           <span style="color: #909399; font-size: 12px; margin-left: 8px">
             （如果当年走老外包，估算花多少）
@@ -137,15 +137,15 @@ function salesNameById(id: number): string {
             {{ project.benchmark_basis_note }}
           </div>
         </el-descriptions-item>
-        <el-descriptions-item v-if="project.kind === 'no_revenue'" label="自动计算的效益金额">
-          <span style="color: #e6a23c; font-weight: 600">HK$ {{ fmt2(project.value_created_computed) }}</span>
+        <el-descriptions-item v-if="project.kind === 'no_revenue'" label="自动计算的效益金额 (HKD)">
+          <span style="color: #e6a23c; font-weight: 600">{{ fmt2(project.value_created_computed) }}</span>
           <span style="color: #909399; font-size: 12px; margin-left: 8px">
             = 服务商价格（项目完成时自动计入）
           </span>
         </el-descriptions-item>
-        <el-descriptions-item v-if="project.kind === 'revenue'" label="自动计算的效益金额">
+        <el-descriptions-item v-if="project.kind === 'revenue'" label="自动计算的效益金额 (HKD)">
           <span v-if="project.value_created_computed" style="color: #e6a23c; font-weight: 600">
-            HK$ {{ fmt2(project.value_created_computed) }}
+            {{ fmt2(project.value_created_computed) }}
           </span>
           <span v-else style="color: #909399">
             —（须 <strong>投标结果=已中标</strong>）

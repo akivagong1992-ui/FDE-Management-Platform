@@ -284,13 +284,13 @@ onMounted(load)
           <el-tag v-if="!row.sales_person_active" type="info" size="small">停用</el-tag>
         </template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('outsource_benchmark_amount')" label="服务商价格" width="140">
+      <el-table-column v-if="visibleCols.has('outsource_benchmark_amount')" label="服务商价格 (HKD)" width="160">
         <template #default="{ row }">
-          <span v-if="row.outsource_benchmark_amount">HK$ {{ fmt2(row.outsource_benchmark_amount) }}</span>
+          <span v-if="row.outsource_benchmark_amount">{{ fmt2(row.outsource_benchmark_amount) }}</span>
           <span v-else style="color: #c0c4cc; font-size: 12px">还未询价</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('value_created_computed')" label="效益金额" width="160">
+      <el-table-column v-if="visibleCols.has('value_created_computed')" label="效益金额 (HKD)" width="170">
         <template #header>
           <el-tooltip placement="top">
             <template #content>
@@ -299,11 +299,11 @@ onMounted(load)
                 无收入项目：<strong>= 服务商价格</strong>（状态收尾/归档时）
               </div>
             </template>
-            <span style="cursor: help">效益金额 <span style="color: #909399; font-size: 11px">ⓘ</span></span>
+            <span style="cursor: help">效益金额 (HKD) <span style="color: #909399; font-size: 11px">ⓘ</span></span>
           </el-tooltip>
         </template>
         <template #default="{ row }">
-          <span v-if="row.value_created_computed" style="color: #e6a23c">HK$ {{ fmt2(row.value_created_computed) }}</span>
+          <span v-if="row.value_created_computed" style="color: #e6a23c">{{ fmt2(row.value_created_computed) }}</span>
           <span v-else style="color: #c0c4cc; font-size: 12px">还未形成实际效益</span>
         </template>
       </el-table-column>
@@ -365,10 +365,9 @@ onMounted(load)
         </el-form-item>
 
         <template v-if="form.kind === 'no_revenue'">
-          <el-form-item label="外部服务商报价">
+          <el-form-item label="外部服务商报价 (HKD)">
             <el-input-number
               v-model="form.outsource_benchmark_amount" :min="0" :precision="2" style="width: 240px"
-              placeholder="HK$"
             />
           </el-form-item>
           <el-form-item label="价格来源依据" v-if="form.outsource_benchmark_amount">

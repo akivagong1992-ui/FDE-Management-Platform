@@ -249,8 +249,8 @@ onMounted(load)
         </template>
         <template #default="{ row }">{{ row.vendor_name || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('amount')" label="金额" width="120">
-        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
+      <el-table-column v-if="visibleCols.has('amount')" label="金额 (HKD)" width="140" align="right">
+        <template #default="{ row }">{{ fmt2(row.amount) }}</template>
       </el-table-column>
       <el-table-column v-if="visibleCols.has('expense_date')" prop="expense_date" label="发生日" width="110" />
       <el-table-column v-if="visibleCols.has('status')" label="状态" width="120">

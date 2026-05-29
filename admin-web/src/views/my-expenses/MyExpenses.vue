@@ -101,7 +101,7 @@ onMounted(load)
           待审 <strong style="color: #e6a23c">{{ pendingCount }}</strong> ·
           已批 <strong style="color: #67c23a">{{ approvedCount }}</strong> ·
           已拒 <strong style="color: #f56c6c">{{ rejectedCount }}</strong> ·
-          已批准累计 <strong style="color: #67c23a">HK$ {{ totalApproved }}</strong>
+          已批准累计 <strong style="color: #67c23a">{{ totalApproved }}</strong> HKD
         </span>
       </div>
     </template>
@@ -136,9 +136,9 @@ onMounted(load)
         </template>
       </el-table-column>
       <el-table-column prop="title" label="标题" min-width="180" />
-      <el-table-column label="金额" width="120" align="right">
+      <el-table-column label="金额 (HKD)" width="140" align="right">
         <template #default="{ row }">
-          <strong>HK$ {{ fmt2(row.amount) }}</strong>
+          <strong>{{ fmt2(row.amount) }}</strong>
         </template>
       </el-table-column>
       <el-table-column label="经办 Vendor" min-width="140">

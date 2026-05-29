@@ -160,8 +160,8 @@ onMounted(load)
       <el-table-column v-if="visibleCols.has('period')" label="期间" width="220">
         <template #default="{ row }">{{ row.period_start }} ~ {{ row.period_end }}</template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('amount')" label="金额" width="120">
-        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
+      <el-table-column v-if="visibleCols.has('amount')" label="金额 (HKD)" width="140" align="right">
+        <template #default="{ row }">{{ fmt2(row.amount) }}</template>
       </el-table-column>
       <el-table-column v-if="visibleCols.has('status')" label="状态" width="120">
         <template #header>

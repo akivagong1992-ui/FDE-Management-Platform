@@ -110,7 +110,7 @@ async function onDetachSkill(esId: number) {
       </el-descriptions>
 
       <el-descriptions v-if="isLead" :column="1" border title="成本（仅 lead/finance 可见）" style="margin-top: 16px">
-        <el-descriptions-item label="月服务费 (HK$)">
+        <el-descriptions-item label="月服务费 (HKD)">
           {{ engineer.monthly_cost_to_telecom ?? '—' }}
         </el-descriptions-item>
       </el-descriptions>

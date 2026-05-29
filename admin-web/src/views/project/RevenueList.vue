@@ -234,9 +234,9 @@ onMounted(load)
         </template>
         <template #default="{ row }">{{ projectMeta(row.project_id).sales_person }}</template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('gross_amount')" label="客户付款总额" width="140" align="right">
+      <el-table-column v-if="visibleCols.has('gross_amount')" label="客户付款总额 (HKD)" width="160" align="right">
         <template #default="{ row }">
-          <span v-if="row.gross_amount != null">HK$ {{ fmt2(row.gross_amount) }}</span>
+          <span v-if="row.gross_amount != null">{{ fmt2(row.gross_amount) }}</span>
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
@@ -247,14 +247,14 @@ onMounted(load)
         </template>
         <template #default="{ row }">{{ row.vendor_name || '—' }}</template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('non_service_expense')" label="非服务开销" width="140" align="right">
+      <el-table-column v-if="visibleCols.has('non_service_expense')" label="非服务开销 (HKD)" width="160" align="right">
         <template #default="{ row }">
-          <span v-if="row.non_service_expense != null">HK$ {{ fmt2(row.non_service_expense) }}</span>
+          <span v-if="row.non_service_expense != null">{{ fmt2(row.non_service_expense) }}</span>
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="visibleCols.has('amount')" label="团队入账" width="140" align="right">
-        <template #default="{ row }">HK$ {{ fmt2(row.amount) }}</template>
+      <el-table-column v-if="visibleCols.has('amount')" label="团队入账 (HKD)" width="160" align="right">
+        <template #default="{ row }">{{ fmt2(row.amount) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
@@ -282,9 +282,9 @@ onMounted(load)
           </div>
         </el-form-item>
 
-        <el-form-item label="外部服务商报价" required>
+        <el-form-item label="外部服务商报价 (HKD)" required>
           <el-input-number v-model="benchmarkForm.amount" :min="0" :precision="2" style="width: 100%"
-                           placeholder="HK$（vendor 真实询价金额）" />
+                           placeholder="vendor 真实询价金额" />
           <div style="color: #909399; font-size: 12px; margin-top: 4px">
             建立收入即代表已询价 — 保存后写回项目，取代列表的「还未询价」占位
           </div>
