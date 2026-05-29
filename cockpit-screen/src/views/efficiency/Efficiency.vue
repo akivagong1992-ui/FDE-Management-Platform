@@ -34,12 +34,6 @@ function progressPct(p: { status: string }): number {
   return STATUS_PCT[p.status] ?? 0
 }
 
-function daysToDueLabel(n: number): string {
-  if (n < 0) return `逾期 ${-n} 天`
-  if (n === 0) return '今天到期'
-  return `还有 ${n} 天`
-}
-
 onMounted(async () => { await load(); timer = window.setInterval(load, 60000) })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
@@ -58,11 +52,6 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-value glow-text"><CountNumber :value="data?.completed_this_month ?? 0" /></div>
         <div class="kpi-sub">actual_end 落在本月</div>
       </div>
-      <div class="panel kpi-card brag">
-        <div class="kpi-label">14 天内到期</div>
-        <div class="kpi-value glow-text"><CountNumber :value="data?.due_soon_count ?? 0" /></div>
-        <div class="kpi-sub">含已逾期</div>
-      </div>
       <div class="panel kpi-card">
         <div class="kpi-label">累计已交付</div>
         <div class="kpi-value glow-text"><CountNumber :value="data?.delivered_total ?? 0" /></div>
@@ -71,25 +60,19 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
     </div>
 
     <div class="lower">
-      <!-- 状态漏斗 -->
+      <!-- 状态漏斗（居中梯形堆叠） -->
       <div class="panel">
         <div class="panel-title">项目状态漏斗</div>
         <div class="funnel">
-          <div v-for="f in funnel" :key="f.status" class="funnel-row">
-            <div class="funnel-name">{{ f.label }}</div>
-            <div class="funnel-bar">
-              <div class="funnel-fill" :style="{ width: `${(f.count / funnelMax) * 100}%` }" />
+          <div v-for="f in funnel" :key="f.status" class="funnel-stage">
+            <div class="stage-label">{{ f.label }}</div>
+            <div class="stage-bar-wrap">
+              <div class="stage-bar"
+                   :style="{ width: `${Math.max(2, (f.count / funnelMax) * 100)}%` }">
+                <span class="stage-count-inline" v-if="f.count > 0">{{ f.count }}</span>
+              </div>
             </div>
-            <div class="funnel-num"><CountNumber :value="f.count" /></div>
-          </div>
-        </div>
-
-        <div class="panel-title" style="margin-top: 24px">14 天内到期</div>
-        <div v-if="!data?.due_soon.length" class="empty-mini">无即将到期项目</div>
-        <div v-else class="due-list">
-          <div v-for="p in data.due_soon.slice(0, 6)" :key="p.project_id" class="due-row">
-            <span class="due-name">{{ p.name }}</span>
-            <span :class="['due-tag', p.overdue ? 'late' : 'on']">{{ daysToDueLabel(p.days_to_due) }}</span>
+            <div class="stage-count-side">{{ f.count }}</div>
           </div>
         </div>
       </div>
@@ -121,7 +104,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 <style scoped>
 .grid { display: flex; flex-direction: column; height: 100%; gap: 16px; }
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; height: 140px; }
+.kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; height: 140px; }
 .kpi-card { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 10px; }
 .kpi-card.brag { border-color: var(--cockpit-accent-3); box-shadow: 0 0 24px rgba(255,64,129,.35); }
 .kpi-card.brag .kpi-value { color: var(--cockpit-accent-3); text-shadow: 0 0 8px var(--cockpit-accent-3); }
@@ -131,29 +114,22 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .empty { display: flex; align-items: center; justify-content: center; height: calc(100% - 30px); color: var(--cockpit-text-dim); }
 .empty-mini { color: var(--cockpit-text-dim); font-size: 12px; margin-top: 8px; }
 
-/* 状态漏斗 */
-.funnel { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.funnel-row { display: grid; grid-template-columns: 70px 1fr 50px; gap: 12px; align-items: center; }
-.funnel-name { color: var(--cockpit-text); font-size: 13px; }
-.funnel-bar {
-  height: 16px; background: rgba(0,229,255,.08);
-  border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
-}
-.funnel-fill {
-  height: 100%;
+/* 状态漏斗：居中梯形堆叠，bar 居中对齐形成漏斗轮廓 */
+.funnel { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.funnel-stage { display: grid; grid-template-columns: 70px 1fr 50px; gap: 12px; align-items: center; }
+.stage-label { color: var(--cockpit-text); font-size: 13px; }
+.stage-bar-wrap { display: flex; justify-content: center; align-items: center; }
+.stage-bar {
+  height: 36px;
   background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
-  box-shadow: 0 0 8px var(--cockpit-accent);
+  box-shadow: 0 0 12px rgba(0, 229, 255, .35);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 2px;
   transition: width 0.6s ease;
 }
-.funnel-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; }
-
-/* 到期列表 */
-.due-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.due-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; }
-.due-name { color: var(--cockpit-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.due-tag { font-family: 'Courier New', monospace; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
-.due-tag.on { background: rgba(0,229,255,.15); color: var(--cockpit-accent); }
-.due-tag.late { background: rgba(255,64,129,.2); color: var(--cockpit-accent-3); }
+.stage-count-inline { color: #0a1929; font-weight: 700; font-size: 14px; font-family: 'Courier New', monospace; }
+.stage-count-side { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; }
 
 /* 在管项目进度表 */
 .progress-list {
