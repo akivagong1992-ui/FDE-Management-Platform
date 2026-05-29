@@ -48,7 +48,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </div>
       <div class="panel kpi-card brag">
         <div class="kpi-label">项目利润变化</div>
-        <div class="kpi-value glow-text">+<CountNumber :value="marginLift?.margin_lift_pct ?? 0" :decimals="2" /><span class="unit">个百分点</span></div>
+        <div class="kpi-value glow-text">+<CountNumber :value="marginLift?.margin_lift_pct ?? 0" :decimals="2" /><span class="unit">%</span></div>
         <div class="kpi-sub">基于 {{ marginLift?.counted_projects ?? 0 }} 个已中标项目</div>
       </div>
     </div>
