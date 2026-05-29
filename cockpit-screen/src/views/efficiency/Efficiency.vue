@@ -133,7 +133,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 /* 在管项目进度表 */
 .progress-list {
   display: flex; flex-direction: column; gap: 14px; margin-top: 12px;
-  overflow-y: auto; max-height: 100%; padding-right: 4px;
+  flex: 1; min-height: 0;
+  overflow-y: auto; padding-right: 4px;
 }
 .progress-row {
   background: rgba(10, 25, 41, 0.4);

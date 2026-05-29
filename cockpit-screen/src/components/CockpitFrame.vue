@@ -168,6 +168,7 @@ onUnmounted(() => {
 
 .body {
   flex: 1;
+  min-height: 0;
   padding: 16px 24px;
   overflow: hidden;
 }
