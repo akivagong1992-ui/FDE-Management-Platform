@@ -20,15 +20,18 @@ const funnel = computed(() => {
 })
 const funnelMax = computed(() => Math.max(1, ...funnel.value.map((f) => f.count)))
 
-// 在管项目进度条：今天 - 计划起 / 计划总天数
-function progressPct(p: { planned_start: string | null; planned_end: string | null }): number {
-  if (!p.planned_start || !p.planned_end || !data.value) return 0
-  const start = new Date(p.planned_start).getTime()
-  const end = new Date(p.planned_end).getTime()
-  const today = new Date(data.value.today).getTime()
-  if (end <= start) return 100
-  const ratio = (today - start) / (end - start)
-  return Math.max(0, Math.min(100, Math.round(ratio * 100)))
+// 在管项目进度条：按 status 投射百分比
+// 现实里 planned 起止日期常常是猜的（不准），状态才是更可靠的信号 → 改成状态驱动
+const STATUS_PCT: Record<string, number> = {
+  drafting: 0,
+  in_progress: 50,
+  accepting: 80,
+  closing: 95,
+  archived: 100,
+  cancelled: 0,
+}
+function progressPct(p: { status: string }): number {
+  return STATUS_PCT[p.status] ?? 0
 }
 
 function daysToDueLabel(n: number): string {
