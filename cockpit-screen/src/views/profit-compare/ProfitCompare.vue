@@ -113,23 +113,42 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
   height: calc(100% - 30px); color: var(--cockpit-text-dim); font-size: 13px;
 }
 
-.bar-list { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
-.bar-row { display: grid; grid-template-columns: 100px 1fr 100px; gap: 8px; align-items: center; }
-.bar-label { color: var(--cockpit-text); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-list {
+  display: flex; flex-direction: column;
+  flex: 1; min-height: 0;
+  justify-content: space-around;     /* 把 bar 行均匀分到 panel 高度，避免下半空白 */
+  padding: 12px 4px;
+  margin-top: 8px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 120px;   /* 加宽 label / num 列，更舒展 */
+  gap: 14px; align-items: center;
+}
+.bar-label {
+  color: var(--cockpit-text); font-size: 15px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  letter-spacing: 0.5px;
+}
 .bar-track {
-  height: 12px; background: rgba(0, 229, 255, 0.08);
+  height: 20px;                     /* 加粗 bar 显得更"大屏" */
+  background: rgba(0, 229, 255, 0.08);
   border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
 }
 .bar-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
-  box-shadow: 0 0 8px var(--cockpit-accent);
+  box-shadow: 0 0 10px var(--cockpit-accent);
 }
 .brag-fill {
   background: linear-gradient(90deg, var(--cockpit-accent-3), var(--cockpit-accent-gold));
-  box-shadow: 0 0 8px var(--cockpit-accent-3);
+  box-shadow: 0 0 10px var(--cockpit-accent-3);
 }
-.bar-num { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; font-size: 12px; text-align: right; }
+.bar-num {
+  font-family: 'Courier New', monospace;
+  color: var(--cockpit-accent); font-weight: 700; font-size: 16px;
+  text-align: right;
+}
 .brag-text { color: var(--cockpit-accent-3); }
 
 /* 项目利润变化 brag 卡的副文案 */
