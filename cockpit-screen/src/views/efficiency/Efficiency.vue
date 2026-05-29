@@ -33,6 +33,13 @@ function progressPct(p: { status: string }): number {
   return STATUS_PCT[p.status] ?? 0
 }
 
+// 在管项目 > 6 个时，列表自动垂直滚动播放（marquee）
+const PROGRESS_SCROLL_THRESHOLD = 6
+const progressScrollOn = computed(() => (data.value?.in_progress_projects.length ?? 0) > PROGRESS_SCROLL_THRESHOLD)
+const progressScrollDuration = computed(() =>
+  Math.max(15, (data.value?.in_progress_projects.length ?? 0) * 3),
+)
+
 onMounted(async () => { await load(); timer = window.setInterval(load, 60000) })
 onUnmounted(() => { if (timer) clearInterval(timer) })
 </script>
@@ -80,19 +87,41 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <div class="panel">
         <div class="panel-title">在管项目进度（{{ data?.in_progress_projects.length ?? 0 }}）</div>
         <div v-if="!data?.in_progress_projects.length" class="empty">暂无在管项目</div>
-        <div v-else class="progress-list">
-          <div v-for="p in data.in_progress_projects" :key="p.project_id" class="progress-row">
-            <div class="prog-name-row">
-              <span class="prog-name">{{ p.name }}</span>
-              <span class="prog-status">{{ STATUS_LABEL[p.status] || p.status }}</span>
-              <span v-if="p.overdue" class="prog-overdue">⚠ 已逾期</span>
+        <div v-else class="progress-scroll-area" :class="{ rolling: progressScrollOn }"
+             :style="progressScrollOn ? { '--progress-scroll-duration': `${progressScrollDuration}s` } : {}">
+          <div class="progress-scroll-track">
+            <div class="progress-list">
+              <div v-for="p in data.in_progress_projects" :key="`a${p.project_id}`" class="progress-row">
+                <div class="prog-name-row">
+                  <span class="prog-name">{{ p.name }}</span>
+                  <span class="prog-status">{{ STATUS_LABEL[p.status] || p.status }}</span>
+                  <span v-if="p.overdue" class="prog-overdue">⚠ 已逾期</span>
+                </div>
+                <div class="prog-bar">
+                  <div class="prog-fill" :class="{ over: p.overdue }" :style="{ width: `${progressPct(p)}%` }" />
+                </div>
+                <div class="prog-meta">
+                  <span>计划 {{ p.planned_start || '—' }} → {{ p.planned_end || '—' }}</span>
+                  <span class="prog-pct">{{ progressPct(p) }}%</span>
+                </div>
+              </div>
             </div>
-            <div class="prog-bar">
-              <div class="prog-fill" :class="{ over: p.overdue }" :style="{ width: `${progressPct(p)}%` }" />
-            </div>
-            <div class="prog-meta">
-              <span>计划 {{ p.planned_start || '—' }} → {{ p.planned_end || '—' }}</span>
-              <span class="prog-pct">{{ progressPct(p) }}%</span>
+            <!-- 项目 > 6 时复制一份用于无缝循环 -->
+            <div v-if="progressScrollOn" class="progress-list" aria-hidden="true">
+              <div v-for="p in data.in_progress_projects" :key="`b${p.project_id}`" class="progress-row">
+                <div class="prog-name-row">
+                  <span class="prog-name">{{ p.name }}</span>
+                  <span class="prog-status">{{ STATUS_LABEL[p.status] || p.status }}</span>
+                  <span v-if="p.overdue" class="prog-overdue">⚠ 已逾期</span>
+                </div>
+                <div class="prog-bar">
+                  <div class="prog-fill" :class="{ over: p.overdue }" :style="{ width: `${progressPct(p)}%` }" />
+                </div>
+                <div class="prog-meta">
+                  <span>计划 {{ p.planned_start || '—' }} → {{ p.planned_end || '—' }}</span>
+                  <span class="prog-pct">{{ progressPct(p) }}%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -130,11 +159,36 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 .stage-count-inline { color: #0a1929; font-weight: 700; font-size: 14px; font-family: 'Courier New', monospace; }
 .stage-count-side { font-family: 'Courier New', monospace; color: var(--cockpit-accent); font-weight: 600; text-align: right; }
 
-/* 在管项目进度表 */
+/* 在管项目进度表 — > 6 个自动滚动 */
+.progress-scroll-area {
+  flex: 1;
+  min-height: 0;
+  /* 上限：6 行 × 行高 ~80px + 5 个 gap × 14px ≈ 550px，超过自动滚动 */
+  max-height: 550px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 12px;
+}
+.progress-scroll-track {
+  display: flex; flex-direction: column;
+}
+.progress-scroll-area.rolling .progress-scroll-track {
+  animation: progressMarquee var(--progress-scroll-duration, 30s) linear infinite;
+}
+.progress-scroll-area.rolling:hover .progress-scroll-track {
+  animation-play-state: paused;
+}
+@keyframes progressMarquee {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+/* 滚动时两份 list 之间保留 gap */
+.progress-scroll-area.rolling .progress-list + .progress-list {
+  margin-top: 14px;
+}
+
 .progress-list {
-  display: flex; flex-direction: column; gap: 14px; margin-top: 12px;
-  flex: 1; min-height: 0;
-  overflow-y: auto; padding-right: 4px;
+  display: flex; flex-direction: column; gap: 14px;
 }
 .progress-row {
   background: rgba(10, 25, 41, 0.4);
