@@ -115,38 +115,35 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
 
 .bar-list {
   display: flex; flex-direction: column;
-  flex: 1; min-height: 0;
-  justify-content: space-around;     /* 把 bar 行均匀分到 panel 高度，避免下半空白 */
-  padding: 12px 4px;
-  margin-top: 8px;
+  gap: 22px;                         /* 比原 14 稍宽，比 space-around 紧凑 */
+  margin-top: 16px;
 }
 .bar-row {
   display: grid;
-  grid-template-columns: 140px 1fr 120px;   /* 加宽 label / num 列，更舒展 */
-  gap: 14px; align-items: center;
+  grid-template-columns: 130px 1fr 110px;
+  gap: 12px; align-items: center;
 }
 .bar-label {
-  color: var(--cockpit-text); font-size: 15px;
+  color: var(--cockpit-text); font-size: 14px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  letter-spacing: 0.5px;
 }
 .bar-track {
-  height: 20px;                     /* 加粗 bar 显得更"大屏" */
+  height: 16px;
   background: rgba(0, 229, 255, 0.08);
   border: 1px solid var(--cockpit-border); border-radius: 999px; overflow: hidden;
 }
 .bar-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--cockpit-accent), var(--cockpit-accent-2));
-  box-shadow: 0 0 10px var(--cockpit-accent);
+  box-shadow: 0 0 8px var(--cockpit-accent);
 }
 .brag-fill {
   background: linear-gradient(90deg, var(--cockpit-accent-3), var(--cockpit-accent-gold));
-  box-shadow: 0 0 10px var(--cockpit-accent-3);
+  box-shadow: 0 0 8px var(--cockpit-accent-3);
 }
 .bar-num {
   font-family: 'Courier New', monospace;
-  color: var(--cockpit-accent); font-weight: 700; font-size: 16px;
+  color: var(--cockpit-accent); font-weight: 600; font-size: 14px;
   text-align: right;
 }
 .brag-text { color: var(--cockpit-accent-3); }
