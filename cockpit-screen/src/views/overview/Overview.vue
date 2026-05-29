@@ -165,7 +165,7 @@ onUnmounted(() => {
         <div class="kpi-value glow-text"><CountNumber :value="activeProjects" /></div>
       </div>
       <div class="panel kpi-card brag">
-        <div class="kpi-label">降本金额</div>
+        <div class="kpi-label">降本增效金额</div>
         <div class="kpi-value glow-text">
           <CountNumber :value="cTotal" :decimals="1" /><span class="unit">万 HKD</span>
         </div>
