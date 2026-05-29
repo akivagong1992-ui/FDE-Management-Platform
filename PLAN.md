@@ -160,12 +160,21 @@
 > ⚠️ 业务模型背景（关键）：团队入账 ~100% pass-through 给 Vendor；6 类外部支出已含在 VSF 内（vendor 用 VSF 去付），算 admin margin / 公司毛利率时不能再减一次。
 
 #### 口径 A · 团队真实利润（admin/lead/finance 专享）
+
+> ⛔ **公式锁定**（2026-05-28 Akiva final）。修改前反复确认 ≥ 3 次，并同步更新：
+> - [backend/app/services/profit.py compute_overall] 的 WARNING 注释块
+> - [backend/tests/test_profit_overall_formula.py] 锁定测试
+> - [admin-web/src/views/profit/OverallView.vue] tooltip + 卡片描述
+> - README §1.4 / §1.5
+
 公式：
 ```
-team_margin = Σ VendorServiceFee.amount  −  Σ ExpenseRequest.amount (非 rejected)
+team_margin = Σ VendorServiceFee.amount  −  Σ ExpenseRequest.amount (仅 status=paid)
 ```
+- 仅 paid 计入成本（现金基础，pending/approved 不计入——避免未审批草稿压低毛利）
 - 含 8 类支出，其中 `outsource_engineer` 是 vendor 付给工程师/劳务公司的钱（需手动录入）
 - 不全量录入会让 margin 偏高
+- **配套不变量（不进公式，仅对账用）**：Σ ProjectRevenue.amount ≈ Σ VSF（pass-through 应该相等）
 - 显示位置：admin → 利润管理 → "团队总览"卡片
 - API：`/api/admin/profit/overall`
 

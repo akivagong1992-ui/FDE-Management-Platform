@@ -24,6 +24,7 @@ from app.models.project import (
 )
 from app.models.project_revenue import ProjectRevenue
 from app.models.sales_person import SalesPerson
+from app.models.vendor import Vendor
 from app.models.vendor_service_fee import VendorServiceFee
 
 
@@ -103,24 +104,67 @@ async def _project_revenues(db: AsyncSession) -> dict[int, Decimal]:
 # ── 口径 A — team overall ──────────────────────────────────────────────
 
 async def compute_overall(db: AsyncSession) -> dict:
-    """口径 A：团队真实利润 = Σ VSF − Σ 全部支出（含外包工程师支出）。
+    """口径 A：团队真实利润 = Σ VSF − Σ 全部支出（vendor markup 视角）。
 
-    业务模型（用户 2026-05-25 重构）：
-      - 团队入账 100% pass-through 给 vendor → revenue ≈ VSF（pass-through 表面账面 ≈ 0）
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  ⛔ 业务公式锁定（2026-05-28 用户 final 确认）                       ║
+    ║                                                                  ║
+    ║    team_revenue  ≈  Σ VSF        （pass-through invariant）       ║
+    ║    team_margin   =  Σ VSF − Σ 全部支出（仅 paid）                  ║
+    ║                                                                  ║
+    ║  ❗ 修改前必须做的事：                                                ║
+    ║    1. 反复跟 Akiva 确认 ≥ 3 次"真的要改吗"                          ║
+    ║    2. 检查 tests/test_profit_overall_formula.py 是否同步更新        ║
+    ║    3. 检查前端 OverallView.vue tooltip 是否同步更新                 ║
+    ║    4. 检查 README §1.4 / §1.5 / PLAN.md 是否同步更新                ║
+    ║                                                                  ║
+    ║  历史教训：曾被错误改成 revenue − VSF − expenses（2026-05-28 上午），║
+    ║  违反 pass-through 假设，又花一轮回滚。下次别再这么改。              ║
+    ╚══════════════════════════════════════════════════════════════════╝
+
+    业务模型（README §1.4 pass-through）：
+      - 团队入账 100% pass-through 给 vendor → revenue ≈ VSF（应该相等）
       - vendor 用收到的 VSF 付：全部支出（含「外包工程师支出」新类目）
-      - vendor 自留的 markup 就是团队真实利润（从财务实质看，vendor 是受控壳）
+      - vendor 是受控壳；它自留的 markup = 团队真实利润
       - 公式：team_margin = VSF − Σ 全部支出
-      - 「外包工程师支出」是 vendor 给工程师/劳务公司的钱，由 admin 手动录入
-        （没录则 team_margin 看起来偏高，需录全后才反映真实 markup）
-      - 现金基础：支出仅计 status=paid 的报销，pending/approved 不计入。
+      - revenue 字段仅用于对账（VSF 录全后 revenue ≈ VSF）
+
+    关键依赖：
+      - "外包工程师支出" 类目必须录全，否则 team_margin 偏高
+      - 现金基础：支出仅计 status=paid 的报销，pending/approved 不计入
+
+    注意：revenue 这里仍然按 bid=won + kind=revenue 过滤——驾驶舱/对账时只看
+    真正中标项目，避免投标中 / 跑单的虚假数据干扰对账。
     """
     revenue = (await db.execute(
         select(func.coalesce(func.sum(ProjectRevenue.amount), 0))
+        .select_from(ProjectRevenue)
+        .join(Project, Project.id == ProjectRevenue.project_id)
+        .where(
+            Project.kind == PROJECT_KIND_REVENUE,
+            Project.bid_outcome == PROJECT_BID_OUTCOME_WON,
+        )
     )).scalar_one()
 
     vendor_fees = (await db.execute(
         select(func.coalesce(func.sum(VendorServiceFee.amount), 0))
     )).scalar_one()
+
+    # 按 vendor 拆分（KPI 卡片用，vendor 数 ≤ 3，直接列）
+    vsf_per_vendor_rows = (await db.execute(
+        select(
+            VendorServiceFee.vendor_id,
+            Vendor.name,
+            func.coalesce(func.sum(VendorServiceFee.amount), 0),
+        )
+        .join(Vendor, Vendor.id == VendorServiceFee.vendor_id)
+        .group_by(VendorServiceFee.vendor_id, Vendor.name)
+        .order_by(func.sum(VendorServiceFee.amount).desc())
+    )).all()
+    vsf_by_vendor = [
+        {"vendor_id": vid, "vendor_name": name, "amount": float(_dec(amt))}
+        for vid, name, amt in vsf_per_vendor_rows
+    ]
 
     expenses = (await db.execute(
         select(func.coalesce(func.sum(ExpenseRequest.amount), 0))
@@ -130,10 +174,11 @@ async def compute_overall(db: AsyncSession) -> dict:
     revenue_d = _dec(revenue)
     fees_d = _dec(vendor_fees)
     exp_d = _dec(expenses)
-    margin = fees_d - exp_d  # = vendor markup = 团队真实利润
+    margin = fees_d - exp_d  # 口径 A：vendor markup = 团队真实利润
     return {
         "total_revenue": float(revenue_d),
         "total_vendor_service_fees": float(fees_d),
+        "vsf_by_vendor": vsf_by_vendor,
         "total_external_expenses": float(exp_d),  # vendor 端全部支出（含外包工程师）
         "team_margin": float(margin),
         "currency": "HKD",

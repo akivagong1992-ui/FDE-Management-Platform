@@ -29,8 +29,19 @@ onMounted(load)
     <div v-if="data">
       <el-row :gutter="16">
         <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover">
-            <div style="color: #909399; font-size: 13px">团队总入账</div>
+          <el-card shadow="hover" class="profit-kpi-card">
+            <div style="color: #909399; font-size: 13px; display: flex; align-items: center; gap: 4px">
+              团队总入账
+              <el-tooltip placement="top">
+                <template #content>
+                  <div style="max-width: 320px; line-height: 1.6">
+                    仅作对账用——不进入团队利润公式。<br />
+                    pass-through 模型下，<strong>总入账应约等于 VSF</strong>；如果差很多，说明 VSF 录入不全（或反之）。
+                  </div>
+                </template>
+                <span style="cursor: help; color: #c0c4cc; font-size: 12px">ⓘ</span>
+              </el-tooltip>
+            </div>
             <div style="font-size: 26px; font-weight: 600; color: #67c23a; margin-top: 8px">
               HK$ {{ fmt(data.total_revenue) }}
             </div>
@@ -40,18 +51,26 @@ onMounted(load)
           </el-card>
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="profit-kpi-card">
             <div style="color: #909399; font-size: 13px">Vendor 服务费 (VSF)</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
               HK$ {{ fmt(data.total_vendor_service_fees) }}
             </div>
             <div style="color: #c0c4cc; font-size: 12px; margin-top: 4px">
-              团队转给 vendor 的全部金额
+              团队转给 vendor 的全部金额 · 应约等于团队总入账 · 由收入自动镜像
+            </div>
+            <div v-if="data.vsf_by_vendor && data.vsf_by_vendor.length > 0"
+                 style="margin-top: 10px; border-top: 1px solid #ebeef5; padding-top: 8px">
+              <div v-for="v in data.vsf_by_vendor" :key="v.vendor_id"
+                   style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px">
+                <span style="color: #606266">{{ v.vendor_name }}</span>
+                <span style="color: #f56c6c; font-weight: 500">HK$ {{ fmt(v.amount) }}</span>
+              </div>
             </div>
           </el-card>
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="profit-kpi-card">
             <div style="color: #909399; font-size: 13px">全部支出（vendor 端从 VSF 扣）</div>
             <div style="font-size: 26px; font-weight: 600; color: #f56c6c; margin-top: 8px">
               HK$ {{ fmt(data.total_external_expenses) }}
@@ -62,15 +81,18 @@ onMounted(load)
           </el-card>
         </el-col>
         <el-col :span="12" style="margin-bottom: 16px">
-          <el-card shadow="hover">
+          <el-card shadow="hover" class="profit-kpi-card">
             <div style="color: #909399; font-size: 13px; display: flex; align-items: center; gap: 4px">
               团队真实利润
               <el-tooltip placement="top">
                 <template #content>
-                  <div style="max-width: 340px; line-height: 1.6">
+                  <div style="max-width: 360px; line-height: 1.6">
                     <strong>= VSF − 全部支出</strong>（vendor markup 视角）<br /><br />
-                    从财务实质看，vendor 是受我们控制的壳，它从 VSF 自留的 markup 实际上就是<strong>团队的真实利润</strong>。<br /><br />
-                    <span style="color: #e6a23c">⚠ 重要：</span>这个数字依赖于「外包工程师支出」类目录入是否齐全。若未录全（vendor 给工程师/劳务公司的钱没记），此数字偏高。
+                    财务实质：vendor 是受我们控制的壳。客户付款 100% pass-through 给 vendor 作为 VSF；vendor 用 VSF 付工程师工资 + 6 类支出。<strong>vendor 自留的 markup = 团队真实利润</strong>。<br /><br />
+                    <span style="color: #e6a23c">⚠ 重要：</span>这个数字依赖于以下数据录入是否齐全：<br />
+                    1. <strong>VSF 必须录全</strong>——VSF 总额应约等于团队总入账（pass-through）<br />
+                    2. <strong>外包工程师支出必须录全</strong>——vendor 付给工程师/劳务公司的钱<br />
+                    3. <strong>支出必须 paid 状态</strong>——批准但未"标记已付"不计入
                   </div>
                 </template>
                 <span style="cursor: help; color: #c0c4cc; font-size: 12px">ⓘ</span>
@@ -154,3 +176,8 @@ onMounted(load)
     </el-alert>
   </div>
 </template>
+
+<style scoped>
+/* 让一行内多个 KPI 卡等高对齐（VSF 卡有 vendor 拆分行会比相邻卡高）*/
+.profit-kpi-card { height: 100%; }
+</style>

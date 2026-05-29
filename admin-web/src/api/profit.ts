@@ -3,6 +3,7 @@ import http from './http'
 export interface OverallProfit {
   total_revenue: number
   total_vendor_service_fees: number
+  vsf_by_vendor: { vendor_id: number; vendor_name: string; amount: number }[]
   total_external_expenses: number
   team_margin: number
   currency: string
