@@ -28,6 +28,13 @@ const activeProjects = computed(() => overview.value?.active_projects ?? 0)
 const teamSize = computed(() => overview.value?.team_size ?? 0)
 const completedThisMonth = computed(() => overview.value?.completed_this_month ?? 0)
 const showcaseClients = computed(() => overview.value?.showcase_clients ?? [])
+
+// 客户 logo 数超过阈值时，启用垂直无缝滚动（marquee 风格）
+const LOGO_SCROLL_THRESHOLD = 8
+const logoScrollOn = computed(() => showcaseClients.value.length > LOGO_SCROLL_THRESHOLD)
+// 滚动一轮时长（秒）= max(20, logo 数 × 2.5)，logo 越多越慢
+const logoScrollDuration = computed(() => Math.max(20, showcaseClients.value.length * 2.5))
+
 const capabilities = computed(() => overview.value?.capability_by_category ?? [])
 const maxCap = computed(() => Math.max(1, ...capabilities.value.map((c) => c.engineer_count)))
 
@@ -203,10 +210,22 @@ onUnmounted(() => {
           <div v-if="showcaseClients.length === 0" class="empty">
             管理后台「客户列表」勾选「驾驶舱展示」+ 上传 Logo 即出现
           </div>
-          <div v-else class="logo-grid">
-            <div v-for="(c, i) in showcaseClients" :key="i" class="logo-tile" :title="c.name">
-              <img :src="`/api/uploads/${c.logo_path}`" :alt="c.name" class="logo-img" />
-              <div class="logo-name">{{ c.name }}</div>
+          <div v-else class="logo-scroll-area" :class="{ rolling: logoScrollOn }"
+               :style="logoScrollOn ? { '--scroll-duration': `${logoScrollDuration}s` } : {}">
+            <div class="logo-scroll-track">
+              <div class="logo-grid">
+                <div v-for="(c, i) in showcaseClients" :key="`a${i}`" class="logo-tile" :title="c.name">
+                  <img :src="`/api/uploads/${c.logo_path}`" :alt="c.name" class="logo-img" />
+                  <div class="logo-name">{{ c.name }}</div>
+                </div>
+              </div>
+              <!-- logo 多时复制一份用于无缝循环 -->
+              <div v-if="logoScrollOn" class="logo-grid" aria-hidden="true">
+                <div v-for="(c, i) in showcaseClients" :key="`b${i}`" class="logo-tile" :title="c.name">
+                  <img :src="`/api/uploads/${c.logo_path}`" :alt="c.name" class="logo-img" />
+                  <div class="logo-name">{{ c.name }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -288,12 +307,42 @@ onUnmounted(() => {
 }
 .hi { color: var(--cockpit-accent); font-family: 'Courier New', monospace; padding: 0 2px; }
 
-/* 已交付客户 logo 矩阵 */
+/* 已交付客户 logo 矩阵 + 多客户时垂直无缝滚动 */
+.logo-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  margin-top: 12px;
+}
+.logo-scroll-track {
+  /* 不滚动时静止显示；滚动时整 track 垂直 translate，
+     由于内部有两份相同的 logo-grid，translate -50% 后无缝回到起点 */
+}
+.logo-scroll-area.rolling .logo-scroll-track {
+  animation: logoMarquee var(--scroll-duration, 30s) linear infinite;
+}
+.logo-scroll-area.rolling:hover .logo-scroll-track {
+  animation-play-state: paused;
+}
+@keyframes logoMarquee {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 .logo-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px; margin-top: 12px;
+  gap: 16px;
   align-content: flex-start;
+}
+/* 不滚动时给 grid 顶部一点空隙 (替代原本的 margin-top: 12px) */
+.logo-scroll-area:not(.rolling) .logo-grid {
+  margin-top: 0;
+}
+/* 滚动时两份 grid 之间也保留 gap 视觉一致 */
+.logo-scroll-area.rolling .logo-grid + .logo-grid {
+  margin-top: 16px;
 }
 .logo-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
