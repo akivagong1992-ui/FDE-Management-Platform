@@ -17,12 +17,13 @@ function fmt10k(n: number | undefined | null): string {
   return (n / 10000).toLocaleString('en-HK', { maximumFractionDigits: 1 })
 }
 
-// Top 降本 / 增效 项目名里含客户身份信息，对内对销售敏感 → 只留首字 + ***
+// Top 降本 / 增效 项目名里含客户身份信息，对内对销售敏感 → 只留首字，后面星号
+// 星号数 = 原名字符数 − 1（中英文都按 codepoint 计），保留信息密度感
 function maskName(name: string): string {
   if (!name) return '—'
-  // 首字符（中文或英文都按 1 个 codepoint）+ 后面统一 3 颗星
-  const first = [...name][0] || ''
-  return `${first}***`
+  const chars = [...name]
+  const first = chars[0] || ''
+  return first + '*'.repeat(Math.max(0, chars.length - 1))
 }
 
 const cSavings10k = computed(() => (data.value?.total_savings ?? 0) / 10000)
