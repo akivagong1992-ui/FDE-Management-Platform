@@ -99,8 +99,8 @@ onUnmounted(() => {
 .cockpit {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background:
     radial-gradient(circle at 50% 0%, rgba(0, 229, 255, 0.08), transparent 40%),
     var(--cockpit-bg);
