@@ -7,22 +7,6 @@ from app.schemas._common import OptionalEmail
 from app.schemas.skill import EngineerSkillOut
 
 
-class CertificateIn(BaseModel):
-    name: str
-    issuer: str | None = None
-    cert_number: str | None = None
-    issue_date: date | None = None
-    expiry_date: date | None = None
-    file_path: str | None = None
-    cert_level: str | None = Field(default=None, pattern="^(L1|L2|L3)?$")
-    cert_category: str | None = None
-
-
-class CertificateOut(CertificateIn):
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-
-
 class EngineerBase(BaseModel):
     vendor_id: int
     employment_form: str = Field(pattern="^(vendor_direct|vendor_via_labor)$")
@@ -79,7 +63,6 @@ class EngineerOut(EngineerBase):
     monthly_cost_to_telecom: Decimal | None = None
 
     skills: list[EngineerSkillOut] = []
-    certificates: list[CertificateOut] = []
 
     created_at: datetime
 

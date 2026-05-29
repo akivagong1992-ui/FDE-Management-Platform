@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
-from app.models.engineer import Certificate, Engineer
-from app.models.skill import EngineerSkill
+from app.models.engineer import Engineer
+from app.models.skill import EngineerSkill, Skill
 from app.models.skill_snapshot import EngineerSkillSnapshot
 from app.schemas.skill_snapshot import SkillSnapshotOut, SnapshotTriggerResult
 
@@ -22,7 +22,6 @@ def _to_out(s: EngineerSkillSnapshot) -> SkillSnapshotOut:
         snapshot_date=s.snapshot_date,
         skill_count=s.skill_count,
         avg_level=s.avg_level,
-        cert_count=s.cert_count,
         level=s.level,
         created_at=s.created_at,
     )
@@ -59,24 +58,22 @@ async def trigger_snapshot(
         ).all()
     }
 
-    # 当前每工程师的 skill_count / avg_level / cert_count
-    skill_agg = {
-        eid: (count, float(avg))
-        for (eid, count, avg) in (await db.execute(
-            select(
-                EngineerSkill.engineer_id,
-                func.count(EngineerSkill.id),
-                func.coalesce(func.avg(EngineerSkill.level), 0),
-            ).group_by(EngineerSkill.engineer_id)
-        )).all()
-    }
-    cert_agg = {
-        eid: cnt
-        for (eid, cnt) in (await db.execute(
-            select(Certificate.engineer_id, func.count(Certificate.id))
-            .group_by(Certificate.engineer_id)
-        )).all()
-    }
+    # 当前每工程师的 skill_count / avg_level（avg_level = 所挂认证的平均难度，
+    # 来自 Skill.level：L1=1 / L2=2 / L3=3。EngineerSkill.level 已废弃不再读取。）
+    level_map = {"L1": 1, "L2": 2, "L3": 3}
+    skill_agg: dict[int, tuple[int, float]] = {}
+    rows = (await db.execute(
+        select(EngineerSkill.engineer_id, Skill.level)
+        .join(Skill, Skill.id == EngineerSkill.skill_id)
+    )).all()
+    counts: dict[int, int] = {}
+    sums: dict[int, int] = {}
+    for eid, lvl in rows:
+        counts[eid] = counts.get(eid, 0) + 1
+        sums[eid] = sums.get(eid, 0) + level_map.get(lvl or "", 0)
+    for eid, cnt in counts.items():
+        avg = sums[eid] / cnt if cnt else 0.0
+        skill_agg[eid] = (cnt, avg)
 
     created = 0
     skipped = 0
@@ -89,11 +86,10 @@ async def trigger_snapshot(
             skipped += 1
             continue
         skill_count, avg_level = skill_agg.get(e.id, (0, 0.0))
-        cert_count = cert_agg.get(e.id, 0)
         db.add(EngineerSkillSnapshot(
             engineer_id=e.id, snapshot_date=today,
             skill_count=skill_count, avg_level=round(avg_level, 2),
-            cert_count=cert_count, level=e.level,
+            level=e.level,
         ))
         created += 1
 
@@ -113,7 +109,6 @@ async def team_trend(
             func.count(EngineerSkillSnapshot.id),
             func.coalesce(func.avg(EngineerSkillSnapshot.skill_count), 0),
             func.coalesce(func.avg(EngineerSkillSnapshot.avg_level), 0),
-            func.coalesce(func.avg(EngineerSkillSnapshot.cert_count), 0),
         )
         .group_by(EngineerSkillSnapshot.snapshot_date)
         .order_by(EngineerSkillSnapshot.snapshot_date)
@@ -124,7 +119,6 @@ async def team_trend(
             "engineer_count": cnt,
             "avg_skill_count": round(float(sk), 2),
             "avg_skill_level": round(float(lvl), 2),
-            "avg_cert_count": round(float(crt), 2),
         }
-        for d, cnt, sk, lvl, crt in rows
+        for d, cnt, sk, lvl in rows
     ]

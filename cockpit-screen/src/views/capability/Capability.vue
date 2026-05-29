@@ -42,20 +42,20 @@ const skillSeries = computed(() => trend.value?.series.map((p) => p.avg_skill_co
 const skillPath = computed(() => lineFrom(skillSeries.value, Math.max(1, ...skillSeries.value)))
 // 「人均技能等级」线已撤掉（个人评级 = 主观打分，已废弃）
 
-// Heatmap: rows = unique cert_category, cols = L1/L2/L3, cells = distinct engineer count
-type CertLevel = 'L1' | 'L2' | 'L3'
-const HEAT_LEVELS: CertLevel[] = ['L1', 'L2', 'L3']
+// Heatmap: rows = unique Skill.category, cols = L1/L2/L3, cells = distinct engineer count
+type SkillLevel = 'L1' | 'L2' | 'L3'
+const HEAT_LEVELS: SkillLevel[] = ['L1', 'L2', 'L3']
 const heatmap = computed(() => {
-  const cats = Array.from(new Set((data.value?.cert_heatmap || []).map((h) => h.category)))
-  const grid: Record<string, Record<CertLevel, number>> = {}
+  const cats = Array.from(new Set((data.value?.skill_heatmap || []).map((h) => h.category)))
+  const grid: Record<string, Record<SkillLevel, number>> = {}
   for (const c of cats) grid[c] = { L1: 0, L2: 0, L3: 0 }
-  for (const h of data.value?.cert_heatmap || []) {
+  for (const h of data.value?.skill_heatmap || []) {
     grid[h.category][h.level] = h.count
   }
   return { cats, grid }
 })
 
-const heatmapMax = computed(() => Math.max(1, ...(data.value?.cert_heatmap || []).map((h) => h.count)))
+const heatmapMax = computed(() => Math.max(1, ...(data.value?.skill_heatmap || []).map((h) => h.count)))
 const maxIssuer = computed(() => Math.max(1, ...(data.value?.by_issuer || []).map((i) => i.count)))
 
 function heatCellColor(count: number): string {
@@ -77,8 +77,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div class="kpi-sub">在职 {{ engineers?.active ?? 0 }} 人</div>
       </div>
       <div class="panel kpi-card">
-        <div class="kpi-label">累计外部证书</div>
-        <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
+        <div class="kpi-label">累计持有认证</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.total_skill_assignments ?? 0" /></div>
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">认证覆盖类别数</div>
@@ -97,17 +97,17 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       <div class="panel kpi-card">
         <div class="kpi-label">Top 持证工程师</div>
         <div class="top-eng">
-          <div v-for="e in (data?.top_certified_engineers || []).slice(0,3)" :key="e.engineer_id" class="top-eng-row">
-            <span>{{ e.name }}</span><span class="top-num">{{ e.cert_count }}</span>
+          <div v-for="e in (data?.top_skilled_engineers || []).slice(0,3)" :key="e.engineer_id" class="top-eng-row">
+            <span>{{ e.name }}</span><span class="top-num">{{ e.skill_count }}</span>
           </div>
-          <div v-if="!data?.top_certified_engineers.length" class="empty-mini">暂无证书</div>
+          <div v-if="!data?.top_skilled_engineers.length" class="empty-mini">暂无认证</div>
         </div>
       </div>
     </div>
 
     <div class="lower">
       <div class="panel">
-        <div class="panel-title">能力矩阵热力图（类别 × 厂商认证等级）</div>
+        <div class="panel-title">能力矩阵热力图（类别 × 认证难度）</div>
         <div v-if="heatmap.cats.length === 0" class="empty">暂无认证登记</div>
         <div v-else class="heatmap">
           <div class="hm-header">
@@ -143,12 +143,11 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
           </div>
           <div class="growth-summary">
             最近 {{ trend.snapshots_count }} 个季度：
-            技能 <strong class="hi">+{{ trend.growth_delta.avg_skill_count.toFixed(1) }}</strong>，
-            证书 <strong class="hi">+{{ trend.growth_delta.avg_cert_count.toFixed(1) }}</strong>
+            人均认证 <strong class="hi">+{{ trend.growth_delta.avg_skill_count.toFixed(1) }}</strong>
           </div>
 
-          <div class="panel-title" style="margin-top: 16px">证书分布（按机构）</div>
-          <div v-if="!data?.by_issuer.length" class="empty-mini">暂无证书</div>
+          <div class="panel-title" style="margin-top: 16px">认证分布（按厂商）</div>
+          <div v-if="!data?.by_issuer.length" class="empty-mini">暂无认证</div>
           <div v-else class="bar-list compact">
             <div v-for="i in data.by_issuer.slice(0, 5)" :key="i.issuer" class="bar-row">
               <div class="bar-label">{{ i.issuer }}</div>

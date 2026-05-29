@@ -32,8 +32,8 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
       </div>
       <div class="panel kpi-card">
         <div class="kpi-label">认证总量</div>
-        <div class="kpi-value glow-text"><CountNumber :value="data?.total_certificates ?? 0" /></div>
-        <div class="kpi-sub">厂商认证 L1/L2/L3 累计</div>
+        <div class="kpi-value glow-text"><CountNumber :value="data?.total_skill_assignments ?? 0" /></div>
+        <div class="kpi-sub">L1/L2/L3 累计挂载条数</div>
       </div>
     </div>
 

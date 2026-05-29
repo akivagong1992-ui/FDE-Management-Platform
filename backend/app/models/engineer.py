@@ -65,35 +65,3 @@ class Engineer(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    certificates: Mapped[list["Certificate"]] = relationship(  # noqa: F821
-        lazy="selectin",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-    )
-
-
-# Cert level — 厂商认证等级（替代主观个人评级）：L1 初级 / L2 中级 / L3 高级
-CERT_LEVEL_L1 = "L1"
-CERT_LEVEL_L2 = "L2"
-CERT_LEVEL_L3 = "L3"
-CERT_LEVELS = (CERT_LEVEL_L1, CERT_LEVEL_L2, CERT_LEVEL_L3)
-
-# Cert category — 与 Skill.category 同枚举，决定能力矩阵热力图纵轴
-CERT_CATEGORIES = ("网络能力", "安全能力", "弱电能力", "云能力", "数据能力", "AI 能力")
-
-
-class Certificate(Base):
-    """工程师外部认证（CCIE / CISSP / PMP 等）。"""
-
-    __tablename__ = "certificates"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id", ondelete="CASCADE"), index=True)
-    name: Mapped[str] = mapped_column(String(128))           # e.g. CCIE
-    issuer: Mapped[str | None] = mapped_column(String(128))  # e.g. Cisco
-    cert_number: Mapped[str | None] = mapped_column(String(128))
-    issue_date: Mapped[date | None] = mapped_column(Date)
-    expiry_date: Mapped[date | None] = mapped_column(Date)
-    file_path: Mapped[str | None] = mapped_column(String(255))  # uploads/... 相对路径
-    cert_level: Mapped[str | None] = mapped_column(String(4))    # L1 / L2 / L3
-    cert_category: Mapped[str | None] = mapped_column(String(16))

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models.assignment import ASSIGNMENT_STATUS_ENDED, Assignment
-from app.models.engineer import Certificate, Engineer
+from app.models.engineer import Engineer
 from app.models.project import (
     PROJECT_BID_OUTCOME_WON,
     PROJECT_KIND_NO_REVENUE,
@@ -194,9 +194,9 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
     ]
     vendor_dist.sort(key=lambda x: -x["count"])
 
-    # 认证总量（替代旧「个人等级 L1-L3 分布」）
-    total_certificates = (await db.execute(
-        select(func.count(Certificate.id))
+    # 团队挂载认证总条数（每条 EngineerSkill = 一名工程师持一项认证）
+    total_skill_assignments = (await db.execute(
+        select(func.count(EngineerSkill.id))
     )).scalar_one() or 0
 
     # Top busy — 当前 in-progress 派单条数（allocation_ratio 已废弃）
@@ -216,7 +216,7 @@ async def engineer_stats(db: AsyncSession = Depends(get_db)) -> dict:
         "total": total,
         "active": active,
         "by_vendor": vendor_dist,
-        "total_certificates": int(total_certificates),
+        "total_skill_assignments": int(total_skill_assignments),
         "top_allocated": top_allocated,
     }
 
@@ -363,43 +363,52 @@ async def efficiency_stats(db: AsyncSession = Depends(get_db)) -> dict:
 
 @router.get("/capability-stats")
 async def capability_stats(db: AsyncSession = Depends(get_db)) -> dict:
-    # Certificates
-    certs = (await db.execute(select(Certificate))).scalars().all()
+    """认证矩阵 — 由 EngineerSkill + Skill 字典聚合驱动（替代旧 Certificate 表）。"""
+    # 拉所有挂载 + 对应 Skill 字典信息（category / issuer / level）
+    rows = (await db.execute(
+        select(
+            EngineerSkill.engineer_id,
+            Skill.category,
+            Skill.issuer,
+            Skill.level,
+        ).join(Skill, Skill.id == EngineerSkill.skill_id)
+    )).all()
+
+    # 按厂商汇总（每条挂载算 1）
     by_issuer: dict[str, int] = defaultdict(int)
-    for c in certs:
-        by_issuer[(c.issuer or "其他")] += 1
+    for _eid, _cat, issuer, _lvl in rows:
+        by_issuer[issuer or "其他"] += 1
     issuer_list = sorted(
         [{"issuer": k, "count": v} for k, v in by_issuer.items()], key=lambda x: -x["count"]
     )[:8]
 
-    # Cert heatmap: cert_category × cert_level（L1/L2/L3）→ distinct engineer 数
-    # 替代旧 skill_heatmap（基于 EngineerSkill.level 的主观打分）
+    # 热力图：category × level → distinct engineer 数
     cat_lvl_engs: dict[tuple[str, str], set[int]] = defaultdict(set)
-    for c in certs:
-        if not c.cert_category or not c.cert_level:
+    for eid, cat, _issuer, lvl in rows:
+        if not cat or not lvl:
             continue
-        cat_lvl_engs[(c.cert_category, c.cert_level)].add(c.engineer_id)
-    cert_heatmap = [
+        cat_lvl_engs[(cat, lvl)].add(eid)
+    skill_heatmap = [
         {"category": cat, "level": lvl, "count": len(engs)}
         for (cat, lvl), engs in sorted(cat_lvl_engs.items())
     ]
 
-    # Top engineers by cert count
-    eng_cert_count: dict[int, int] = defaultdict(int)
-    for c in certs:
-        eng_cert_count[c.engineer_id] += 1
+    # Top engineers by 持证数量（多少条挂载）
+    eng_skill_count: dict[int, int] = defaultdict(int)
+    for eid, _cat, _issuer, _lvl in rows:
+        eng_skill_count[eid] += 1
     eng = {e.id: e.full_name for e in (await db.execute(select(Engineer))).scalars().all()}
-    top_certified = sorted(
-        [{"engineer_id": eid, "name": eng.get(eid, f"#{eid}"), "cert_count": cnt}
-         for eid, cnt in eng_cert_count.items()],
-        key=lambda x: -x["cert_count"],
+    top_skilled = sorted(
+        [{"engineer_id": eid, "name": eng.get(eid, f"#{eid}"), "skill_count": cnt}
+         for eid, cnt in eng_skill_count.items()],
+        key=lambda x: -x["skill_count"],
     )[:5]
 
     return {
-        "total_certificates": len(certs),
+        "total_skill_assignments": len(rows),
         "by_issuer": issuer_list,
-        "cert_heatmap": cert_heatmap,
-        "top_certified_engineers": top_certified,
+        "skill_heatmap": skill_heatmap,
+        "top_skilled_engineers": top_skilled,
     }
 
 

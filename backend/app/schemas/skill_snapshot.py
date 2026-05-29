@@ -12,7 +12,6 @@ class SkillSnapshotOut(BaseModel):
     snapshot_date: date
     skill_count: int
     avg_level: Decimal
-    cert_count: int
     level: int | None = None
     created_at: datetime
 

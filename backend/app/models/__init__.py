@@ -1,7 +1,7 @@
 from app.models.asset_reference import AssetReference
 from app.models.assignment import Assignment, AssignmentMessage
 from app.models.data_dict import DataDict
-from app.models.engineer import Certificate, Engineer
+from app.models.engineer import Engineer
 from app.models.expense import ExpenseRequest
 from app.models.idp import IDP
 from app.models.knowledge_asset import KnowledgeAsset
@@ -28,7 +28,6 @@ __all__ = [
     "Skill",
     "EngineerSkill",
     "Engineer",
-    "Certificate",
     "NeedParty",
     "SalesPerson",
     "Project",

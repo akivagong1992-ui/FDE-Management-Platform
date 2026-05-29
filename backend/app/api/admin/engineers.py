@@ -5,12 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import decrypt_field, encrypt_field, mask_id_number
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_role
-from app.models.engineer import Certificate, Engineer
+from app.models.engineer import Engineer
 from app.models.skill import EngineerSkill, Skill
 from app.models.vendor import Vendor
 from app.schemas.engineer import (
-    CertificateIn,
-    CertificateOut,
     EngineerCreate,
     EngineerOut,
     EngineerSensitiveOut,
@@ -37,12 +35,10 @@ def _to_out(e: Engineer, *, include_cost: bool) -> EngineerOut:
             skill_category=es.skill.category if es.skill else "",
             skill_issuer=es.skill.issuer if es.skill else None,
             skill_level=es.skill.level if es.skill else None,
-            level=es.level,
             notes=es.notes,
         )
         for es in (e.skills or [])
     ]
-    certs = [CertificateOut.model_validate(c) for c in (e.certificates or [])]
     return EngineerOut(
         id=e.id,
         vendor_id=e.vendor_id,
@@ -63,7 +59,6 @@ def _to_out(e: Engineer, *, include_cost: bool) -> EngineerOut:
         notes=e.notes,
         monthly_cost_to_telecom=e.monthly_cost_to_telecom if include_cost else None,
         skills=skills,
-        certificates=certs,
         created_at=e.created_at,
     )
 
@@ -136,7 +131,7 @@ async def create_engineer(
         skill = await db.get(Skill, sid)
         if not skill:
             continue
-        db.add(EngineerSkill(engineer_id=e.id, skill_id=sid, level=0))
+        db.add(EngineerSkill(engineer_id=e.id, skill_id=sid))
         seen_skill_ids.add(sid)
 
     await db.commit()
@@ -202,7 +197,6 @@ async def attach_skill(
         )
     ).scalar_one_or_none()
     if existing:
-        existing.level = payload.level
         existing.notes = payload.notes
         await db.commit()
         await db.refresh(existing)
@@ -217,7 +211,8 @@ async def attach_skill(
         skill_id=es.skill_id,
         skill_name=skill.name,
         skill_category=skill.category,
-        level=es.level,
+        skill_issuer=skill.issuer,
+        skill_level=skill.level,
         notes=es.notes,
     )
 
@@ -236,34 +231,3 @@ async def detach_skill(
     await db.commit()
 
 
-# ─── Certificates ──────────────────────────────────────────────────────
-
-@router.post("/{engineer_id}/certificates", response_model=CertificateOut)
-async def add_certificate(
-    engineer_id: int,
-    payload: CertificateIn,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead")),
-) -> CertificateOut:
-    e = await db.get(Engineer, engineer_id)
-    if not e:
-        raise HTTPException(status_code=404, detail="工程师不存在")
-    c = Certificate(engineer_id=engineer_id, **payload.model_dump())
-    db.add(c)
-    await db.commit()
-    await db.refresh(c)
-    return CertificateOut.model_validate(c)
-
-
-@router.delete("/{engineer_id}/certificates/{cert_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_certificate(
-    engineer_id: int,
-    cert_id: int,
-    db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_role("admin", "lead")),
-) -> None:
-    c = await db.get(Certificate, cert_id)
-    if not c or c.engineer_id != engineer_id:
-        raise HTTPException(status_code=404, detail="证书不存在")
-    await db.delete(c)
-    await db.commit()

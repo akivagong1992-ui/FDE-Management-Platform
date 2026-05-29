@@ -48,10 +48,9 @@ class SkillBulkResult(BaseModel):
 
 
 class EngineerSkillItem(BaseModel):
-    """Used to attach a skill to an engineer（level 字段已停用，仅为兼容老前端）。"""
+    """挂载工程师 × 认证：只需 skill_id 引用字典（等级由 Skill.level 决定）。"""
 
     skill_id: int
-    level: int = Field(default=0, ge=0, le=5)
     notes: str | None = None
 
 
@@ -63,5 +62,4 @@ class EngineerSkillOut(BaseModel):
     skill_category: str
     skill_issuer: str | None = None
     skill_level: str | None = None  # L1-L3 from the catalog
-    level: int  # legacy field; 前端不展示
     notes: str | None = None

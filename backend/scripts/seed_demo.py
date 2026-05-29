@@ -19,7 +19,7 @@ from app.core.security import hash_password
 from app.models.asset_reference import AssetReference
 from app.models.assignment import Assignment
 from app.models.data_dict import DataDict
-from app.models.engineer import Certificate, Engineer
+from app.models.engineer import Engineer
 from app.models.expense import EXPENSE_TYPE_DEFAULTS, ExpenseRequest
 from app.models.idp import IDP
 from app.models.knowledge_asset import ASSET_CATEGORY_DEFAULTS, KnowledgeAsset
@@ -115,35 +115,6 @@ SKILLS = [
     ("AWS Machine Learning Specialty", "AI 能力", "AWS", "L3"),
     ("TensorFlow Developer", "AI 能力", "Google", "L2"),
     ("NVIDIA DLI 入门认证", "AI 能力", "NVIDIA", "L1"),
-]
-
-# 厂商认证：(name, issuer, cert_category, cert_level)
-# cert_level: L1 初级 / L2 中级 / L3 高级
-# 类别与 SKILLS 同枚举（6 类）
-CERTS = [
-    # L3 高级
-    ("CCIE 路由交换", "Cisco", "网络能力", "L3"),
-    ("华为 HCIE-数通", "华为", "网络能力", "L3"),
-    ("CISSP", "ISC2", "安全能力", "L3"),
-    ("CISA", "ISACA", "安全能力", "L3"),
-    ("AWS Solutions Architect Professional", "AWS", "云能力", "L3"),
-    ("AWS Machine Learning Specialty", "AWS", "AI 能力", "L3"),
-    # L2 中级
-    ("AWS Solutions Architect Associate", "AWS", "云能力", "L2"),
-    ("CKA", "CNCF", "云能力", "L2"),
-    ("CCNP 安全", "Cisco", "安全能力", "L2"),
-    ("华为 HCIP-数通", "华为", "网络能力", "L2"),
-    ("华为 HCIP-大数据", "华为", "数据能力", "L2"),
-    ("RCDD 综合布线设计师", "BICSI", "弱电能力", "L2"),
-    ("TensorFlow Developer", "Google", "AI 能力", "L2"),
-    # L1 初级
-    ("CCNA", "Cisco", "网络能力", "L1"),
-    ("华为 HCIA-Cloud", "华为", "云能力", "L1"),
-    ("华为 HCIA-大数据", "华为", "数据能力", "L1"),
-    ("AWS Cloud Practitioner", "AWS", "云能力", "L1"),
-    ("CompTIA Security+", "CompTIA", "安全能力", "L1"),
-    ("综合布线工程师初级", "中国建筑学会", "弱电能力", "L1"),
-    ("NVIDIA DLI 入门认证", "NVIDIA", "AI 能力", "L1"),
 ]
 
 PROJECT_TEMPLATES_REVENUE = [
@@ -310,27 +281,12 @@ async def main() -> None:
         print(f"  ✓ engineers x{len(eng_objs)}")
 
         # ── Skills × Engineers ────────────────────────────────────────
-        # EngineerSkill.level 已停用，仅保留「会/不会」标记（level=0 当占位）
+        # 每个工程师挂 2-5 条 Skill（认证内禀难度 L1-L3 来自 Skill 字典）
         for e in eng_objs:
             for s in random.sample(skill_objs, k=random.randint(2, 5)):
-                db.add(EngineerSkill(engineer_id=e.id, skill_id=s.id, level=0))
+                db.add(EngineerSkill(engineer_id=e.id, skill_id=s.id))
         await db.flush()
-
-        # ── Certificates ──────────────────────────────────────────────
-        # 厂商认证带 cert_level (L1/L2/L3) + cert_category，是工程师水平的唯一客观依据
-        cert_count = 0
-        for e in eng_objs:
-            if random.random() < 0.7:  # 70% 工程师至少有一张
-                for cert_name, issuer, category, level in random.sample(CERTS, k=random.randint(1, 3)):
-                    db.add(Certificate(
-                        engineer_id=e.id, name=cert_name, issuer=issuer,
-                        cert_category=category, cert_level=level,
-                        issue_date=random_date_within(900, 200),
-                        expiry_date=random_date_within(-180, -720) if random.random() < 0.7 else None,
-                    ))
-                    cert_count += 1
-        await db.flush()
-        print(f"  ✓ engineer skills + {cert_count} certificates (含 cert_level/category)")
+        print(f"  ✓ engineer skills 挂载完成")
 
         # ── Projects ──────────────────────────────────────────────────
         # 真实业务模型驱动的生成：
@@ -841,21 +797,18 @@ async def main() -> None:
         for e in active_engineers:
             base_skills = random.randint(2, 4)  # starting skill count
             base_level = round(random.uniform(1.2, 2.0), 2)  # 3 级系统：起点 L1.2-L2.0
-            base_certs = random.randint(0, 1)
             # 8 snapshots: 720d ago to 0d ago, every 90d
             for q in range(8):
                 snap_date = days_ago(720 - q * 90)
-                # Simulate growth: each quarter +0.3 skill on avg, +~0.1 level, +0.1 cert
+                # Simulate growth: each quarter +0.3 skill on avg, +~0.1 level
                 growth_factor = q / 8.0
                 skills_now = base_skills + int(growth_factor * random.uniform(2, 5))
                 # 3 级封顶 L3.0：从 base + 最多 +1.0 涨幅
                 level_now = round(min(3.0, base_level + growth_factor * random.uniform(0.3, 0.8)), 2)
-                certs_now = base_certs + int(growth_factor * random.uniform(0, 3))
                 db.add(EngineerSkillSnapshot(
                     engineer_id=e.id, snapshot_date=snap_date,
                     skill_count=skills_now,
                     avg_level=Decimal(str(level_now)),
-                    cert_count=certs_now,
                     level=e.level,
                 ))
                 snap_count += 1

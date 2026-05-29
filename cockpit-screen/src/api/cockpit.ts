@@ -70,7 +70,6 @@ export interface GrowthTrendPoint {
   engineer_count: number
   avg_skill_count: number
   avg_skill_level: number
-  avg_cert_count: number
 }
 export interface GrowthTrend {
   series: GrowthTrendPoint[]
@@ -78,7 +77,6 @@ export interface GrowthTrend {
   growth_delta: {
     avg_skill_count: number
     avg_skill_level: number
-    avg_cert_count: number
   }
 }
 export const getGrowthTrend = () => http.get<GrowthTrend>('/growth-trend').then((r) => r.data)
@@ -111,7 +109,7 @@ export const getProfitCompare = () => http.get<ProfitCompare>('/profit-compare')
 export interface EngineerStats {
   total: number; active: number
   by_vendor: { vendor_id: number; name: string; count: number }[]
-  total_certificates: number  // 替代旧 by_level（按 engineer.level L1-L3 聚合）
+  total_skill_assignments: number  // 团队挂载认证总条数
   top_allocated: { engineer_id: number; name: string; alloc_pct: number }[]
 }
 export const getEngineerStats = () => http.get<EngineerStats>('/engineer-stats').then((r) => r.data)
@@ -147,11 +145,11 @@ export interface EfficiencyStats {
 export const getEfficiencyStats = () => http.get<EfficiencyStats>('/efficiency-stats').then((r) => r.data)
 
 export interface CapabilityStats {
-  total_certificates: number
+  total_skill_assignments: number  // 团队挂载认证总条数
   by_issuer: { issuer: string; count: number }[]
-  // 新口径: cert_level (L1/L2/L3) × cert_category → distinct engineer count
-  cert_heatmap: { category: string; level: 'L1' | 'L2' | 'L3'; count: number }[]
-  top_certified_engineers: { engineer_id: number; name: string; cert_count: number }[]
+  // Skill.category × Skill.level → distinct engineer count
+  skill_heatmap: { category: string; level: 'L1' | 'L2' | 'L3'; count: number }[]
+  top_skilled_engineers: { engineer_id: number; name: string; skill_count: number }[]
 }
 export const getCapabilityStats = () => http.get<CapabilityStats>('/capability-stats').then((r) => r.data)
 
