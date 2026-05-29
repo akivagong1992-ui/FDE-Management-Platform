@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { listEngineers, type Engineer, type EngineerSkillRow } from '@/api/engineers'
-import { triggerSnapshot } from '@/api/capability'
 
 const engineers = ref<Engineer[]>([])
 const loading = ref(false)
-const taking = ref(false)
 const filterText = ref('')
 
 async function load() {
@@ -15,21 +12,6 @@ async function load() {
     engineers.value = await listEngineers({ status_filter: 'active' })
   } finally {
     loading.value = false
-  }
-}
-
-async function onTakeSnapshot() {
-  await ElMessageBox.confirm(
-    '拍一份当下的团队能力快照——记录每位在职工程师当前持有认证数和平均难度，' +
-    '用于驾驶舱 Tab 7「团队成长曲线」展示给领导看持续投入。同一天重复拍会跳过。',
-    '拍当下快照', { type: 'info', confirmButtonText: '拍' },
-  )
-  taking.value = true
-  try {
-    const r = await triggerSnapshot()
-    ElMessage.success(`快照已生成：新增 ${r.created} 份，跳过 ${r.skipped} 份（已存在同日）`)
-  } finally {
-    taking.value = false
   }
 }
 
@@ -89,9 +71,6 @@ onMounted(load)
       <div class="ops">
         <el-input v-model="filterText" placeholder="搜工程师名 / vendor / 认证名" clearable size="small"
                   style="width: 280px" />
-        <el-button size="small" type="primary" plain :loading="taking" @click="onTakeSnapshot">
-          拍当下快照
-        </el-button>
       </div>
     </div>
 

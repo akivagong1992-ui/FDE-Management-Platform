@@ -15,6 +15,7 @@ from app.schemas.engineer import (
     EngineerUpdate,
 )
 from app.schemas.skill import EngineerSkillItem, EngineerSkillOut
+from app.services.snapshot import take_team_snapshot
 
 router = APIRouter(prefix="/engineers", tags=["engineers"])
 
@@ -134,6 +135,9 @@ async def create_engineer(
         db.add(EngineerSkill(engineer_id=e.id, skill_id=sid))
         seen_skill_ids.add(sid)
 
+    # 持有认证有变更 → 自动刷新今日团队快照（驱动驾驶舱成长曲线）
+    await take_team_snapshot(db)
+
     await db.commit()
     await db.refresh(e)
     return _to_out(e, include_cost=_can_view_cost(user))
@@ -198,12 +202,16 @@ async def attach_skill(
     ).scalar_one_or_none()
     if existing:
         existing.notes = payload.notes
+        # 仅改 notes 不影响快照（skill_count/avg_level 不变），但为简单一致也刷一次
+        await take_team_snapshot(db)
         await db.commit()
         await db.refresh(existing)
         es = existing
     else:
         es = EngineerSkill(engineer_id=engineer_id, **payload.model_dump())
         db.add(es)
+        await db.flush()  # 让快照计算包含这条新挂载
+        await take_team_snapshot(db)
         await db.commit()
         await db.refresh(es)
     return EngineerSkillOut(
@@ -228,6 +236,8 @@ async def detach_skill(
     if not es or es.engineer_id != engineer_id:
         raise HTTPException(status_code=404, detail="技能记录不存在")
     await db.delete(es)
+    await db.flush()  # 让快照计算少这条
+    await take_team_snapshot(db)
     await db.commit()
 
 
