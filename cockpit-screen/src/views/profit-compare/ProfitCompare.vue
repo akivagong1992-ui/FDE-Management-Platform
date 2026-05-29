@@ -17,6 +17,14 @@ function fmt10k(n: number | undefined | null): string {
   return (n / 10000).toLocaleString('en-HK', { maximumFractionDigits: 1 })
 }
 
+// Top 降本 / 增效 项目名里含客户身份信息，对内对销售敏感 → 只留首字 + ***
+function maskName(name: string): string {
+  if (!name) return '—'
+  // 首字符（中文或英文都按 1 个 codepoint）+ 后面统一 3 颗星
+  const first = [...name][0] || ''
+  return `${first}***`
+}
+
 const cSavings10k = computed(() => (data.value?.total_savings ?? 0) / 10000)
 const cValue10k = computed(() => (data.value?.total_value_created ?? 0) / 10000)
 
@@ -59,7 +67,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div v-if="!data?.top_savings_projects.length" class="empty">暂无数据</div>
         <div v-else class="bar-list">
           <div v-for="p in data.top_savings_projects" :key="p.project_id" class="bar-row">
-            <div class="bar-label">{{ p.name }}</div>
+            <div class="bar-label">{{ maskName(p.name) }}</div>
             <div class="bar-track">
               <div class="bar-fill" :style="{ width: `${(p.savings / maxSavings) * 100}%` }" />
             </div>
@@ -73,7 +81,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
         <div v-if="!data?.top_value_projects.length" class="empty">暂无数据</div>
         <div v-else class="bar-list">
           <div v-for="p in data.top_value_projects" :key="p.project_id" class="bar-row">
-            <div class="bar-label">{{ p.name }}</div>
+            <div class="bar-label">{{ maskName(p.name) }}</div>
             <div class="bar-track">
               <div class="bar-fill brag-fill" :style="{ width: `${(p.value_created / maxValue) * 100}%` }" />
             </div>
