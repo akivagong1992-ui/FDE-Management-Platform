@@ -9,6 +9,7 @@ import {
   listProjects, updateProject, BENCHMARK_BASIS_LABELS,
   type BenchmarkBasis, type Project,
 } from '@/api/projects'
+import { listVendors, type Vendor } from '@/api/vendors'
 import ColumnVisibilityMenu from '@/components/ColumnVisibilityMenu.vue'
 import ColumnFilterMenu from '@/components/ColumnFilterMenu.vue'
 import { fmt2 } from '@/utils/format'
@@ -16,13 +17,14 @@ import { fmt2 } from '@/utils/format'
 const rows = ref<ProjectRevenue[]>([])
 const projects = ref<Project[]>([])
 const revenueProjects = ref<Project[]>([])
+const vendors = ref<Vendor[]>([])
 const loading = ref(false)
 const filter = reactive<{ project_id?: number }>({})
 
 const dialog = ref(false)
 const editingId = ref<number | null>(null)
 const form = reactive<RevenuePayload>({
-  project_id: 0, amount: 0, gross_amount: undefined, non_service_expense: undefined,
+  project_id: 0, vendor_id: 0, amount: 0, gross_amount: undefined, non_service_expense: undefined,
   recognized_date: new Date().toISOString().slice(0, 10),
   description: '',
 })
@@ -37,6 +39,7 @@ async function load() {
     rows.value = await listRevenues(filter)
     projects.value = await listProjects()  // 刷新 — benchmark 可能刚被改
     revenueProjects.value = projects.value.filter((p) => p.kind === 'revenue')
+    if (vendors.value.length === 0) vendors.value = await listVendors()
   } finally {
     loading.value = false
   }
@@ -58,6 +61,7 @@ function openCreate() {
   editingId.value = null
   Object.assign(form, {
     project_id: revenueProjects.value[0]?.id || 0,
+    vendor_id: vendors.value[0]?.id || 0,
     amount: 0, gross_amount: undefined, non_service_expense: undefined,
     recognized_date: new Date().toISOString().slice(0, 10),
     description: '',
@@ -70,6 +74,7 @@ function openEdit(r: ProjectRevenue) {
   editingId.value = r.id
   Object.assign(form, {
     project_id: r.project_id,
+    vendor_id: r.vendor_id,
     amount: Number(r.amount),
     gross_amount: r.gross_amount == null ? undefined : Number(r.gross_amount),
     non_service_expense: r.non_service_expense == null ? undefined : Number(r.non_service_expense),
@@ -85,12 +90,20 @@ async function onSubmit() {
     ElMessage.warning('项目 / 团队入账 / 确认日期 必填')
     return
   }
+  if (!form.vendor_id) {
+    ElMessage.warning('经办 Vendor 必填 — 决定这笔钱 pass-through 到哪家')
+    return
+  }
   if (!form.gross_amount || Number(form.gross_amount) <= 0) {
     ElMessage.warning('客户付款总额 必填 — 公司毛利率统计需要此字段')
     return
   }
-  if (!form.non_service_expense || Number(form.non_service_expense) <= 0) {
-    ElMessage.warning('非服务开销 必填 — 公司毛利率公式需要此字段（占客户付款约 65-75%）')
+  if (form.non_service_expense == null) {
+    ElMessage.warning('非服务开销 必填 — 纯服务项目请填 0')
+    return
+  }
+  if (Number(form.non_service_expense) < 0) {
+    ElMessage.warning('非服务开销不能为负数')
     return
   }
   if (Number(form.non_service_expense) >= Number(form.gross_amount)) {
@@ -139,17 +152,17 @@ function projectMeta(projectId: number): { need_party: string; sales_person: str
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'recognized_date', label: '确认日期' },
   { key: 'project_name', label: '项目' },
   { key: 'need_party_name', label: '客户名称' },
   { key: 'sales_person_name', label: '销售' },
+  { key: 'vendor_name', label: '经办 Vendor' },
   { key: 'gross_amount', label: '客户付款总额' },
   { key: 'non_service_expense', label: '非服务开销' },
   { key: 'amount', label: '团队入账' },
 ]
 const visibleCols = ref<Set<string>>(new Set(COL_DEFS.map((c) => c.key)))
-const FILTERABLE_KEYS = ['project_name', 'need_party_name', 'sales_person_name']
+const FILTERABLE_KEYS = ['project_name', 'need_party_name', 'sales_person_name', 'vendor_name']
 const filters = ref<Record<string, Set<string | number>>>(
   Object.fromEntries(FILTERABLE_KEYS.map((k) => [k, new Set()])),
 )
@@ -227,6 +240,13 @@ onMounted(load)
           <span v-else style="color: #c0c4cc">—</span>
         </template>
       </el-table-column>
+      <el-table-column v-if="visibleCols.has('vendor_name')" label="经办 Vendor" width="140">
+        <template #header>
+          经办 Vendor
+          <ColumnFilterMenu :options="distinctValues('vendor_name')" v-model="filters.vendor_name" />
+        </template>
+        <template #default="{ row }">{{ row.vendor_name || '—' }}</template>
+      </el-table-column>
       <el-table-column v-if="visibleCols.has('non_service_expense')" label="非服务开销" width="140" align="right">
         <template #default="{ row }">
           <span v-if="row.non_service_expense != null">HK$ {{ fmt2(row.non_service_expense) }}</span>
@@ -253,6 +273,15 @@ onMounted(load)
           <div style="color: #909399; font-size: 12px; margin-top: 4px">仅"有收入项目"可登记收入</div>
         </el-form-item>
 
+        <el-form-item label="经办 Vendor" required>
+          <el-select v-model="form.vendor_id" filterable style="width: 100%">
+            <el-option v-for="v in vendors" :key="v.id" :label="v.name" :value="v.id" />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px">
+            这笔团队入账 pass-through 到哪家 vendor — 保存时自动建一笔等额 VSF 镜像。多 vendor 项目录多条。
+          </div>
+        </el-form-item>
+
         <el-form-item label="外部服务商报价" required>
           <el-input-number v-model="benchmarkForm.amount" :min="0" :precision="2" style="width: 100%"
                            placeholder="HK$（vendor 真实询价金额）" />
@@ -277,7 +306,7 @@ onMounted(load)
           <el-input-number v-model="form.non_service_expense" :min="0" :precision="2" style="width: 100%"
                            placeholder="硬件采购 / 第三方软件 / 物料 / 销售切除非工程师服务的部分" />
           <div style="color: #909399; font-size: 12px; margin-top: 4px">
-            通常占客户付款 65-75%；公司毛利率 = (客户付款 − 团队入账 − 非服务开销) / 客户付款
+            含硬件/物料/第三方等非服务部分；纯服务项目填 0。公式：毛利率 = (客户付款 − 团队入账 − 非服务开销) / 客户付款
           </div>
         </el-form-item>
         <el-form-item label="团队入账 (HKD)" required>

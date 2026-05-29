@@ -4,6 +4,8 @@ export interface ProjectRevenue {
   id: number
   project_id: number
   project_name?: string | null
+  vendor_id: number
+  vendor_name?: string | null
   amount: number | string                          // 团队入账（pass-through 到 Vendor）
   gross_amount?: number | string | null            // 客户付款总额（销售切除前）
   non_service_expense?: number | string | null     // 非服务开销（硬件 / 第三方 / 物料）
@@ -16,6 +18,7 @@ export interface ProjectRevenue {
 
 export interface RevenuePayload {
   project_id: number
+  vendor_id: number  // 必填：经办 vendor（pass-through 自动同步建一笔 VSF 镜像）
   amount: number
   gross_amount?: number | null
   non_service_expense?: number | null

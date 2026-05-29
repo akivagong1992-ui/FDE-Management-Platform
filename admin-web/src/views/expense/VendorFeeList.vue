@@ -87,7 +87,6 @@ async function onDelete(v: VendorServiceFee) {
 
 // ─ Column visibility + per-column filter ─────────────────────────
 const COL_DEFS = [
-  { key: 'id', label: 'ID' },
   { key: 'vendor_name', label: 'Vendor' },
   { key: 'engineer_name', label: '工程师' },
   { key: 'project_name', label: '项目' },
@@ -125,10 +124,14 @@ onMounted(load)
 
 <template>
   <div>
+    <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
+      <template #title>
+        VSF 由 ProjectRevenue 自动镜像（pass-through 模型）——录入收入时选 vendor 即可，这里只读对账。
+      </template>
+    </el-alert>
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
       <div style="flex: 1" />
       <ColumnVisibilityMenu :columns="COL_DEFS" v-model="visibleCols" />
-      <el-button type="primary" @click="openCreate">新增服务费记录</el-button>
     </div>
 
     <el-table :data="filteredRows" v-loading="loading" stripe>

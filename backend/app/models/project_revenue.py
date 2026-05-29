@@ -18,6 +18,9 @@ class ProjectRevenue(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(ForeignKey("projects.id"), index=True)
+    # vendor_id：经办 vendor（必填）。pass-through 模型下每笔 ProjectRevenue 都明确流向哪家 vendor；
+    # 后端 hook 会同步建一笔等额 VSF 镜像（同 project + 同 vendor + 同 amount）。
+    vendor_id: Mapped[int] = mapped_column(ForeignKey("vendors.id"), index=True)
 
     # amount = 团队入账（pass-through 到 Vendor 的部分），用于团队成本核算 + 驾驶舱降本
     amount: Mapped[float] = mapped_column(Numeric(14, 2))
@@ -40,3 +43,4 @@ class ProjectRevenue(Base):
     )
 
     project: Mapped["Project"] = relationship(lazy="selectin")  # noqa: F821
+    vendor: Mapped["Vendor"] = relationship(lazy="selectin")  # noqa: F821
